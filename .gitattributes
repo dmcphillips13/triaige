@@ -1,0 +1,31 @@
+# Enforce LF line endings
+* text=auto eol=lf
+
+# Explicitly declare text files
+*.js text
+*.ts text
+*.tsx text
+*.json text
+*.md text
+*.yml text
+*.yaml text
+*.py text
+*.toml text
+*.css text
+*.html text
+
+# Denote binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+# Prevent lock files from showing noisy diffs
+pnpm-lock.yaml -diff
+uv.lock -diff
+
+# Linguist overrides for GitHub stats
+*.snap linguist-generated=true
