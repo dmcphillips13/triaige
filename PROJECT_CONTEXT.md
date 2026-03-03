@@ -1,6 +1,6 @@
 # PROJECT_CONTEXT.md — Triaige (Session Handoff)
 
-Last updated: 2026-03-02
+Last updated: 2026-03-03
 
 ---
 
@@ -15,21 +15,27 @@ Last updated: 2026-03-02
 - [x] AGENTS.md rewritten for Demo Day scope
 - [x] PROJECT_CONTEXT.md created
 
-### In progress
-- [ ] Step 1: Runner scaffold (pyproject.toml, FastAPI stubs, settings, schemas)
-
 ### Not started
-- [ ] Step 2: Triage memory corpus (~30 docs)
-- [ ] Step 3: Qdrant Cloud provisioning + indexing pipeline + dense retriever
-- [ ] Step 4: Tavily search wrapper
-- [ ] Step 5: LangGraph agentic workflow wired to /ask
-- [ ] Step 6: Deploy runner to Render
-- [ ] Step 7: Dashboard triage UI
-- [ ] Step 8: GPT-4o vision analysis (Week 2)
-- [ ] Step 9: Playwright result parser (Week 2)
-- [ ] Step 10: GitHub integration (Week 2)
-- [ ] Step 11: RAGAS evaluation (Week 2, if time)
-- [ ] Step 12: Polish + Loom (Week 2)
+- [ ] Step 1: Runner scaffold (pyproject.toml, FastAPI stubs, settings, schemas)
+- [ ] Step 2: Sample app + Playwright suite (separate repo)
+- [ ] Step 3: Triage memory corpus (~30 docs)
+- [ ] Step 4: Qdrant Cloud provisioning + indexing pipeline + dense retriever
+- [ ] Step 5: GitHub API tool (read PR context)
+- [ ] Step 6: LangGraph agentic workflow wired to /ask
+- [ ] Step 7: Deploy runner to Render
+- [ ] Step 8: Dashboard triage UI
+- [ ] Step 9: Playwright result ingestion (parser + real data from sample app)
+- [ ] Step 10: Programmatic image diff
+- [ ] Step 11: GPT-4o vision analysis (uses image diff output as context)
+- [ ] Step 12: Batch triage with failure grouping
+- [ ] Step 13: Screenshot comparison viewer (side-by-side, swipe slider, diff overlay)
+- [ ] Step 14: Human-in-the-loop + episodic memory (approve/reject → store as episodes → few-shot retrieval)
+- [ ] Step 15: GitHub automated actions (create PRs/issues)
+- [ ] Step 16: GitHub Actions workflow (merged PR in sample app → Playwright → POST /triage-run)
+- [ ] Step 17: Procedural memory — self-improving triage instructions via reflection (stretch)
+- [ ] Step 18: Component ownership lookup (stretch)
+- [ ] Step 19: RAGAS evaluation (stretch)
+- [ ] Step 20: Polish + Loom
 
 ---
 
@@ -44,8 +50,18 @@ Last updated: 2026-03-02
 | Orchestration | LangGraph | Agentic state machine with conditional routing |
 | Runner deploy | Render (free tier) | Better Python support than Vercel |
 | Dashboard deploy | Vercel | Already scaffolded; natural fit for Next.js |
+| External tool | GitHub API (primary) | Read PR context for classification; create PRs/issues for actions |
+| Image analysis | GPT-4o vision + Pillow pixel diff | Qualitative + quantitative screenshot comparison |
+| Sample app | Separate repo, 3–5 page dashboard | Realistic visual regressions for demo |
 | Corpus | LLM-generated synthetic triage memory | ~30 docs: cases, runbooks, known changes |
-| Process | Step-by-step commits | Mirror Mismatch workflow (AGENTS.md §12) |
+| Observability | LangSmith | Traces all agent runs automatically via LangGraph |
+| UI theme | Light theme, stoplight colors, black text | Red=unexpected, yellow=uncertain, green=expected |
+| CI trigger | GitHub Actions | Merged PR → Playwright → Triaige |
+| Memory architecture | CoALA framework (AIE9) | Semantic + episodic (core), procedural (stretch) |
+| Feedback loop | Episodic memory in Qdrant | Approved decisions become few-shot examples for future classifications |
+| Testing | Deferred to post-Demo Day | Focus dev time on features and polish |
+| Demo format | Live end-to-end pipeline | Full product flow is the definition of demo-ready |
+| Process | Step-by-step commits | Mirror Mismatch workflow (AGENTS.md §13) |
 
 ---
 
@@ -53,12 +69,13 @@ Last updated: 2026-03-02
 
 | Service | Status | Notes |
 |---|---|---|
-| Qdrant Cloud | Account exists, no cluster | Must provision before Step 3 |
-| OpenAI API | Needs key | For GPT-4o-mini + embeddings |
-| Tavily API | Needs key | For web search tool |
+| Qdrant Cloud | Account exists, no cluster | Must provision before Step 4 |
+| OpenAI API | Needs key | For GPT-4o-mini + GPT-4o vision + embeddings |
+| GitHub API | Needs token (optional) | Enriches with PR context when set; read PRs + create PRs/issues for actions |
+| LangSmith | Needs key | Optional observability — hooks into LangGraph automatically |
 | Render | Not set up | Free tier for runner |
 | Vercel | Dashboard scaffold deployed locally | Needs production deployment |
-| GitHub API | Not needed until Week 2 | For PR/issue automation |
+| Sample app repo | Not created | Separate GitHub repo for demo target (Step 2) |
 
 ---
 
@@ -91,7 +108,7 @@ Last updated: 2026-03-02
 
 ## Architecture reference
 
-This project mirrors the **Mismatch** repo architecture (`/Users/denismcphillips/code/mismatch`):
+This project follows the same architecture as the **Mismatch** repo:
 - Same stack: FastAPI + LangGraph + Qdrant Cloud + Next.js
 - Same deployment: Render (backend) + Vercel (frontend)
 - Same patterns: tools as pure data fetchers, deterministic formatting, graceful degradation

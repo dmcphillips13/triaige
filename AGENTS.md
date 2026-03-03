@@ -22,22 +22,17 @@ All agents (Claude Code, Codex, Cursor, etc.) should follow this document to avo
 
 Build a **production-ready agentic AI app** that automates visual regression testing end-to-end. The target is a polished, reliable live demo — quality over breadth.
 
-### MVP (Week 1)
-1. Working Agentic RAG triage assistant behind `/health` and `/ask` endpoints.
-2. RAG corpus of ~30 triage memory documents (cases, runbooks, known changes) indexed in Qdrant Cloud.
-3. LangGraph orchestration with conditional Tavily web search.
-4. Deployed runner (Render) + dashboard (Vercel) — end-to-end demo.
+### Product flow
+Merged PR (sample app repo) → Playwright tests run → failed screenshots + results → Triaige agent classifies failures → automated actions (PRs for baselines, issues for bugs) → human reviews in dashboard → feedback loops back into triage memory.
 
-### Post-MVP features (Week 2, ordered by demo impact)
-1. **GPT-4o vision analysis** — agent analyzes baseline vs actual screenshots to describe visual differences.
-2. **Playwright result ingestion** — parse real Playwright JSON test results into the agent.
-3. **GitHub integration** — automated PR creation for baseline updates, issue filing for bugs.
-4. **Human feedback loop** — approve/reject classifications in dashboard, feed back to corpus.
-5. **RAGAS evaluation** — baseline metrics, optional retriever upgrade + comparison table.
+### Demo target
+Live end-to-end pipeline: merge a real PR to the sample app repo, Playwright runs, Triaige classifies, results appear in the dashboard. The full product flow is the definition of "demo-ready."
+
+### Sample app (separate repo)
+A separate GitHub repo with a moderate dashboard-style web app (3–5 pages: nav, cards, tables, forms) and Playwright visual tests. PRs to this repo trigger the GitHub Actions workflow. The sample app exists solely to generate realistic visual regressions for the demo.
 
 ### Non-goals (out of scope)
-- Full CI/CD pipeline integration (webhook triggers)
-- Multi-repo support
+- Multi-repo support (beyond the single sample app)
 - User auth / multi-tenancy
 - Production monitoring / alerting
 
@@ -51,10 +46,9 @@ Build a **production-ready agentic AI app** that automates visual regression tes
 
 ### 2.2 Vector database
 - **Qdrant Cloud** (external managed instance, free tier).
-- Do **not** use Chroma or FAISS.
 
 ### 2.3 Orchestration
-- **LangGraph** StateGraph with conditional routing (same pattern as Mismatch).
+- **LangGraph** StateGraph with conditional routing.
 
 ### 2.4 LLM + Embeddings
 - **GPT-4o-mini** for text reasoning (classification, composition).
@@ -62,10 +56,13 @@ Build a **production-ready agentic AI app** that automates visual regression tes
 - **text-embedding-3-small** (1536 dimensions) for embeddings.
 
 ### 2.5 External tools
-- **Tavily** Search API for web search (unknown error signatures, external docs).
-- **GitHub API** for PR/issue creation (Week 2).
+- **GitHub API** (primary) — read PR context (changed files, commits, diffs) to inform classification; create PRs/issues as automated actions.
+- **Programmatic image diff** — deterministic pixel comparison for screenshot pairs (Pillow-based, no external API).
 
-### 2.6 Evaluation
+### 2.6 Observability
+- **LangSmith** tracing for all agent runs (set env vars, hooks into LangGraph automatically).
+
+### 2.7 Evaluation
 - **RAGAS** for evaluation (local/CI only, not deployed).
 - Optional for Demo Day — build if time permits.
 
@@ -90,7 +87,7 @@ triaige/
   docs/
 ```
 
-### Target runner layout (mirrors Mismatch structure)
+### Target runner layout
 ```
 apps/runner/
   pyproject.toml
@@ -116,13 +113,16 @@ apps/runner/
       service.py                    # RetrievedDocument dataclass
     tools/
       __init__.py
-      tavily.py                     # Tavily web search client
-      vision.py                     # GPT-4o screenshot analysis [Week 2]
-      github.py                     # GitHub PR/issue client [Week 2]
-      playwright_parser.py          # Playwright result parser [Week 2]
+      github.py                     # GitHub API client (read PRs, create PRs/issues)
+      image_diff.py                 # Programmatic pixel diff (Pillow)
+      vision.py                     # GPT-4o screenshot analysis
+      playwright_parser.py          # Playwright result parser
     clients/
       __init__.py
       openai_client.py              # Embedding + vision client
+    pipeline/
+      __init__.py
+      data_loader.py                # Load markdown docs, chunk by heading, preserve metadata
   data/
     cases/                          # ~15 past regression case docs
     runbooks/                       # ~10 debugging playbook docs
@@ -138,6 +138,12 @@ apps/runner/
 - Proxy route at `api/runner/[...path]/route.ts` forwards to runner (avoids CORS).
 - Uses `RUNNER_BASE_URL` env var (server-side, not `NEXT_PUBLIC_`).
 
+### Sample app (separate repo)
+- Separate GitHub repo (not in this monorepo).
+- 3–5 page dashboard-style web app with Playwright visual tests.
+- Contains GitHub Actions workflow that triggers on merged PRs: runs Playwright → POSTs failures to Triaige runner.
+- Built in Step 2.
+
 ---
 
 ## 4) Environment variables
@@ -152,7 +158,10 @@ apps/runner/
 | `OPENAI_MODEL` | `gpt-4o-mini` | No |
 | `OPENAI_EMBEDDINGS_MODEL` | `text-embedding-3-small` | No |
 | `OPENAI_EMBEDDINGS_DIMENSIONS` | `1536` | No |
-| `TAVILY_API_KEY` | — | Yes |
+| `GITHUB_TOKEN` | — | No (enriches with PR context when set) |
+| `LANGSMITH_API_KEY` | — | No (enables tracing) |
+| `LANGSMITH_PROJECT` | `triaige` | No |
+| `LANGCHAIN_TRACING_V2` | — | No (set to `true` to enable) |
 | `CORS_ORIGINS` | `*` | No |
 
 ### Dashboard (Vercel + local)
@@ -197,7 +206,9 @@ apps/runner/
 }
 ```
 
-`run_summary`, `pr_context`, and all their fields are optional. The `screenshot_*` and `repo`/`pr_number` fields are Week 2 additions — nullable by default.
+`run_summary`, `pr_context`, and all their fields are optional. The `screenshot_*` and `repo`/`pr_number` fields are nullable by default and added incrementally.
+
+Screenshot format: `screenshot_baseline` and `screenshot_actual` accept base64-encoded PNG strings. The runner decodes them server-side for image diff and vision analysis.
 
 #### Response
 ```json
@@ -215,8 +226,9 @@ apps/runner/
     "url": null
   },
   "tool_calls": [
-    {"tool": "tavily_search", "query": "", "used": false}
+    {"tool": "github_read_pr", "query": "owner/repo#42", "used": true}
   ],
+  "image_diff": null,
   "vision_summary": null,
   "debug": {
     "intent": "triage",
@@ -233,35 +245,108 @@ apps/runner/
 ### Citation mapping
 - `doc_id`: relative path of the source markdown file (matches Qdrant payload `doc_id`)
 - `snippet`: chunk text from the Qdrant payload `text` field
-- `source`: `"qdrant"`, `"tavily"`, or `"vision"`
+- `source`: `"qdrant"`, `"github"`, or `"vision"`
+
+### `image_diff` field (Step 10)
+When screenshots are provided, the response includes:
+```json
+{
+  "image_diff": {
+    "diff_ratio": 0.032,
+    "changed_pixel_count": 4821,
+    "total_pixel_count": 150528,
+    "changed_regions": ["header"],
+    "diff_overlay_base64": "iVBORw0KGgo..."
+  }
+}
+```
+The `diff_overlay_base64` is a base64-encoded PNG highlighting changed pixels. The dashboard uses this for the diff overlay view in the screenshot comparison viewer.
+
+### `POST /triage-run` (Step 12 — batch triage)
+Accepts an array of failures from a test run. Groups related failures by component + failure pattern, then classifies each group through the agent graph.
+
+```json
+{
+  "failures": [
+    {"question": "...", "run_summary": {...}, "pr_context": {...}},
+    {"question": "...", "run_summary": {...}, "pr_context": {...}}
+  ]
+}
+```
+
+Response: array of `AskResponse` objects, one per failure group, with an additional `group` field listing which test names were clustered together.
 
 ---
 
-## 6) Triage memory RAG corpus
+## 6) Agent memory (CoALA framework)
 
-### Purpose
+Triaige's memory architecture follows the **CoALA (Cognitive Architectures for Language Agents)** framework from AIE9. Each memory type serves a distinct purpose:
+
+| Memory Type | Purpose | Storage | Status |
+|---|---|---|---|
+| **Semantic** | Institutional knowledge — cases, runbooks, known changes | Qdrant (`doc_type: case/runbook/known_change`) | Core feature |
+| **Episodic** | Past triage decisions as few-shot examples | Qdrant (`doc_type: episode`) | Core feature |
+| **Procedural** | Self-improving triage instructions via reflection | Qdrant (`doc_type: procedure`) | Stretch |
+| **Short-term** | Conversation context within a triage session | LangGraph checkpointer (`MemorySaver`) | Stretch |
+| **Long-term** | Project-level config (repo defaults, thresholds) | LangGraph store (`InMemoryStore`) | Stretch |
+
+### 6.1 Semantic memory (triage knowledge base)
+
 The RAG corpus is Triaige's **institutional memory** — like a senior QA engineer's brain. It stores knowledge about past regressions, debugging procedures, and known expected changes so the agent can say "we've seen this before."
 
-### Document types
+**Document types:**
 - `data/cases/*.md` — past regression cases: symptom → root cause → resolution
 - `data/runbooks/*.md` — debugging playbooks: what to check, commands, common causes
 - `data/known_changes/*.md` — expected diffs from planned changes (design system rollouts, experiments)
 
-### Metadata (YAML front matter)
+**Metadata (YAML front matter):**
 ```yaml
 doc_type: case
 component: auth
 date: 2026-02-01
 tags: [login, 403, cookie]
-severity: high
 ---
 # Title...
 ```
 
 Required fields: `doc_type`, `component`, `date`, `tags`.
 
-### Chunking strategy
-Split on Markdown `##` headings. Each chunk preserves the parent doc's metadata plus `heading` and `chunk_index`. This keeps chunks focused while maintaining traceability.
+**Chunking strategy:** split on Markdown `##` headings. Each chunk preserves the parent doc's metadata plus `heading` and `chunk_index`. This keeps chunks focused while maintaining traceability.
+
+### 6.2 Episodic memory (learning from past decisions)
+
+When a human approves or rejects a triage classification, the decision is stored as an **episode** in Qdrant. At classification time, the agent retrieves similar episodes and injects them as few-shot examples — showing the LLM *how it classified a similar failure before* and whether the human agreed.
+
+**Episode structure:**
+```json
+{
+  "doc_type": "episode",
+  "component": "header",
+  "date": "2026-03-05",
+  "tags": ["visual_diff", "design_system"],
+  "text": "header_layout test: 3% diff after PR 'Update design system tokens'. Classified as expected (0.87). Human approved.",
+  "situation": "header_layout test failed with 3% diff ratio after design system token update",
+  "classification": "expected",
+  "confidence": 0.87,
+  "human_feedback": "approved",
+  "original_rationale": "Design system token update directly affects header spacing..."
+}
+```
+
+The `text` field is embedded for similarity search. At query time, matching episodes are formatted as few-shot examples in the system prompt:
+
+```
+Past decision #1:
+Situation: header_layout test failed with 3% diff ratio after design system token update
+Classification: expected (confidence: 0.87)
+Human feedback: approved
+```
+
+This is more powerful than just adding case documents because few-shot examples directly steer LLM classification behavior.
+
+### 6.3 Procedural memory (self-improving instructions) — stretch
+
+The agent stores its own triage instructions in Qdrant (`doc_type: procedure`). After accumulating feedback, a reflection step uses the LLM to rewrite the instructions based on patterns — e.g., if humans consistently override "uncertain" → "expected" for design system changes, the instructions are updated to be more confident about those patterns. Instructions are versioned for audit trail.
 
 ---
 
@@ -275,7 +360,7 @@ Split on Markdown `##` headings. Each chunk preserves the parent doc's metadata 
 | Field | Type | Example |
 |---|---|---|
 | `doc_id` | `str` | `"cases/CASE-003.md"` |
-| `doc_type` | `str` | `"case"` / `"runbook"` / `"known_change"` |
+| `doc_type` | `str` | `"case"` / `"runbook"` / `"known_change"` / `"episode"` |
 | `component` | `str` | `"auth"` |
 | `date` | `str` | `"2026-02-01"` |
 | `tags` | `list[str]` | `["login", "403", "cookie"]` |
@@ -295,23 +380,30 @@ Split on Markdown `##` headings. Each chunk preserves the parent doc's metadata 
 
 ## 8) Agentic RAG workflow (LangGraph)
 
-### Graph nodes
+### Initial graph nodes
 1. `classify_query` — determine intent and extract failure signals via GPT-4o-mini
-2. `retrieve_internal` — Qdrant search filtered by component/doc_type
-3. `analyze_screenshots` — GPT-4o vision analysis of baseline vs actual [Week 2, conditional]
-4. `maybe_web_search` — Tavily search if internal retrieval is insufficient
-5. `compose_answer` — structured classification + rationale grounded in context
+2. `fetch_pr_context` — read PR details from GitHub API (changed files, commits, diff) if `repo` and `pr_number` provided
+3. `retrieve_semantic` — Qdrant search filtered by `doc_type` in (`case`, `runbook`, `known_change`) and optionally by `component`
+4. `retrieve_episodes` — Qdrant search filtered by `doc_type: episode`; results formatted as few-shot examples in the system prompt
+5. `compose_answer` — structured classification + rationale grounded in semantic context + episodic few-shot examples
+
+### Additional graph nodes
+6. `compute_image_diff` — programmatic pixel comparison of screenshots; outputs feed into vision prompt [conditional]
+7. `analyze_screenshots` — GPT-4o vision analysis using baseline, actual, and diff overlay + diff metrics as context [conditional]
+8. `execute_action` — create PR/issue/comment via GitHub API based on classification
+9. `store_episode` — after human feedback, save the decision as an episode in Qdrant [triggered by feedback endpoint]
 
 ### Routing rules
-- Always retrieve from Qdrant first (RAG-first).
-- Call Tavily only if: low retrieval confidence, unknown error signature, or question requires external docs.
-- Call vision only if: `screenshot_baseline` and `screenshot_actual` are provided.
+- Always retrieve semantic memory and episodic memory from Qdrant (RAG-first).
+- Fetch PR context if `repo` and `pr_number` are provided in the request.
+- Run image diff + vision only if `screenshot_baseline` and `screenshot_actual` are provided.
+- Execute GitHub actions only if: human has approved the classification (preferred), OR confidence is above auto-act threshold, OR auto-act is explicitly enabled.
+- Store episode after human approves/rejects a classification via the feedback endpoint.
 - Degrade gracefully: accumulate errors in state, never crash on tool failure.
 
 ### Tool calling policy
 - Tools are **pure data fetchers** — no LLM calls inside tools.
 - LLM calls happen only in graph nodes (classify, analyze_screenshots, compose).
-- Same pattern as Mismatch.
 
 ---
 
@@ -328,11 +420,26 @@ Responses are built deterministically in `format.py` where possible. The LLM gen
 Short paragraph grounded in retrieved context. Must reference specific cases/runbooks when available.
 
 ### Citations
-List of `{doc_id, snippet, source}` from Qdrant retrieval + Tavily results + vision analysis.
+List of `{doc_id, snippet, source}` from Qdrant retrieval + GitHub context + vision analysis.
 
 ---
 
-## 10) Deployment
+## 10) UI theme
+
+### Colors
+- **Light theme** — white/light background.
+- **Stoplight classification colors**: red (`unexpected`), yellow (`uncertain`), green (`expected`).
+- **Black text** — primary text and headings.
+- Logo: red cross + "riaige" in dark navy with "ai" highlighted in red (on local machine, will be added to `apps/dashboard/public/`).
+
+### Dashboard views
+- Triage list: classification badge (color-coded), test name, confidence, recommended action.
+- Screenshot comparison: side-by-side, swipe slider (`react-compare-slider`), diff overlay.
+- Detail view: rationale, citations, tool calls, image diff stats, approve/reject buttons.
+
+---
+
+## 11) Deployment
 
 ### Backend (Render)
 - Root: `apps/runner`
@@ -352,7 +459,7 @@ Starts both runner (uvicorn, port 8000) and dashboard (next dev, port 3000).
 
 ---
 
-## 11) Repo hygiene
+## 12) Repo hygiene
 
 ### Must NOT commit
 - `apps/runner/.venv/`, `__pycache__/`, `*.pyc`
@@ -366,7 +473,7 @@ Starts both runner (uvicorn, port 8000) and dashboard (next dev, port 3000).
 
 ---
 
-## 12) How to work with agents (process rules)
+## 13) How to work with agents (process rules)
 
 When making changes:
 1. Make one step at a time.
@@ -376,31 +483,42 @@ When making changes:
 5. If uncertain, prefer adding small validation logs over complex abstractions.
 6. Stop after each step for review before committing.
 
-Commit messages: plain imperative sentences (e.g., "Add Tavily search wrapper"). No conventional-commit prefixes. No co-authorship attribution. No references to plan steps.
+Commit messages: plain imperative sentences (e.g., "Add GitHub API client for PR context"). No conventional-commit prefixes. No co-authorship attribution. No references to plan steps.
 
 ---
 
-## 13) Build steps
+## 14) Build steps
 
-### Week 1 — MVP
-1. Runner scaffold: pyproject.toml, FastAPI with stub `/health` and `/ask`, settings, schemas
-2. Triage memory corpus: ~30 synthetic markdown docs with metadata
-3. Qdrant indexing pipeline: data loader, chunking, embedding, upsert script, dense retriever
-4. Tavily search wrapper
-5. LangGraph agentic workflow wired to `/ask`
-6. Deploy runner to Render
-7. Dashboard triage UI + verify proxy
-
-### Week 2 — End-to-end pipeline
-8. GPT-4o screenshot analysis node
-9. Playwright result parser + fixture screenshots
-10. GitHub integration (automated PR/issue creation)
-11. RAGAS evaluation (if time)
-12. Polish + Loom prep
+1. Runner scaffold: `pyproject.toml`, FastAPI with stub `/health` and `/ask`, settings, schemas
+2. Sample app + Playwright suite: separate repo, 3–5 page dashboard app, Playwright visual tests, baseline screenshots
+3. Triage memory corpus: ~30 synthetic markdown docs with YAML front matter metadata
+4. Qdrant indexing pipeline: data loader, chunking, embedding, upsert script, dense retriever
+5. GitHub API tool: read PR context (changed files, commits, diff)
+6. LangGraph agentic workflow wired to `/ask`
+7. Deploy runner to Render
+8. Dashboard triage UI + verify proxy
+9. Playwright result ingestion: parse Playwright JSON results + screenshot pairs into structured data for the agent
+10. Programmatic image diff: deterministic pixel comparison (Pillow) — diff ratio, changed regions, overlay image
+11. GPT-4o vision: screenshot analysis node using baseline, actual, diff overlay + metrics as context
+12. Batch triage: `/triage-run` endpoint, failure grouping by component + pattern, group-level classification
+13. Screenshot comparison viewer: side-by-side, swipe slider (`react-compare-slider`), diff overlay (GitHub Desktop-style)
+14. Human-in-the-loop + episodic memory: approve/reject in dashboard; store decisions as episodes in Qdrant (`doc_type: episode`); retrieve similar episodes as few-shot examples at classification time (CoALA episodic memory pattern)
+15. GitHub automated actions: create PRs (expected), file issues (unexpected), PR comments (uncertain)
+16. GitHub Actions workflow: merged PR in sample app repo → Playwright → POST /triage-run → results in dashboard
+17. Procedural memory: agent reflection on feedback patterns → self-updating triage instructions, versioned in Qdrant (stretch)
+18. Component ownership lookup (stretch)
+19. RAGAS evaluation (stretch)
+20. Polish + Loom prep
 
 ---
 
-## 14) Session continuity
+## 15) Testing
+
+Automated tests are deferred to post-Demo Day unless they help development. Focus dev time on features and polish.
+
+---
+
+## 16) Session continuity
 
 - `PROJECT_CONTEXT.md` — current status, file inventory, key decisions
 - Update after substantial changes
