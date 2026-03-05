@@ -1,0 +1,19 @@
+[project]
+name = "triaige-runner"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi",
+  "uvicorn[standard]",
+  "pydantic",
+  "pydantic-settings",
+  "python-dotenv",
+  "qdrant-client",
+  "langchain",
+  "langgraph",
+  "langsmith",
+  "openai",
+  "langchain-openai",
+  "Pillow",
+  "httpx",
+]

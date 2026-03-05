@@ -10,7 +10,8 @@
     "build": "pnpm -r run build",
     "lint": "pnpm -r run lint",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "start:dev": "cd apps/runner && uv run uvicorn app.main:app --reload --port 8000 & pnpm -C apps/dashboard dev"
   },
   "devDependencies": {
     "prettier": "^3.4.2"
