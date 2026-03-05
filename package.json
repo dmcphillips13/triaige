@@ -11,9 +11,10 @@
     "lint": "pnpm -r run lint",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "start:dev": "cd apps/runner && uv run uvicorn app.main:app --reload --port 8000 & pnpm -C apps/dashboard dev"
+    "start:dev": "concurrently -k -n runner,dashboard -c blue,green \"cd apps/runner && uv run uvicorn app.main:app --reload --port 8000\" \"pnpm -C apps/dashboard dev\""
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "prettier": "^3.4.2"
   }
 }
