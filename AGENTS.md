@@ -482,7 +482,7 @@ When making changes:
 4. Do not refactor unrelated parts.
 5. If uncertain, prefer adding small validation logs over complex abstractions.
 6. Stop after each step for review before committing.
-7. Add module docstrings to every new Python file explaining its purpose and key design decisions. Add one-line docstrings to public functions. Keep it concise — enough that a new reader understands the "what" and "why" without reading every line.
+7. Add documentation to every new file (Python and TypeScript/TSX). For Python: module docstrings and one-line docstrings on public functions. For TypeScript/TSX: a top-of-file `//` comment block explaining the file's purpose, key design decisions, and how it fits into the system. For React components: document props and non-obvious behavior. Keep it concise — enough that a new reader understands the "what" and "why" without reading every line.
 
 Commit messages: plain imperative sentences (e.g., "Add GitHub API client for PR context"). No conventional-commit prefixes. No co-authorship attribution. No references to plan steps.
 
