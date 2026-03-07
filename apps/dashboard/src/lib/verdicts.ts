@@ -1,16 +1,16 @@
-// Persistent storage for human approve/reject verdicts using localStorage.
+// Human approve/reject verdicts with dual persistence:
 //
-// When a human reviews a triage classification, they can approve or reject it.
-// This module stores those verdicts locally so they persist across page reloads.
+// 1. localStorage — immediate UI state that survives page reloads.
+// 2. POST /feedback — stores the decision as an episode in Qdrant so the
+//    agent can retrieve it as a few-shot example for future classifications
+//    (CoALA episodic memory pattern).
 //
-// Verdicts are keyed by "{run_id}::{test_name}" and stored as a single JSON
-// blob under the "triaige:verdicts" localStorage key.
-//
-// Step 13 will replace localStorage with API-backed episodic memory: approved
-// decisions get stored as episodes in Qdrant and retrieved as few-shot examples
-// for future classifications.
+// The API call is fire-and-forget: if the runner is unreachable, the UI
+// still works via localStorage. Episodes accumulate in Qdrant over time
+// and are retrieved by the retrieve_episodes agent node.
 
 import type { HumanVerdict } from "./types";
+import { submitFeedback } from "./api";
 
 const STORAGE_KEY = "triaige:verdicts";
 
@@ -50,6 +50,8 @@ export function setVerdict(
     delete map[key];
   } else {
     map[key] = verdict;
+    // Fire-and-forget: store as episode in Qdrant for future few-shot retrieval
+    submitFeedback(runId, testName, verdict).catch(() => {});
   }
   save(map);
 }

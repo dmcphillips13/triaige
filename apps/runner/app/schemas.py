@@ -81,6 +81,14 @@ class AskResponse(BaseModel):
 # --- Triage Run models ---
 
 
+class FeedbackRequest(BaseModel):
+    """Human verdict on a triage classification."""
+
+    run_id: str
+    test_name: str
+    verdict: str  # "approved" or "rejected"
+
+
 class TriageRunRequest(BaseModel):
     """Accepts either raw Playwright JSON or pre-parsed failures."""
 

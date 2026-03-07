@@ -46,6 +46,17 @@ def get_run(run_id: str) -> TriageRunResponse | None:
     return entry["response"] if entry else None
 
 
+def get_result(run_id: str, test_name: str) -> TriageFailureResult | None:
+    """Look up a single failure result within a run by test name."""
+    run = get_run(run_id)
+    if not run:
+        return None
+    for r in run.results:
+        if r.test_name == test_name:
+            return r
+    return None
+
+
 def list_runs() -> list[TriageRunSummary]:
     """List all runs, newest first."""
     summaries = []

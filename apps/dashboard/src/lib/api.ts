@@ -28,3 +28,17 @@ export async function fetchRun(runId: string): Promise<TriageRunResponse> {
   if (!res.ok) throw new Error(`Failed to fetch run: ${res.status}`);
   return res.json();
 }
+
+/** Submit human feedback to the runner for episodic memory storage.
+ *  Called from the client via the /api/runner proxy. */
+export async function submitFeedback(
+  runId: string,
+  testName: string,
+  verdict: "approved" | "rejected"
+): Promise<void> {
+  await fetch("/api/runner/feedback", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ run_id: runId, test_name: testName, verdict }),
+  });
+}

@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import store
 from app.agent.graph import run_graph
+from app.episodic import store_episode
 from app.grouping import (
     build_group_request,
     extract_test_name,
@@ -13,6 +14,7 @@ from app.grouping import (
 from app.schemas import (
     AskRequest,
     AskResponse,
+    FeedbackRequest,
     TriageFailureResult,
     TriageRunRequest,
     TriageRunResponse,
@@ -109,3 +111,15 @@ async def get_run(run_id: str):
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
     return run
+
+
+@app.post("/feedback")
+async def feedback(req: FeedbackRequest):
+    """Store human verdict as an episode in Qdrant for future few-shot retrieval."""
+    if req.verdict not in ("approved", "rejected"):
+        raise HTTPException(status_code=400, detail="Verdict must be 'approved' or 'rejected'")
+    result = store.get_result(req.run_id, req.test_name)
+    if not result:
+        raise HTTPException(status_code=404, detail="Result not found")
+    point_id = await asyncio.to_thread(store_episode, result, req.verdict, req.run_id)
+    return {"status": "stored", "point_id": point_id}
