@@ -48,7 +48,7 @@ def build_response(state: AgentState) -> AskResponse:
         ),
         tool_calls=tool_calls,
         image_diff=state.get("image_diff"),
-        vision_summary=None,
+        vision_summary=state.get("vision_summary"),
         debug=DebugInfo(
             intent=state.get("intent", "triage"),
             errors=state.get("errors", []),

@@ -21,6 +21,9 @@ class AgentState(TypedDict, total=False):
     # compute_image_diff output
     image_diff: ImageDiff | None
 
+    # analyze_screenshots output
+    vision_summary: str | None
+
     # Retrieval output
     semantic_docs: list[RetrievedDocument]
     episode_docs: list[RetrievedDocument]

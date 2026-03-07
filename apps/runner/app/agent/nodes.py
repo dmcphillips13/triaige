@@ -11,6 +11,7 @@ from app.retrieval.service import RetrievedDocument
 from app.settings import settings
 from app.tools.github import fetch_pr_context
 from app.tools.image_diff import compute_diff
+from app.tools.vision import build_vision_messages
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +117,48 @@ def compute_image_diff_node(state: AgentState) -> dict:
             "used": False,
         })
         return {"image_diff": None, "errors": errors, "tool_calls": tool_calls}
+
+
+def analyze_screenshots(state: AgentState) -> dict:
+    """Run GPT-4o vision analysis on baseline, actual, and diff overlay."""
+    from app.clients.openai_client import get_openai_client
+
+    errors = list(state.get("errors", []))
+    tool_calls = list(state.get("tool_calls", []))
+    run_summary = state.get("run_summary")
+
+    baseline = run_summary.screenshot_baseline if run_summary else None
+    actual = run_summary.screenshot_actual if run_summary else None
+    image_diff = state.get("image_diff")
+    overlay = image_diff.diff_overlay_base64 if image_diff else None
+
+    if not baseline or not actual:
+        return {}
+
+    try:
+        messages = build_vision_messages(baseline, actual, overlay, image_diff)
+        client = get_openai_client()
+        response = client.chat.completions.create(
+            model=settings.openai_vision_model,
+            messages=messages,
+            max_tokens=300,
+        )
+        summary = response.choices[0].message.content or ""
+        tool_calls.append({
+            "tool": "openai.vision",
+            "query": f"analyze screenshots ({settings.openai_vision_model})",
+            "used": True,
+        })
+        return {"vision_summary": summary.strip(), "tool_calls": tool_calls}
+    except Exception as e:
+        logger.warning("analyze_screenshots failed: %s", e)
+        errors.append(f"analyze_screenshots: {e}")
+        tool_calls.append({
+            "tool": "openai.vision",
+            "query": f"analyze screenshots ({settings.openai_vision_model})",
+            "used": False,
+        })
+        return {"vision_summary": None, "errors": errors, "tool_calls": tool_calls}
 
 
 def retrieve_semantic(state: AgentState) -> dict:
@@ -230,6 +273,10 @@ def compose_answer(state: AgentState) -> dict:
         run_summary = state.get("run_summary")
         if run_summary:
             user_parts.append(f"Run summary: {run_summary.model_dump_json()}")
+
+        vision_summary = state.get("vision_summary")
+        if vision_summary:
+            user_parts.append(f"Vision analysis of screenshots: {vision_summary}")
 
         response = llm.invoke([
             {"role": "system", "content": system_prompt},
