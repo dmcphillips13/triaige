@@ -1,7 +1,10 @@
+import asyncio
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.schemas import AskRequest, AskResponse, DebugInfo, RecommendedAction
+from app.agent.graph import run_graph
+from app.schemas import AskRequest, AskResponse
 from app.settings import settings
 
 app = FastAPI(title="Triaige Runner")
@@ -23,18 +26,4 @@ async def health():
 
 @app.post("/ask", response_model=AskResponse)
 async def ask(req: AskRequest):
-    return AskResponse(
-        classification="uncertain",
-        confidence=0.0,
-        rationale="Stub response — agent graph not yet wired.",
-        citations=[],
-        recommended_action=RecommendedAction(
-            type="request_human_review",
-            executed=False,
-            url=None,
-        ),
-        tool_calls=[],
-        image_diff=None,
-        vision_summary=None,
-        debug=DebugInfo(intent="triage", errors=[]),
-    )
+    return await asyncio.to_thread(run_graph, req)
