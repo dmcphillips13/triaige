@@ -21,6 +21,7 @@ class PRContext(BaseModel):
     title: str | None = None
     changed_files: list[str] | None = None
     commit_messages: list[str] | None = None
+    diff: str | None = None
     repo: str | None = None
     pr_number: int | None = None
 
