@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 
 # --- Request models ---
@@ -76,3 +76,47 @@ class AskResponse(BaseModel):
     image_diff: ImageDiff | None = None
     vision_summary: str | None = None
     debug: DebugInfo | None = None
+
+
+# --- Triage Run models ---
+
+
+class TriageRunRequest(BaseModel):
+    """Accepts either raw Playwright JSON or pre-parsed failures."""
+
+    report_json: dict | None = None
+    failures: list[AskRequest] | None = None
+    pr_context: PRContext | None = None
+
+    @model_validator(mode="after")
+    def _require_one_input(self) -> "TriageRunRequest":
+        if not self.report_json and not self.failures:
+            raise ValueError("Provide either report_json or failures")
+        if self.report_json and self.failures:
+            raise ValueError("Provide report_json or failures, not both")
+        return self
+
+
+class TriageFailureResult(BaseModel):
+    """One failure's triage result within a run."""
+
+    test_name: str
+    ask_response: AskResponse
+
+
+class TriageRunSummary(BaseModel):
+    """Summary for listing runs."""
+
+    run_id: str
+    created_at: str
+    total_failures: int
+    classifications: dict[str, int]
+
+
+class TriageRunResponse(BaseModel):
+    """Full triage run with all results."""
+
+    run_id: str
+    created_at: str
+    total_failures: int
+    results: list[TriageFailureResult]

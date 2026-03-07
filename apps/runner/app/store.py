@@ -1,0 +1,61 @@
+"""In-memory triage run persistence.
+
+Stores triage run results in a module-level dict so the dashboard can query
+them via GET /runs. Data is lost on restart — acceptable for now.
+Step 17 swaps this to Postgres; function signatures stay the same.
+"""
+
+from __future__ import annotations
+
+import uuid
+from datetime import datetime, timezone
+
+from app.schemas import TriageFailureResult, TriageRunResponse, TriageRunSummary
+
+_runs: dict[str, dict] = {}
+
+
+def create_run(results: list[TriageFailureResult]) -> TriageRunResponse:
+    """Persist a new triage run and return the full response."""
+    run_id = str(uuid.uuid4())
+    created_at = datetime.now(timezone.utc).isoformat()
+
+    classifications: dict[str, int] = {}
+    for r in results:
+        cls = r.ask_response.classification
+        classifications[cls] = classifications.get(cls, 0) + 1
+
+    response = TriageRunResponse(
+        run_id=run_id,
+        created_at=created_at,
+        total_failures=len(results),
+        results=results,
+    )
+
+    _runs[run_id] = {
+        "response": response,
+        "classifications": classifications,
+    }
+
+    return response
+
+
+def get_run(run_id: str) -> TriageRunResponse | None:
+    """Retrieve a single run by ID."""
+    entry = _runs.get(run_id)
+    return entry["response"] if entry else None
+
+
+def list_runs() -> list[TriageRunSummary]:
+    """List all runs, newest first."""
+    summaries = []
+    for run_id, entry in _runs.items():
+        resp = entry["response"]
+        summaries.append(TriageRunSummary(
+            run_id=run_id,
+            created_at=resp.created_at,
+            total_failures=resp.total_failures,
+            classifications=entry["classifications"],
+        ))
+    summaries.sort(key=lambda s: s.created_at, reverse=True)
+    return summaries
