@@ -31,12 +31,13 @@ Last updated: 2026-03-07
 - [ ] Step 13: Human-in-the-loop + episodic memory (approve/reject → store as episodes → few-shot retrieval)
 - [ ] Step 14: GitHub automated actions (create PRs/issues)
 - [ ] Step 15: Deploy runner to Render (ops-only — render.yaml ready, needs service creation + env vars)
-- [ ] Step 16: GitHub Actions workflow (merged PR in sample app → Playwright → POST /triage-run)
-- [ ] Step 17: Runner-side Postgres persistence — Neon free tier, /runs CRUD, swap dashboard from localStorage to API *(low priority — localStorage works for demo)*
-- [ ] Step 18: Procedural memory — self-improving triage instructions via reflection (stretch)
-- [ ] Step 19: Component ownership lookup (stretch)
-- [ ] Step 20: RAGAS evaluation (stretch)
-- [ ] Step 21: Polish + Loom
+- [ ] Step 16: GitHub OAuth + repo linking (OAuth App, sign-in flow, token storage, link a repo UI)
+- [ ] Step 17: GitHub Actions workflow (merged PR in sample app → Playwright → POST /triage-run)
+- [ ] Step 18: Runner-side Postgres persistence — Neon free tier, /runs CRUD, swap dashboard from localStorage to API *(low priority — localStorage works for demo)*
+- [ ] Step 19: Procedural memory — self-improving triage instructions via reflection (stretch)
+- [ ] Step 20: Component ownership lookup (stretch)
+- [ ] Step 21: RAGAS evaluation (stretch)
+- [ ] Step 22: Polish + Loom
 
 ---
 

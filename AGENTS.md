@@ -505,12 +505,13 @@ Commit messages: plain imperative sentences (e.g., "Add GitHub API client for PR
 13. Human-in-the-loop + episodic memory: approve/reject in dashboard; store decisions as episodes in Qdrant (`doc_type: episode`); retrieve similar episodes as few-shot examples at classification time (CoALA episodic memory pattern)
 14. GitHub automated actions: create PRs (expected), file issues (unexpected), PR comments (uncertain)
 15. Deploy runner to Render (ops-only — render.yaml ready, needs service creation + env vars)
-16. GitHub Actions workflow: merged PR in sample app repo → Playwright → POST /triage-run → results in dashboard
-17. Runner-side Postgres persistence: Neon free tier, `/runs` CRUD endpoints, swap dashboard from localStorage to API-backed storage (low priority — localStorage works for demo)
-18. Procedural memory: agent reflection on feedback patterns → self-updating triage instructions, versioned in Qdrant (stretch)
-19. Component ownership lookup (stretch)
-20. RAGAS evaluation (stretch)
-21. Polish + Loom prep
+16. GitHub OAuth + repo linking: GitHub OAuth App, sign-in flow, token storage, "link a repo" UI, dynamic repo config (needs deployed URL for callback)
+17. GitHub Actions workflow: merged PR in sample app repo → Playwright → POST /triage-run → results in dashboard
+18. Runner-side Postgres persistence: Neon free tier, `/runs` CRUD endpoints, swap dashboard from localStorage to API-backed storage (low priority — localStorage works for demo)
+19. Procedural memory: agent reflection on feedback patterns → self-updating triage instructions, versioned in Qdrant (stretch)
+20. Component ownership lookup (stretch)
+21. RAGAS evaluation (stretch)
+22. Polish + Loom prep
 
 ---
 
