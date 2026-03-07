@@ -1,7 +1,7 @@
 from typing import TypedDict
 
 from app.retrieval.service import RetrievedDocument
-from app.schemas import PRContext, RunSummary
+from app.schemas import ImageDiff, PRContext, RunSummary
 
 
 class AgentState(TypedDict, total=False):
@@ -17,6 +17,9 @@ class AgentState(TypedDict, total=False):
 
     # fetch_pr_context output
     enriched_pr_context: PRContext | None
+
+    # compute_image_diff output
+    image_diff: ImageDiff | None
 
     # Retrieval output
     semantic_docs: list[RetrievedDocument]

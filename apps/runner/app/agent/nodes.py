@@ -10,6 +10,7 @@ from app.retrieval import qdrant_store
 from app.retrieval.service import RetrievedDocument
 from app.settings import settings
 from app.tools.github import fetch_pr_context
+from app.tools.image_diff import compute_diff
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +85,37 @@ def fetch_pr_context_node(state: AgentState) -> dict:
             "used": False,
         })
         return {"errors": errors, "tool_calls": tool_calls}
+
+
+def compute_image_diff_node(state: AgentState) -> dict:
+    """Run pixel-level image diff when both screenshots are available."""
+    errors = list(state.get("errors", []))
+    tool_calls = list(state.get("tool_calls", []))
+    run_summary = state.get("run_summary")
+
+    baseline = run_summary.screenshot_baseline if run_summary else None
+    actual = run_summary.screenshot_actual if run_summary else None
+
+    if not baseline or not actual:
+        return {}
+
+    try:
+        result = compute_diff(baseline, actual)
+        tool_calls.append({
+            "tool": "image_diff.compute_diff",
+            "query": "baseline vs actual",
+            "used": True,
+        })
+        return {"image_diff": result, "tool_calls": tool_calls}
+    except Exception as e:
+        logger.warning("compute_image_diff_node failed: %s", e)
+        errors.append(f"compute_image_diff: {e}")
+        tool_calls.append({
+            "tool": "image_diff.compute_diff",
+            "query": "baseline vs actual",
+            "used": False,
+        })
+        return {"image_diff": None, "errors": errors, "tool_calls": tool_calls}
 
 
 def retrieve_semantic(state: AgentState) -> dict:
