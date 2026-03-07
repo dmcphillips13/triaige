@@ -6,7 +6,7 @@ Last updated: 2026-03-07
 
 ## Current status
 
-**Phase:** Core agent built, moving to ingestion + UI
+**Phase:** Core AI features complete, moving to GitHub actions + deploy
 
 ### Completed
 - [x] Project planning and scoping
@@ -20,16 +20,16 @@ Last updated: 2026-03-07
 - [x] Step 4: Qdrant Cloud provisioning + indexing pipeline + dense retriever
 - [x] Step 5: GitHub API tool (read PR context)
 - [x] Step 6: LangGraph agentic workflow wired to /ask
+- [x] Step 7: Playwright result ingestion + /triage-run endpoint with persistence
+- [x] Step 8: Dashboard triage UI — display triage runs, detail view, approve/reject
+- [x] Step 9: Programmatic image diff (Pillow pixel comparison, region detection, overlay)
+- [x] Step 10: GPT-4o vision analysis (multi-modal screenshot analysis node)
+- [x] Step 11: Batch triage with failure grouping by component + pattern
+- [x] Step 12: Screenshot comparison viewer (side-by-side, swipe slider, diff overlay)
+- [x] Step 13: Human-in-the-loop + episodic memory (approve/reject → Qdrant episodes → few-shot retrieval)
 
 ### Up next
-- [ ] Step 7: Playwright result ingestion + /triage-run endpoint with persistence
-- [ ] Step 8: Dashboard triage UI — display triage runs, detail view, approve/reject
-- [ ] Step 9: Programmatic image diff
-- [ ] Step 10: GPT-4o vision analysis (uses image diff output as context)
-- [ ] Step 11: Batch triage with failure grouping
-- [ ] Step 12: Screenshot comparison viewer (side-by-side, swipe slider, diff overlay)
-- [ ] Step 13: Human-in-the-loop + episodic memory (approve/reject → store as episodes → few-shot retrieval)
-- [ ] Step 14: GitHub automated actions (create PRs/issues)
+- [ ] Step 14: GitHub automated actions — "Update Baselines" PR for approved expected failures via Git Data API
 - [ ] Step 15: Deploy runner to Render (deploy includes steps 9-14, unblocks OAuth callback URL)
 - [ ] Step 16: GitHub OAuth + repo linking (OAuth App, sign-in flow, token storage, link a repo UI)
 - [ ] Step 17: GitHub Actions workflow (merged PR in sample app → Playwright → POST /triage-run)

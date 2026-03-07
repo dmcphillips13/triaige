@@ -390,14 +390,14 @@ The agent stores its own triage instructions in Qdrant (`doc_type: procedure`). 
 ### Additional graph nodes
 6. `compute_image_diff` — programmatic pixel comparison of screenshots; outputs feed into vision prompt [conditional]
 7. `analyze_screenshots` — GPT-4o vision analysis using baseline, actual, and diff overlay + diff metrics as context [conditional]
-8. `execute_action` — create PR/issue/comment via GitHub API based on classification
+8. `update_baselines` — batch-create a PR updating baseline screenshots for all approved expected failures (via GitHub Git Data API); triggered from dashboard "Update Baselines" button
 9. `store_episode` — after human feedback, save the decision as an episode in Qdrant [triggered by feedback endpoint]
 
 ### Routing rules
 - Always retrieve semantic memory and episodic memory from Qdrant (RAG-first).
 - Fetch PR context if `repo` and `pr_number` are provided in the request.
 - Run image diff + vision only if `screenshot_baseline` and `screenshot_actual` are provided.
-- Execute GitHub actions only if: human has approved the classification (preferred), OR confidence is above auto-act threshold, OR auto-act is explicitly enabled.
+- Update baselines only after human has approved failures as expected; triggered explicitly from dashboard UI.
 - Store episode after human approves/rejects a classification via the feedback endpoint.
 - Degrade gracefully: accumulate errors in state, never crash on tool failure.
 
@@ -503,7 +503,7 @@ Commit messages: plain imperative sentences (e.g., "Add GitHub API client for PR
 11. Batch triage: failure grouping by component + pattern, group-level classification
 12. Screenshot comparison viewer: side-by-side, swipe slider (`react-compare-slider`), diff overlay (GitHub Desktop-style)
 13. Human-in-the-loop + episodic memory: approve/reject in dashboard; store decisions as episodes in Qdrant (`doc_type: episode`); retrieve similar episodes as few-shot examples at classification time (CoALA episodic memory pattern)
-14. GitHub automated actions: create PRs (expected), file issues (unexpected), PR comments (uncertain)
+14. GitHub automated actions: "Update Baselines" button batches all approved expected failures into a single PR via Git Data API; adds `snapshot_path` to `RunSummary` and `TriageFailureResult` for baseline file targeting
 15. Deploy runner to Render (ops-only — render.yaml ready, needs service creation + env vars; deploy includes steps 9-14, unblocks OAuth callback URL)
 16. GitHub OAuth + repo linking: GitHub OAuth App, sign-in flow, token storage, "link a repo" UI, dynamic repo config (needs deployed URL for callback)
 17. GitHub Actions workflow: merged PR in sample app repo → Playwright → POST /triage-run → results in dashboard
