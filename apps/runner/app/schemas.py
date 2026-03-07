@@ -102,6 +102,7 @@ class TriageFailureResult(BaseModel):
 
     test_name: str
     ask_response: AskResponse
+    group: list[str] | None = None
 
 
 class TriageRunSummary(BaseModel):

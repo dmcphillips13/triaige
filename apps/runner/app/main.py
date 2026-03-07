@@ -5,6 +5,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import store
 from app.agent.graph import run_graph
+from app.grouping import (
+    build_group_request,
+    extract_test_name,
+    group_failures,
+)
 from app.schemas import (
     AskRequest,
     AskResponse,
@@ -54,15 +59,32 @@ async def triage_run(req: TriageRunRequest):
                 if r.pr_context is None:
                     r.pr_context = req.pr_context
 
+    # Group related failures to reduce LLM calls
+    groups = group_failures(ask_requests)
+
     results: list[TriageFailureResult] = []
-    for ask_req in ask_requests:
-        response = await asyncio.to_thread(run_graph, ask_req)
-        test_name = (
-            ask_req.run_summary.test_name
-            if ask_req.run_summary and ask_req.run_summary.test_name
-            else ask_req.question[:80]
-        )
-        results.append(TriageFailureResult(test_name=test_name, ask_response=response))
+    for grp in groups:
+        group_names = grp.test_names if len(grp.test_names) > 1 else None
+
+        if len(grp.requests) <= 2:
+            # Small groups: process individually
+            for ask_req in grp.requests:
+                response = await asyncio.to_thread(run_graph, ask_req)
+                results.append(TriageFailureResult(
+                    test_name=extract_test_name(ask_req),
+                    ask_response=response,
+                    group=group_names,
+                ))
+        else:
+            # Larger groups: one LLM call for the whole group
+            group_request = build_group_request(grp)
+            response = await asyncio.to_thread(run_graph, group_request)
+            for ask_req in grp.requests:
+                results.append(TriageFailureResult(
+                    test_name=extract_test_name(ask_req),
+                    ask_response=response,
+                    group=group_names,
+                ))
 
     return store.create_run(results)
 
