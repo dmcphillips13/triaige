@@ -56,6 +56,9 @@ export interface AskResponse {
 export interface TriageFailureResult {
   test_name: string;
   ask_response: AskResponse;
+  group?: string[] | null;
+  screenshot_baseline?: string | null;
+  screenshot_actual?: string | null;
 }
 
 export interface TriageRunSummary {

@@ -103,6 +103,8 @@ class TriageFailureResult(BaseModel):
     test_name: str
     ask_response: AskResponse
     group: list[str] | None = None
+    screenshot_baseline: str | None = None
+    screenshot_actual: str | None = None
 
 
 class TriageRunSummary(BaseModel):

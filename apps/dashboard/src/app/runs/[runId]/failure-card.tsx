@@ -19,6 +19,7 @@ import { useState } from "react";
 import { Check, X, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ClassificationBadge } from "@/components/classification-badge";
+import { ScreenshotViewer } from "@/components/screenshot-viewer";
 import type { Citation, TriageFailureResult, HumanVerdict } from "@/lib/types";
 
 export function FailureCard({
@@ -150,6 +151,16 @@ export function FailureCard({
                 )}
               </div>
             </div>
+          )}
+
+          {/* Screenshots */}
+          {result.screenshot_baseline && result.screenshot_actual && (
+            <ScreenshotViewer
+              baseline={result.screenshot_baseline}
+              actual={result.screenshot_actual}
+              diffOverlay={res.image_diff?.diff_overlay_base64}
+              visionSummary={res.vision_summary}
+            />
           )}
 
           {/* Debug errors */}

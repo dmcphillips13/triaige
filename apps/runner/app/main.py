@@ -70,23 +70,30 @@ async def triage_run(req: TriageRunRequest):
             # Small groups: process individually
             for ask_req in grp.requests:
                 response = await asyncio.to_thread(run_graph, ask_req)
-                results.append(TriageFailureResult(
-                    test_name=extract_test_name(ask_req),
-                    ask_response=response,
-                    group=group_names,
-                ))
+                results.append(_build_result(ask_req, response, group_names))
         else:
             # Larger groups: one LLM call for the whole group
             group_request = build_group_request(grp)
             response = await asyncio.to_thread(run_graph, group_request)
             for ask_req in grp.requests:
-                results.append(TriageFailureResult(
-                    test_name=extract_test_name(ask_req),
-                    ask_response=response,
-                    group=group_names,
-                ))
+                results.append(_build_result(ask_req, response, group_names))
 
     return store.create_run(results)
+
+
+def _build_result(
+    ask_req: AskRequest,
+    response: AskResponse,
+    group_names: list[str] | None,
+) -> TriageFailureResult:
+    rs = ask_req.run_summary
+    return TriageFailureResult(
+        test_name=extract_test_name(ask_req),
+        ask_response=response,
+        group=group_names,
+        screenshot_baseline=rs.screenshot_baseline if rs else None,
+        screenshot_actual=rs.screenshot_actual if rs else None,
+    )
 
 
 @app.get("/runs", response_model=list[TriageRunSummary])
