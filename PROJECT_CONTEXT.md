@@ -1,12 +1,12 @@
 # PROJECT_CONTEXT.md — Triaige (Session Handoff)
 
-Last updated: 2026-03-03
+Last updated: 2026-03-07
 
 ---
 
 ## Current status
 
-**Phase:** Pre-build (planning complete, no code written yet)
+**Phase:** Core agent built, moving to ingestion + UI
 
 ### Completed
 - [x] Project planning and scoping
@@ -14,28 +14,29 @@ Last updated: 2026-03-03
 - [x] API contract defined (see AGENTS.md §5)
 - [x] AGENTS.md rewritten for Demo Day scope
 - [x] PROJECT_CONTEXT.md created
+- [x] Step 1: Runner scaffold (pyproject.toml, FastAPI stubs, settings, schemas)
+- [x] Step 2: Sample app + Playwright suite (separate repo)
+- [x] Step 3: Triage memory corpus (~30 docs)
+- [x] Step 4: Qdrant Cloud provisioning + indexing pipeline + dense retriever
+- [x] Step 5: GitHub API tool (read PR context)
+- [x] Step 6: LangGraph agentic workflow wired to /ask
 
-### Not started
-- [ ] Step 1: Runner scaffold (pyproject.toml, FastAPI stubs, settings, schemas)
-- [ ] Step 2: Sample app + Playwright suite (separate repo)
-- [ ] Step 3: Triage memory corpus (~30 docs)
-- [ ] Step 4: Qdrant Cloud provisioning + indexing pipeline + dense retriever
-- [ ] Step 5: GitHub API tool (read PR context)
-- [ ] Step 6: LangGraph agentic workflow wired to /ask
-- [ ] Step 7: Deploy runner to Render
-- [ ] Step 8: Dashboard triage UI
-- [ ] Step 9: Playwright result ingestion (parser + real data from sample app)
-- [ ] Step 10: Programmatic image diff
-- [ ] Step 11: GPT-4o vision analysis (uses image diff output as context)
-- [ ] Step 12: Batch triage with failure grouping
-- [ ] Step 13: Screenshot comparison viewer (side-by-side, swipe slider, diff overlay)
-- [ ] Step 14: Human-in-the-loop + episodic memory (approve/reject → store as episodes → few-shot retrieval)
-- [ ] Step 15: GitHub automated actions (create PRs/issues)
+### Up next
+- [ ] Step 7: Playwright result ingestion + /triage-run endpoint with persistence
+- [ ] Step 8: Dashboard triage UI — display triage runs, detail view, approve/reject
+- [ ] Step 9: Programmatic image diff
+- [ ] Step 10: GPT-4o vision analysis (uses image diff output as context)
+- [ ] Step 11: Batch triage with failure grouping
+- [ ] Step 12: Screenshot comparison viewer (side-by-side, swipe slider, diff overlay)
+- [ ] Step 13: Human-in-the-loop + episodic memory (approve/reject → store as episodes → few-shot retrieval)
+- [ ] Step 14: GitHub automated actions (create PRs/issues)
+- [ ] Step 15: Deploy runner to Render (ops-only — render.yaml ready, needs service creation + env vars)
 - [ ] Step 16: GitHub Actions workflow (merged PR in sample app → Playwright → POST /triage-run)
-- [ ] Step 17: Procedural memory — self-improving triage instructions via reflection (stretch)
-- [ ] Step 18: Component ownership lookup (stretch)
-- [ ] Step 19: RAGAS evaluation (stretch)
-- [ ] Step 20: Polish + Loom
+- [ ] Step 17: Runner-side Postgres persistence — Neon free tier, /runs CRUD, swap dashboard from localStorage to API *(low priority — localStorage works for demo)*
+- [ ] Step 18: Procedural memory — self-improving triage instructions via reflection (stretch)
+- [ ] Step 19: Component ownership lookup (stretch)
+- [ ] Step 20: RAGAS evaluation (stretch)
+- [ ] Step 21: Polish + Loom
 
 ---
 

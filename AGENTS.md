@@ -496,20 +496,21 @@ Commit messages: plain imperative sentences (e.g., "Add GitHub API client for PR
 4. Qdrant indexing pipeline: data loader, chunking, embedding, upsert script, dense retriever
 5. GitHub API tool: read PR context (changed files, commits, diff)
 6. LangGraph agentic workflow wired to `/ask`
-7. Deploy runner to Render
-8. Dashboard triage UI + verify proxy
-9. Playwright result ingestion: parse Playwright JSON results + screenshot pairs into structured data for the agent
-10. Programmatic image diff: deterministic pixel comparison (Pillow) — diff ratio, changed regions, overlay image
-11. GPT-4o vision: screenshot analysis node using baseline, actual, diff overlay + metrics as context
-12. Batch triage: `/triage-run` endpoint, failure grouping by component + pattern, group-level classification
-13. Screenshot comparison viewer: side-by-side, swipe slider (`react-compare-slider`), diff overlay (GitHub Desktop-style)
-14. Human-in-the-loop + episodic memory: approve/reject in dashboard; store decisions as episodes in Qdrant (`doc_type: episode`); retrieve similar episodes as few-shot examples at classification time (CoALA episodic memory pattern)
-15. GitHub automated actions: create PRs (expected), file issues (unexpected), PR comments (uncertain)
+7. Playwright result ingestion + `/triage-run` endpoint with persistence
+8. Dashboard triage UI: display triage runs, detail view, approve/reject
+9. Programmatic image diff: deterministic pixel comparison (Pillow) — diff ratio, changed regions, overlay image
+10. GPT-4o vision: screenshot analysis node using baseline, actual, diff overlay + metrics as context
+11. Batch triage: failure grouping by component + pattern, group-level classification
+12. Screenshot comparison viewer: side-by-side, swipe slider (`react-compare-slider`), diff overlay (GitHub Desktop-style)
+13. Human-in-the-loop + episodic memory: approve/reject in dashboard; store decisions as episodes in Qdrant (`doc_type: episode`); retrieve similar episodes as few-shot examples at classification time (CoALA episodic memory pattern)
+14. GitHub automated actions: create PRs (expected), file issues (unexpected), PR comments (uncertain)
+15. Deploy runner to Render (ops-only — render.yaml ready, needs service creation + env vars)
 16. GitHub Actions workflow: merged PR in sample app repo → Playwright → POST /triage-run → results in dashboard
-17. Procedural memory: agent reflection on feedback patterns → self-updating triage instructions, versioned in Qdrant (stretch)
-18. Component ownership lookup (stretch)
-19. RAGAS evaluation (stretch)
-20. Polish + Loom prep
+17. Runner-side Postgres persistence: Neon free tier, `/runs` CRUD endpoints, swap dashboard from localStorage to API-backed storage (low priority — localStorage works for demo)
+18. Procedural memory: agent reflection on feedback patterns → self-updating triage instructions, versioned in Qdrant (stretch)
+19. Component ownership lookup (stretch)
+20. RAGAS evaluation (stretch)
+21. Polish + Loom prep
 
 ---
 
