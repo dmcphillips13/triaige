@@ -19,7 +19,7 @@ import { useState } from "react";
 import { Check, X, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ClassificationBadge } from "@/components/classification-badge";
-import type { TriageFailureResult, HumanVerdict } from "@/lib/types";
+import type { Citation, TriageFailureResult, HumanVerdict } from "@/lib/types";
 
 export function FailureCard({
   result,
@@ -105,29 +105,9 @@ export function FailureCard({
             <p className="mt-1 text-sm text-zinc-700">{res.rationale}</p>
           </div>
 
-          {/* Citations */}
+          {/* Citations — collapsed by default, toggle to show snippets */}
           {res.citations.length > 0 && (
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                Citations
-              </h4>
-              <ul className="mt-1 space-y-2">
-                {res.citations.map((c, i) => (
-                  <li
-                    key={i}
-                    className="rounded border border-zinc-100 bg-zinc-50 p-2"
-                  >
-                    <span className="text-xs font-medium text-zinc-600">
-                      {c.doc_id}
-                    </span>
-                    <span className="ml-2 text-xs text-zinc-400">
-                      ({c.source})
-                    </span>
-                    <p className="mt-1 text-xs text-zinc-500">{c.snippet}</p>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <CitationsSection citations={res.citations} />
           )}
 
           {/* Tool calls */}
@@ -188,6 +168,43 @@ export function FailureCard({
             </div>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+/** Collapsible citations list — shows doc IDs inline, expands to show snippets. */
+function CitationsSection({ citations }: { citations: Citation[] }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-zinc-400 hover:text-zinc-600"
+      >
+        {open ? (
+          <ChevronDown className="h-3 w-3" />
+        ) : (
+          <ChevronRight className="h-3 w-3" />
+        )}
+        Citations ({citations.length})
+      </button>
+      {open && (
+        <ul className="mt-1 space-y-2">
+          {citations.map((c, i) => (
+            <li
+              key={i}
+              className="rounded border border-zinc-100 bg-zinc-50 p-2"
+            >
+              <span className="text-xs font-medium text-zinc-600">
+                {c.doc_id}
+              </span>
+              <span className="ml-2 text-xs text-zinc-400">({c.source})</span>
+              <p className="mt-1 text-xs text-zinc-500">{c.snippet}</p>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
