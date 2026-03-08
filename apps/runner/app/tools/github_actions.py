@@ -20,15 +20,16 @@ from app.settings import settings
 logger = logging.getLogger(__name__)
 
 
-def _get_client() -> httpx.Client:
-    """Authenticated GitHub API client."""
-    if not settings.github_token:
-        raise RuntimeError("github_token is required for automated actions")
+def _get_client(token: str | None = None) -> httpx.Client:
+    """Authenticated GitHub API client. Prefers per-request token, falls back to env var."""
+    effective_token = token or settings.github_token
+    if not effective_token:
+        raise RuntimeError("GitHub token is required for automated actions")
     return httpx.Client(
         base_url="https://api.github.com",
         headers={
             "Accept": "application/vnd.github+json",
-            "Authorization": f"Bearer {settings.github_token}",
+            "Authorization": f"Bearer {effective_token}",
         },
         timeout=30.0,
     )
@@ -39,6 +40,7 @@ def create_baseline_pr(
     run_id: str,
     baselines: list[dict],
     source_pr_title: str | None = None,
+    github_token: str | None = None,
 ) -> str:
     """Create a PR updating baseline screenshots.
 
@@ -47,11 +49,12 @@ def create_baseline_pr(
         run_id: Triage run ID (used for branch naming).
         baselines: List of dicts with 'path', 'content_base64', 'test_name'.
         source_pr_title: Title of the PR that triggered the triage run.
+        github_token: Per-request token (from OAuth user). Falls back to env var.
 
     Returns:
         URL of the created pull request.
     """
-    client = _get_client()
+    client = _get_client(github_token)
     run_short = run_id[:8]
 
     # 1. Get default branch and its HEAD SHA

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth';
 
 const RUNNER_BASE_URL = process.env.RUNNER_BASE_URL || 'http://localhost:8000';
 const RUNNER_API_KEY = process.env.RUNNER_API_KEY || '';
@@ -10,6 +11,12 @@ async function proxyRequest(request: NextRequest, path: string) {
   headers.set('Content-Type', 'application/json');
   if (RUNNER_API_KEY) {
     headers.set('Authorization', `Bearer ${RUNNER_API_KEY}`);
+  }
+
+  // Forward the user's GitHub token so the runner can act on their behalf
+  const session = await getSession();
+  if (session?.github_token) {
+    headers.set('X-GitHub-Token', session.github_token);
   }
 
   const init: RequestInit = {

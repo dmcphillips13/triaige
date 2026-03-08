@@ -149,7 +149,7 @@ async def feedback(req: FeedbackRequest):
 
 
 @app.post("/update-baselines", response_model=UpdateBaselinesResponse)
-async def update_baselines(req: UpdateBaselinesRequest):
+async def update_baselines(req: UpdateBaselinesRequest, request: Request):
     """Create a PR updating baseline screenshots for approved failures."""
     run = store.get_run(req.run_id)
     if not run:
@@ -174,6 +174,8 @@ async def update_baselines(req: UpdateBaselinesRequest):
     if not baselines:
         raise HTTPException(status_code=400, detail="No baselines to update")
 
+    github_token = request.headers.get("X-GitHub-Token")
+
     try:
         pr_url = await asyncio.to_thread(
             create_baseline_pr,
@@ -181,6 +183,7 @@ async def update_baselines(req: UpdateBaselinesRequest):
             run_id=req.run_id,
             baselines=baselines,
             source_pr_title=run.pr_title,
+            github_token=github_token,
         )
     except RuntimeError as e:
         raise HTTPException(status_code=400, detail=str(e))
