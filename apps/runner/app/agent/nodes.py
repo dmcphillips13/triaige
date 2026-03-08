@@ -263,10 +263,19 @@ def compose_answer(state: AgentState) -> dict:
 
         user_msg = "\n\n".join(user_parts)
 
-        # --- Pass 1: Devil's advocate ---
+        # --- Pass 1: Devil's advocate (vision-focused, no code diff) ---
+        # Only give the devil's advocate what's VISIBLE — the vision analysis
+        # and the PR title. This prevents it from conflating code concerns
+        # from unrelated files with the specific page being analyzed.
+        devil_parts = [f"Test: {state['question']}"]
+        if pr and pr.title:
+            devil_parts.append(f"PR title: {pr.title}")
+        if vision_summary:
+            devil_parts.append(f"Vision analysis of screenshots: {vision_summary}")
+
         devil_response = llm.invoke([
             {"role": "system", "content": DEVIL_ADVOCATE_SYSTEM_PROMPT},
-            {"role": "user", "content": user_msg},
+            {"role": "user", "content": "\n\n".join(devil_parts)},
         ])
         devil_review = devil_response.content
         logger.info("Devil's advocate review: %s", devil_review)

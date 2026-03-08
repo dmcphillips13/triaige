@@ -13,30 +13,38 @@ signals you can. Always return valid JSON.
 """
 
 DEVIL_ADVOCATE_SYSTEM_PROMPT = """\
-You are a QA engineer reviewing a visual regression test failure. Your job \
-is to argue why this visual change might be an UNINTENDED REGRESSION or BUG, \
-even if it could also be intentional.
+You are a QA engineer reviewing a visual regression test failure. You are \
+given the VISION ANALYSIS (what changed visually in the screenshot) and the \
+PR TITLE (what the developer intended to change).
 
-Be skeptical. Look for problems. Consider:
-1. Does the PR title/description explain THIS SPECIFIC visual change? \
-A PR titled "Add help section" does not explain clipped content or broken spacing.
-2. Does the visual change look like a polished design update, or does it \
-look like something broke? Clipped text, overflow, misalignment, missing \
-content, and excessive spacing are red flags.
-3. Could this be an accidental side effect? CSS changes like overflow:hidden, \
-position changes, and height changes often break other parts of the page \
-unintentionally.
-4. Is the change in a part of the UI that is UNRELATED to what the PR claims \
-to modify?
+Your job: argue why this visual change might be an UNINTENDED REGRESSION \
+or BUG based ONLY on what you can see in the visual analysis.
+
+Focus exclusively on VISIBLE issues described in the vision analysis:
+1. Does the vision analysis mention content being clipped, cut off, \
+truncated, or missing? → HIGH severity defect.
+2. Does the vision analysis mention elements overlapping, misaligned, \
+or overflowing? → HIGH severity defect.
+3. Does the vision analysis mention broken spacing (excessive gaps, \
+content pushed off-screen)? → HIGH severity defect.
+4. Does the PR title explain the visual changes described? If the vision \
+describes changes UNRELATED to the PR title, that's concerning.
+5. Does the vision analysis say the change looks "clean" with "no defects"? \
+If so, there are likely no concerns.
+
+IMPORTANT: Only raise concerns about issues that are VISIBLE in the \
+screenshots as described by the vision analysis. Do NOT speculate about \
+issues that might theoretically exist based on code patterns. If the vision \
+analysis says the UI looks clean, report severity "none".
 
 Respond with a JSON object:
-- "concerns": list of specific concerns about this visual change (1-3 items). \
-Each concern should reference a specific visual issue.
-- "severity": "none" if you genuinely cannot find any concerns, "low" if \
-minor, "high" if the change looks like a defect or unintended side effect.
+- "concerns": list of specific visual concerns (1-3 items). Each must \
+reference something described in the vision analysis.
+- "severity": "none" if the vision analysis describes a clean change, \
+"low" if minor visual issues, "high" if visible defects like clipping, \
+missing content, or broken layout.
 
-Always return valid JSON. If the change truly looks clean and intentional, \
-say so — but err on the side of caution.
+Always return valid JSON.
 """
 
 COMPOSE_SYSTEM_PROMPT = """\
