@@ -20,7 +20,7 @@ import { Check, X, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ClassificationBadge } from "@/components/classification-badge";
 import { ScreenshotViewer } from "@/components/screenshot-viewer";
-import type { Citation, TriageFailureResult, HumanVerdict } from "@/lib/types";
+import type { Citation, ToolCall, TriageFailureResult, HumanVerdict } from "@/lib/types";
 
 export function FailureCard({
   result,
@@ -98,6 +98,16 @@ export function FailureCard({
       {/* Expanded detail */}
       {expanded && (
         <div className="space-y-4 border-t border-zinc-100 px-4 py-4">
+          {/* Vision analysis */}
+          {res.vision_summary && (
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                Vision Analysis
+              </h4>
+              <p className="mt-1 text-sm text-zinc-700">{res.vision_summary}</p>
+            </div>
+          )}
+
           {/* Rationale */}
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
@@ -105,31 +115,6 @@ export function FailureCard({
             </h4>
             <p className="mt-1 text-sm text-zinc-700">{res.rationale}</p>
           </div>
-
-          {/* Citations — collapsed by default, toggle to show snippets */}
-          {res.citations.length > 0 && (
-            <CitationsSection citations={res.citations} />
-          )}
-
-          {/* Tool calls */}
-          {res.tool_calls.length > 0 && (
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                Tool Calls
-              </h4>
-              <ul className="mt-1 space-y-1">
-                {res.tool_calls.map((tc, i) => (
-                  <li key={i} className="text-xs text-zinc-600">
-                    <span className="font-mono">{tc.tool}</span>
-                    <span className="ml-1 text-zinc-400">({tc.query})</span>
-                    {!tc.used && (
-                      <span className="ml-1 text-zinc-300">— unused</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
 
           {/* Image diff stats */}
           {res.image_diff && (
@@ -159,8 +144,17 @@ export function FailureCard({
               baseline={result.screenshot_baseline}
               actual={result.screenshot_actual}
               diffOverlay={res.image_diff?.diff_overlay_base64}
-              visionSummary={res.vision_summary}
             />
+          )}
+
+          {/* Citations — collapsed by default */}
+          {res.citations.length > 0 && (
+            <CitationsSection citations={res.citations} />
+          )}
+
+          {/* Tool calls — collapsed by default */}
+          {res.tool_calls.length > 0 && (
+            <ToolCallsSection toolCalls={res.tool_calls} />
           )}
 
           {/* Debug errors */}
@@ -213,6 +207,40 @@ function CitationsSection({ citations }: { citations: Citation[] }) {
               </span>
               <span className="ml-2 text-xs text-zinc-400">({c.source})</span>
               <p className="mt-1 text-xs text-zinc-500">{c.snippet}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** Collapsible tool calls list — matches citations collapse style. */
+function ToolCallsSection({ toolCalls }: { toolCalls: ToolCall[] }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-zinc-400 hover:text-zinc-600"
+      >
+        {open ? (
+          <ChevronDown className="h-3 w-3" />
+        ) : (
+          <ChevronRight className="h-3 w-3" />
+        )}
+        Tool Calls ({toolCalls.length})
+      </button>
+      {open && (
+        <ul className="mt-1 space-y-1">
+          {toolCalls.map((tc, i) => (
+            <li key={i} className="text-xs text-zinc-600">
+              <span className="font-mono">{tc.tool}</span>
+              <span className="ml-1 text-zinc-400">({tc.query})</span>
+              {!tc.used && (
+                <span className="ml-1 text-zinc-300">— unused</span>
+              )}
             </li>
           ))}
         </ul>

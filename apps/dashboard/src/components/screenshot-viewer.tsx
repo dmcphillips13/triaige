@@ -27,12 +27,10 @@ export function ScreenshotViewer({
   baseline,
   actual,
   diffOverlay,
-  visionSummary,
 }: {
   baseline: string;
   actual: string;
   diffOverlay?: string | null;
-  visionSummary?: string | null;
 }) {
   const [mode, setMode] = useState<Mode>("side-by-side");
 
@@ -130,15 +128,6 @@ export function ScreenshotViewer({
         )}
       </div>
 
-      {/* Vision summary */}
-      {visionSummary && (
-        <div className="mt-3">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-            Vision Analysis
-          </h4>
-          <p className="mt-1 text-sm text-zinc-700">{visionSummary}</p>
-        </div>
-      )}
     </div>
   );
 }
