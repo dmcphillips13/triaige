@@ -505,14 +505,15 @@ Commit messages: plain imperative sentences (e.g., "Add GitHub API client for PR
 13. Human-in-the-loop + episodic memory: approve/reject in dashboard; store decisions as episodes in Qdrant (`doc_type: episode`); retrieve similar episodes as few-shot examples at classification time (CoALA episodic memory pattern)
 14. GitHub automated actions: label runs by triggering PR (title + link on run list and detail); "Update Baselines" button batches all approved expected failures into a single PR via Git Data API; adds `snapshot_path` to `RunSummary`/`TriageFailureResult` and `pr_title`/`pr_url`/`repo` to `TriageRunResponse`/`TriageRunSummary`
 15. Deploy runner to Render (ops-only — render.yaml ready, needs service creation + env vars; deploy includes steps 9-14, unblocks OAuth callback URL)
-16. GitHub OAuth + repo linking: GitHub OAuth App, sign-in flow, token storage, "link a repo" UI, dynamic repo config (needs deployed URL for callback)
+16. GitHub App OAuth + repo linking: GitHub App (not OAuth App) for per-repo access control, sign-in flow, JWT session cookie, token forwarding to runner, "link a repo" UI with installation-scoped repo dropdown
 17. GitHub Actions workflow: merged PR in sample app repo → Playwright → POST /triage-run → results in dashboard
-18. Runner-side Postgres persistence: Neon free tier, `/runs` CRUD endpoints, swap dashboard from localStorage to API-backed storage
-19. Procedural memory: agent reflection on feedback patterns → self-updating triage instructions, versioned in Qdrant (stretch)
-20. Component ownership lookup (stretch)
-21. RAGAS evaluation (stretch)
-22. Polish + Loom prep
-23. Auto-approve baselines above confidence threshold (stretch, lowest priority — needs discussion before implementing; default should always be human-in-the-loop)
+18. Pre-merge triage mode: run Playwright on open PRs instead of after merge; post a PR comment linking to the Triaige dashboard; approved expected baselines are committed directly to the PR branch (not a separate PR); unexpected failures stay open with debug report to guide code fixes; per-repo settings toggle defaults to post-merge (Step 17 flow) but allows switching to pre-merge; gives developers real-time visual regression feedback and keeps main green
+19. Runner-side Postgres persistence: Neon free tier, `/runs` CRUD endpoints, swap dashboard from localStorage to API-backed storage
+20. Procedural memory: agent reflection on feedback patterns → self-updating triage instructions, versioned in Qdrant (stretch)
+21. Auto-approve baselines above confidence threshold (stretch, lowest priority — needs discussion before implementing; default should always be human-in-the-loop)
+22. Component ownership lookup (stretch)
+23. RAGAS evaluation (stretch)
+24. Polish + Loom prep
 
 ---
 

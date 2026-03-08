@@ -30,15 +30,17 @@ Last updated: 2026-03-08
 - [x] Step 14: GitHub automated actions — PR-labeled runs + "Update Baselines" PR for approved expected failures via Git Data API
 - [x] Step 15: Deploy runner to Render + dashboard to Vercel
 
+- [x] Step 16: GitHub App OAuth + repo linking (sign-in flow, per-repo access control, token forwarding, link a repo UI)
+
 ### Up next
-- [ ] Step 16: GitHub OAuth + repo linking (OAuth App, sign-in flow, token storage, link a repo UI)
 - [ ] Step 17: GitHub Actions workflow (merged PR in sample app → Playwright → POST /triage-run)
-- [ ] Step 18: Runner-side Postgres persistence — Neon free tier, /runs CRUD, swap dashboard from localStorage to API
-- [ ] Step 19: Procedural memory — self-improving triage instructions via reflection (stretch)
-- [ ] Step 20: Component ownership lookup (stretch)
-- [ ] Step 21: RAGAS evaluation (stretch)
-- [ ] Step 22: Polish + Loom
-- [ ] Step 23: Auto-approve baselines above confidence threshold (stretch, lowest priority — needs discussion)
+- [ ] Step 18: Pre-merge triage mode — run Playwright on open PRs, post dashboard link as PR comment, approve baselines as commits on the PR branch; per-repo settings toggle (default: post-merge)
+- [ ] Step 19: Runner-side Postgres persistence — Neon free tier, /runs CRUD, swap dashboard from localStorage to API
+- [ ] Step 20: Procedural memory — self-improving triage instructions via reflection (stretch)
+- [ ] Step 21: Auto-approve baselines above confidence threshold (stretch, lowest priority — needs discussion)
+- [ ] Step 22: Component ownership lookup (stretch)
+- [ ] Step 23: RAGAS evaluation (stretch)
+- [ ] Step 24: Polish + Loom
 
 ---
 
@@ -72,10 +74,10 @@ Last updated: 2026-03-08
 
 | Service | Status | Notes |
 |---|---|---|
-| Qdrant Cloud | Account exists, no cluster | Must provision before Step 4 |
-| OpenAI API | Needs key | For GPT-4o-mini + GPT-4o vision + embeddings |
-| GitHub API | Needs token (optional) | Enriches with PR context when set; read PRs + create PRs/issues for actions |
-| LangSmith | Needs key | Optional observability — hooks into LangGraph automatically |
+| Qdrant Cloud | Provisioned | Collection `triaige_triage_memory`, 1536d cosine |
+| OpenAI API | Configured | GPT-4o-mini + GPT-4o vision + text-embedding-3-small |
+| GitHub App | Configured | Triaige app with Contents + Pull Requests permissions |
+| LangSmith | Configured | Tracing enabled via LangGraph |
 | Render | Deployed | https://triaige-runner.onrender.com |
 | Vercel | Deployed | https://triaige-dashboard.vercel.app/ |
 | Sample app repo | Created | github.com/dmcphillips13/triaige-sample-app |
