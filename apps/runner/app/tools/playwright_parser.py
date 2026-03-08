@@ -113,7 +113,11 @@ def _extract_screenshots(attachments: list[dict]) -> tuple[str | None, str | Non
     for att in attachments:
         name = att.get("name", "")
         body = att.get("body")
-        if name == "expected":
+        # Playwright names attachments as either "expected"/"actual" (older versions)
+        # or "{snapshot}-expected.png"/"{snapshot}-actual.png" (newer versions)
+        is_expected = name == "expected" or name.endswith("-expected.png")
+        is_actual = name == "actual" or name.endswith("-actual.png")
+        if is_expected:
             if body:
                 baseline = body
             # The path field points to the baseline file in the repo.
@@ -123,7 +127,7 @@ def _extract_screenshots(attachments: list[dict]) -> tuple[str | None, str | Non
                 raw = att["path"]
                 idx = raw.find("tests/")
                 snapshot_path = raw[idx:] if idx != -1 else raw
-        elif name == "actual":
+        elif is_actual:
             if body:
                 actual = body
     return baseline, actual, snapshot_path
