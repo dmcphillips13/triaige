@@ -1,12 +1,12 @@
 # PROJECT_CONTEXT.md — Triaige (Session Handoff)
 
-Last updated: 2026-03-07
+Last updated: 2026-03-08
 
 ---
 
 ## Current status
 
-**Phase:** Core AI features complete, moving to GitHub actions + deploy
+**Phase:** Core pipeline complete and deployed, moving to GitHub OAuth + CI integration
 
 ### Completed
 - [x] Project planning and scoping
@@ -27,10 +27,10 @@ Last updated: 2026-03-07
 - [x] Step 11: Batch triage with failure grouping by component + pattern
 - [x] Step 12: Screenshot comparison viewer (side-by-side, swipe slider, diff overlay)
 - [x] Step 13: Human-in-the-loop + episodic memory (approve/reject → Qdrant episodes → few-shot retrieval)
+- [x] Step 14: GitHub automated actions — PR-labeled runs + "Update Baselines" PR for approved expected failures via Git Data API
+- [x] Step 15: Deploy runner to Render + dashboard to Vercel
 
 ### Up next
-- [ ] Step 14: GitHub automated actions — PR-labeled runs + "Update Baselines" PR for approved expected failures via Git Data API
-- [ ] Step 15: Deploy runner to Render (deploy includes steps 9-14, unblocks OAuth callback URL)
 - [ ] Step 16: GitHub OAuth + repo linking (OAuth App, sign-in flow, token storage, link a repo UI)
 - [ ] Step 17: GitHub Actions workflow (merged PR in sample app → Playwright → POST /triage-run)
 - [ ] Step 18: Runner-side Postgres persistence — Neon free tier, /runs CRUD, swap dashboard from localStorage to API
@@ -76,9 +76,9 @@ Last updated: 2026-03-07
 | OpenAI API | Needs key | For GPT-4o-mini + GPT-4o vision + embeddings |
 | GitHub API | Needs token (optional) | Enriches with PR context when set; read PRs + create PRs/issues for actions |
 | LangSmith | Needs key | Optional observability — hooks into LangGraph automatically |
-| Render | Not set up | Free tier for runner |
-| Vercel | Dashboard scaffold deployed locally | Needs production deployment |
-| Sample app repo | Not created | Separate GitHub repo for demo target (Step 2) |
+| Render | Deployed | https://triaige-runner.onrender.com |
+| Vercel | Deployed | https://triaige-dashboard.vercel.app/ |
+| Sample app repo | Created | github.com/dmcphillips13/triaige-sample-app |
 
 ---
 
