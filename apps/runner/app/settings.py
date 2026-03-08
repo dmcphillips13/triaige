@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     langsmith_project: str = "triaige"
     langchain_tracing_v2: str | None = None
 
+    # API key (shared secret between dashboard and runner)
+    api_key: str | None = None
+
     # CORS
     cors_origins: str = "*"
 

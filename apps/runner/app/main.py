@@ -1,7 +1,9 @@
 import asyncio
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 
 from app import store
 from app.agent.graph import run_graph
@@ -27,6 +29,23 @@ from app.settings import settings
 from app.tools.playwright_parser import parse_report, parsed_result_to_ask_request
 
 app = FastAPI(title="Triaige Runner")
+
+
+class ApiKeyMiddleware(BaseHTTPMiddleware):
+    OPEN_PATHS = {"/health", "/docs", "/openapi.json"}
+
+    async def dispatch(self, request: Request, call_next):
+        if not settings.api_key:
+            return await call_next(request)
+        if request.url.path in self.OPEN_PATHS:
+            return await call_next(request)
+        auth = request.headers.get("Authorization", "")
+        if auth != f"Bearer {settings.api_key}":
+            return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
+        return await call_next(request)
+
+
+app.add_middleware(ApiKeyMiddleware)
 
 origins = [o.strip() for o in settings.cors_origins.split(",")]
 app.add_middleware(

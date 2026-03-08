@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const RUNNER_BASE_URL = process.env.RUNNER_BASE_URL || 'http://localhost:8000';
+const RUNNER_API_KEY = process.env.RUNNER_API_KEY || '';
 
 async function proxyRequest(request: NextRequest, path: string) {
   const url = `${RUNNER_BASE_URL}/${path}`;
 
   const headers = new Headers();
   headers.set('Content-Type', 'application/json');
+  if (RUNNER_API_KEY) {
+    headers.set('Authorization', `Bearer ${RUNNER_API_KEY}`);
+  }
 
   const init: RequestInit = {
     method: request.method,

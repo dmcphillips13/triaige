@@ -12,10 +12,19 @@
 import type { TriageRunResponse, TriageRunSummary } from "./types";
 
 const RUNNER_BASE = process.env.RUNNER_BASE_URL || "http://localhost:8000";
+const RUNNER_API_KEY = process.env.RUNNER_API_KEY || "";
+
+function authHeaders(): HeadersInit {
+  if (!RUNNER_API_KEY) return {};
+  return { Authorization: `Bearer ${RUNNER_API_KEY}` };
+}
 
 /** Fetch all triage runs (summary only, no individual results). */
 export async function fetchRuns(): Promise<TriageRunSummary[]> {
-  const res = await fetch(`${RUNNER_BASE}/runs`, { cache: "no-store" });
+  const res = await fetch(`${RUNNER_BASE}/runs`, {
+    cache: "no-store",
+    headers: authHeaders(),
+  });
   if (!res.ok) throw new Error(`Failed to fetch runs: ${res.status}`);
   return res.json();
 }
@@ -24,6 +33,7 @@ export async function fetchRuns(): Promise<TriageRunSummary[]> {
 export async function fetchRun(runId: string): Promise<TriageRunResponse> {
   const res = await fetch(`${RUNNER_BASE}/runs/${runId}`, {
     cache: "no-store",
+    headers: authHeaders(),
   });
   if (!res.ok) throw new Error(`Failed to fetch run: ${res.status}`);
   return res.json();
