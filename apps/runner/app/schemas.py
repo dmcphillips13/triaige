@@ -15,6 +15,7 @@ class RunSummary(BaseModel):
     playwright_notes: list[str] | None = None
     screenshot_baseline: str | None = None
     screenshot_actual: str | None = None
+    snapshot_path: str | None = None
 
 
 class PRContext(BaseModel):
@@ -113,6 +114,7 @@ class TriageFailureResult(BaseModel):
     group: list[str] | None = None
     screenshot_baseline: str | None = None
     screenshot_actual: str | None = None
+    snapshot_path: str | None = None
 
 
 class TriageRunSummary(BaseModel):

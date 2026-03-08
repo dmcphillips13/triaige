@@ -95,6 +95,7 @@ def _build_result(
         group=group_names,
         screenshot_baseline=rs.screenshot_baseline if rs else None,
         screenshot_actual=rs.screenshot_actual if rs else None,
+        snapshot_path=rs.snapshot_path if rs else None,
     )
 
 

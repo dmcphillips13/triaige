@@ -59,6 +59,7 @@ export interface TriageFailureResult {
   group?: string[] | null;
   screenshot_baseline?: string | null;
   screenshot_actual?: string | null;
+  snapshot_path?: string | null;
 }
 
 export interface TriageRunSummary {

@@ -100,20 +100,29 @@ def _walk_suite(
         _walk_suite(child, titles, failures)
 
 
-def _extract_screenshots(attachments: list[dict]) -> tuple[str | None, str | None]:
-    """Extract baseline and actual screenshot base64 from Playwright attachments."""
+def _extract_screenshots(attachments: list[dict]) -> tuple[str | None, str | None, str | None]:
+    """Extract baseline/actual screenshot base64 and snapshot path from attachments.
+
+    Returns (baseline_b64, actual_b64, snapshot_path).
+    The snapshot_path is the repo-relative path to the expected (baseline) image,
+    used by the update-baselines endpoint to commit replacements.
+    """
     baseline = None
     actual = None
+    snapshot_path = None
     for att in attachments:
         name = att.get("name", "")
         body = att.get("body")
-        if not body:
-            continue
         if name == "expected":
-            baseline = body
+            if body:
+                baseline = body
+            # The path field points to the baseline file in the repo
+            if att.get("path"):
+                snapshot_path = att["path"]
         elif name == "actual":
-            actual = body
-    return baseline, actual
+            if body:
+                actual = body
+    return baseline, actual, snapshot_path
 
 
 def parsed_result_to_ask_request(
@@ -121,7 +130,7 @@ def parsed_result_to_ask_request(
     pr_context: PRContext | None = None,
 ) -> AskRequest:
     """Convert a ParsedTestResult into an AskRequest for the agent graph."""
-    baseline, actual = _extract_screenshots(result.attachments)
+    baseline, actual, snapshot_path = _extract_screenshots(result.attachments)
     has_screenshots = baseline is not None or actual is not None
 
     question = f"Test '{result.test_name}' failed with status '{result.status}'."
@@ -136,6 +145,7 @@ def parsed_result_to_ask_request(
             playwright_notes=result.error_messages,
             screenshot_baseline=baseline,
             screenshot_actual=actual,
+            snapshot_path=snapshot_path,
         ),
         pr_context=pr_context,
     )
