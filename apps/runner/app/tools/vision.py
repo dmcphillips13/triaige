@@ -29,6 +29,12 @@ def build_vision_messages(
             pr_lines.append(f"Changed files: {', '.join(pr_context.changed_files[:10])}")
         if pr_context.commit_messages:
             pr_lines.append(f"Commits: {'; '.join(pr_context.commit_messages[:5])}")
+        if pr_context.diff:
+            # Truncate diff to avoid blowing up the vision prompt
+            diff_text = pr_context.diff[:3000]
+            if len(pr_context.diff) > 3000:
+                diff_text += "\n... (truncated)"
+            pr_lines.append(f"Code diff:\n{diff_text}")
         if pr_lines:
             content_parts.append({
                 "type": "text",

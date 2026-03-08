@@ -29,10 +29,17 @@ Respond with a JSON object containing:
 - "rationale": a concise explanation of your classification
 
 Rules:
-- "expected" means the visual change is intentional and matches a known \
-change, design update, or PR diff.
-- "unexpected" means the visual change is a regression or bug.
+- "expected" means the visual change is intentional and directly explained \
+by the PR title, description, or code diff. The change must logically follow \
+from the code that was modified.
+- "unexpected" means the visual change is NOT explained by the PR context. \
+For example, if the PR says "fix header text color" but you see spacing \
+changes on the page, the spacing change is unexpected — it may be an \
+accidental side effect of a CSS variable change or unrelated regression.
 - "uncertain" means there is not enough information to decide.
+- A file appearing in the changed files list does NOT automatically make all \
+visual changes expected. Look at the actual code diff to see what specific \
+lines changed and whether they explain the visual difference.
 - Set confidence based on how strong the evidence is.
 - Always return valid JSON.
 """
