@@ -155,11 +155,16 @@ async def update_baselines(req: UpdateBaselinesRequest):
     if not baselines:
         raise HTTPException(status_code=400, detail="No baselines to update")
 
-    pr_url = await asyncio.to_thread(
-        create_baseline_pr,
-        repo=req.repo,
-        run_id=req.run_id,
-        baselines=baselines,
-        source_pr_title=run.pr_title,
-    )
+    try:
+        pr_url = await asyncio.to_thread(
+            create_baseline_pr,
+            repo=req.repo,
+            run_id=req.run_id,
+            baselines=baselines,
+            source_pr_title=run.pr_title,
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"GitHub API error: {e}")
     return UpdateBaselinesResponse(pr_url=pr_url)
