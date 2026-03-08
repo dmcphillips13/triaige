@@ -29,17 +29,28 @@ Respond with a JSON object containing:
 - "rationale": a concise explanation of your classification
 
 Rules:
-- "expected" means the visual change is intentional and directly explained \
-by the PR title, description, or code diff. The change must logically follow \
-from the code that was modified.
-- "unexpected" means the visual change is NOT explained by the PR context. \
-For example, if the PR says "fix header text color" but you see spacing \
-changes on the page, the spacing change is unexpected — it may be an \
-accidental side effect of a CSS variable change or unrelated regression.
+- "expected" means the visual change looks like a CLEAN, INTENTIONAL design \
+update that matches the stated purpose of the PR. The change should look \
+polished and deliberate — like something a designer would approve.
+- "unexpected" means the visual change looks like a DEFECT or UNINTENDED \
+SIDE EFFECT. Watch for these red flags:
+  * Content is clipped, cut off, or overflowing its container
+  * Elements overlap or are misaligned
+  * Text is truncated or unreadable
+  * Spacing looks broken (too much or too little padding/margin)
+  * Content that was visible in the baseline is now missing or hidden
+  * Layout shifts that push content off-screen
+  * The change affects a part of the UI that is UNRELATED to the PR's \
+stated purpose (e.g. PR says "update header" but table layout changed)
+  Even if the code diff technically contains the change, these visual \
+  defects are almost never intentional. Developers often introduce \
+  accidental side effects through CSS changes (overflow, position, height \
+  changes) that break other parts of the page.
 - "uncertain" means there is not enough information to decide.
-- A file appearing in the changed files list does NOT automatically make all \
-visual changes expected. Look at the actual code diff to see what specific \
-lines changed and whether they explain the visual difference.
+- IMPORTANT: Do NOT assume all code changes are intentional. Compare the \
+visual outcome against the PR TITLE and DESCRIPTION to determine intent. \
+A PR titled "Add help section to sidebar" does not intend to clip navigation \
+items, even if the diff shows overflow:hidden was added.
 - Set confidence based on how strong the evidence is.
 - Always return valid JSON.
 """
@@ -59,7 +70,16 @@ changes first, then mention subtler ones. For each change, describe:
 - Which UI region or element changed (e.g. "sidebar", "header", "table row")
 - What specifically changed (e.g. "background color from dark purple #8b5cf6 \
 to light gray #f8fafc", "font size increased", "element removed")
-- Whether it correlates with the PR context (if provided)
+- Whether the change looks like a clean design update or a visual DEFECT
+
+Pay special attention to visual defects:
+- Content that appears clipped, cut off, or hidden (e.g. text/elements \
+visible in baseline but missing in actual)
+- Elements that overlap, are misaligned, or overflow their containers
+- Broken spacing (excessive gaps, elements pushed off-screen)
+- Truncated or unreadable text
+
+Explicitly call out any defects you see — these are critical for triage.
 
 Do NOT hallucinate differences that aren't there. If two regions look \
 identical, do not invent changes. Focus only on real, visible differences.
