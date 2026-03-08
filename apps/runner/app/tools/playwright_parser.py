@@ -116,9 +116,13 @@ def _extract_screenshots(attachments: list[dict]) -> tuple[str | None, str | Non
         if name == "expected":
             if body:
                 baseline = body
-            # The path field points to the baseline file in the repo
+            # The path field points to the baseline file in the repo.
+            # In CI, this is an absolute path (e.g. /home/runner/work/repo/repo/tests/...).
+            # Strip to repo-relative by finding the tests/ prefix.
             if att.get("path"):
-                snapshot_path = att["path"]
+                raw = att["path"]
+                idx = raw.find("tests/")
+                snapshot_path = raw[idx:] if idx != -1 else raw
         elif name == "actual":
             if body:
                 actual = body
