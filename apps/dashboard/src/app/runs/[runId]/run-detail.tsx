@@ -61,8 +61,18 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
 
       <div className="mt-4">
         <h1 className="text-2xl font-bold text-zinc-900">
-          Run {run.run_id.slice(0, 8)}
+          {run.pr_title || `Run ${run.run_id.slice(0, 8)}`}
         </h1>
+        {run.pr_url && (
+          <a
+            href={run.pr_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-1 inline-block text-sm text-blue-600 hover:underline"
+          >
+            View PR &rarr;
+          </a>
+        )}
         <div className="mt-2 flex items-center gap-3">
           <span className="text-sm text-zinc-600">
             {run.total_failures} failure{run.total_failures !== 1 && "s"}

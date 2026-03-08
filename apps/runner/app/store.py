@@ -10,12 +10,15 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from app.schemas import TriageFailureResult, TriageRunResponse, TriageRunSummary
+from app.schemas import PRContext, TriageFailureResult, TriageRunResponse, TriageRunSummary
 
 _runs: dict[str, dict] = {}
 
 
-def create_run(results: list[TriageFailureResult]) -> TriageRunResponse:
+def create_run(
+    results: list[TriageFailureResult],
+    pr_context: PRContext | None = None,
+) -> TriageRunResponse:
     """Persist a new triage run and return the full response."""
     run_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc).isoformat()
@@ -25,11 +28,22 @@ def create_run(results: list[TriageFailureResult]) -> TriageRunResponse:
         cls = r.ask_response.classification
         classifications[cls] = classifications.get(cls, 0) + 1
 
+    pr_title = pr_context.title if pr_context else None
+    pr_url = (
+        f"https://github.com/{pr_context.repo}/pull/{pr_context.pr_number}"
+        if pr_context and pr_context.repo and pr_context.pr_number
+        else None
+    )
+    repo = pr_context.repo if pr_context else None
+
     response = TriageRunResponse(
         run_id=run_id,
         created_at=created_at,
         total_failures=len(results),
         results=results,
+        pr_title=pr_title,
+        pr_url=pr_url,
+        repo=repo,
     )
 
     _runs[run_id] = {
@@ -67,6 +81,9 @@ def list_runs() -> list[TriageRunSummary]:
             created_at=resp.created_at,
             total_failures=resp.total_failures,
             classifications=entry["classifications"],
+            pr_title=resp.pr_title,
+            pr_url=resp.pr_url,
+            repo=resp.repo,
         ))
     summaries.sort(key=lambda s: s.created_at, reverse=True)
     return summaries

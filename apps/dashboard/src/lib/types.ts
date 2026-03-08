@@ -66,6 +66,9 @@ export interface TriageRunSummary {
   created_at: string;
   total_failures: number;
   classifications: Record<string, number>;
+  pr_title?: string | null;
+  pr_url?: string | null;
+  repo?: string | null;
 }
 
 export interface TriageRunResponse {
@@ -73,6 +76,9 @@ export interface TriageRunResponse {
   created_at: string;
   total_failures: number;
   results: TriageFailureResult[];
+  pr_title?: string | null;
+  pr_url?: string | null;
+  repo?: string | null;
 }
 
 // Human feedback on a triage classification. Stored in localStorage for now

@@ -122,6 +122,9 @@ class TriageRunSummary(BaseModel):
     created_at: str
     total_failures: int
     classifications: dict[str, int]
+    pr_title: str | None = None
+    pr_url: str | None = None
+    repo: str | None = None
 
 
 class TriageRunResponse(BaseModel):
@@ -131,3 +134,6 @@ class TriageRunResponse(BaseModel):
     created_at: str
     total_failures: int
     results: list[TriageFailureResult]
+    pr_title: str | None = None
+    pr_url: str | None = None
+    repo: str | None = None

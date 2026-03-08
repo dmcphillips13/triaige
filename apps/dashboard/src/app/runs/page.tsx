@@ -50,10 +50,10 @@ export default async function RunsPage() {
                   className="block rounded-lg border border-zinc-200 bg-white p-4 transition-colors hover:border-zinc-300 hover:bg-zinc-50"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-sm text-zinc-500">
-                      {run.run_id.slice(0, 8)}
+                    <span className="text-sm text-zinc-900 font-medium truncate">
+                      {run.pr_title || run.run_id.slice(0, 8)}
                     </span>
-                    <span className="text-sm text-zinc-400">{date}</span>
+                    <span className="shrink-0 text-sm text-zinc-400">{date}</span>
                   </div>
                   <div className="mt-2 flex items-center gap-3">
                     <span className="text-sm font-medium text-zinc-900">

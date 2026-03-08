@@ -80,7 +80,7 @@ async def triage_run(req: TriageRunRequest):
             for ask_req in grp.requests:
                 results.append(_build_result(ask_req, response, group_names))
 
-    return store.create_run(results)
+    return store.create_run(results, pr_context=req.pr_context)
 
 
 def _build_result(
