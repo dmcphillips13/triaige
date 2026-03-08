@@ -58,7 +58,8 @@ failure and explain your reasoning.
 Respond with a JSON object containing:
 - "classification": one of "expected", "unexpected", or "uncertain"
 - "confidence": a float between 0.0 and 1.0
-- "rationale": a concise explanation of your classification
+- "rationale": a bullet-point list explaining your classification (use "- " \
+prefix for each point, 2-4 bullets)
 
 Classification rules:
 - "expected" — The visual change is on a page/component explicitly mentioned \
@@ -117,5 +118,6 @@ Explicitly call out any defects you see — these are critical for triage.
 Do NOT hallucinate differences that aren't there. If two regions look \
 identical, do not invent changes. Focus only on real, visible differences.
 
-Respond with plain text (2-4 sentences). Do not use JSON.
+Respond with a bullet-point list (2-5 bullets). Each bullet should be one \
+concise observation. Use "- " prefix for each bullet. Do not use JSON.
 """

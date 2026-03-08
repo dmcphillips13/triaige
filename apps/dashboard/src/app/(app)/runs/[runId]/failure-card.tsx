@@ -104,7 +104,7 @@ export function FailureCard({
               <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
                 Vision Analysis
               </h4>
-              <p className="mt-1 text-sm text-zinc-700">{res.vision_summary}</p>
+              <BulletList text={res.vision_summary} />
             </div>
           )}
 
@@ -113,7 +113,7 @@ export function FailureCard({
             <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
               Rationale
             </h4>
-            <p className="mt-1 text-sm text-zinc-700">{res.rationale}</p>
+            <BulletList text={res.rationale} />
           </div>
 
           {/* Image diff stats */}
@@ -175,6 +175,26 @@ export function FailureCard({
         </div>
       )}
     </div>
+  );
+}
+
+/** Renders text as a bullet list if it contains "- " prefixed lines, otherwise as a paragraph. */
+function BulletList({ text }: { text: string }) {
+  const lines = text.split("\n").filter((l) => l.trim().length > 0);
+  const isBullets = lines.some((l) => l.trimStart().startsWith("- "));
+
+  if (!isBullets) {
+    return <p className="mt-1 text-sm text-zinc-700">{text}</p>;
+  }
+
+  return (
+    <ul className="mt-1 list-disc space-y-1 pl-4">
+      {lines.map((line, i) => (
+        <li key={i} className="text-sm text-zinc-700">
+          {line.replace(/^-\s*/, "")}
+        </li>
+      ))}
+    </ul>
   );
 }
 
