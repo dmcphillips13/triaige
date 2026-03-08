@@ -6,7 +6,7 @@ The actual GPT-4o call happens in the analyze_screenshots graph node.
 """
 
 from app.agent.prompts import VISION_SYSTEM_PROMPT
-from app.schemas import ImageDiff
+from app.schemas import ImageDiff, PRContext
 
 
 def build_vision_messages(
@@ -14,10 +14,26 @@ def build_vision_messages(
     actual_b64: str,
     diff_overlay_b64: str | None,
     diff_metrics: ImageDiff | None,
+    pr_context: PRContext | None = None,
 ) -> list[dict]:
     """Build the message list for an OpenAI vision API call."""
     # User message: images + metrics text
     content_parts: list[dict] = []
+
+    # PR context first so the model knows what to look for
+    if pr_context:
+        pr_lines = []
+        if pr_context.title:
+            pr_lines.append(f"PR title: {pr_context.title}")
+        if pr_context.changed_files:
+            pr_lines.append(f"Changed files: {', '.join(pr_context.changed_files[:10])}")
+        if pr_context.commit_messages:
+            pr_lines.append(f"Commits: {'; '.join(pr_context.commit_messages[:5])}")
+        if pr_lines:
+            content_parts.append({
+                "type": "text",
+                "text": "PR CONTEXT:\n" + "\n".join(pr_lines),
+            })
 
     content_parts.append({
         "type": "text",
@@ -58,6 +74,6 @@ def _image_part(b64: str) -> dict:
         "type": "image_url",
         "image_url": {
             "url": f"data:image/png;base64,{b64}",
-            "detail": "low",
+            "detail": "auto",
         },
     }

@@ -135,8 +135,10 @@ def analyze_screenshots(state: AgentState) -> dict:
     if not baseline or not actual:
         return {}
 
+    pr_context = state.get("enriched_pr_context") or state.get("pr_context")
+
     try:
-        messages = build_vision_messages(baseline, actual, overlay, image_diff)
+        messages = build_vision_messages(baseline, actual, overlay, image_diff, pr_context)
         client = get_openai_client()
         response = client.chat.completions.create(
             model=settings.openai_vision_model,
