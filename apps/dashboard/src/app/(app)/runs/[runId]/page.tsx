@@ -4,7 +4,7 @@
 // Server/client split: this page fetches data server-side (using RUNNER_BASE_URL),
 // then RunDetail handles client-side interactivity (approve/reject, expand/collapse).
 
-import { fetchRun } from "@/lib/api";
+import { fetchRun } from "@/lib/api.server";
 import { RunDetail } from "./run-detail";
 
 export default async function RunDetailPage({

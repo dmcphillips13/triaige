@@ -7,7 +7,7 @@
 // Handles two edge cases: runner offline (error message) and no runs (empty state).
 
 import Link from "next/link";
-import { fetchRuns } from "@/lib/api";
+import { fetchRuns } from "@/lib/api.server";
 import { ClassificationBadge } from "@/components/classification-badge";
 
 export default async function RunsPage() {
