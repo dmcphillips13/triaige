@@ -34,7 +34,10 @@ def classify_query(state: AgentState) -> dict:
 
         user_msg = question
         if run_summary:
-            user_msg += f"\n\nRun summary: {run_summary.model_dump_json()}"
+            summary_data = run_summary.model_dump(
+                exclude={"screenshot_baseline", "screenshot_actual"}
+            )
+            user_msg += f"\n\nRun summary: {json.dumps(summary_data)}"
 
         response = llm.invoke([
             {"role": "system", "content": CLASSIFY_SYSTEM_PROMPT},
@@ -274,7 +277,12 @@ def compose_answer(state: AgentState) -> dict:
 
         run_summary = state.get("run_summary")
         if run_summary:
-            user_parts.append(f"Run summary: {run_summary.model_dump_json()}")
+            # Exclude base64 screenshots — they're huge and this is a text-only LLM call.
+            # Vision analysis already summarized the screenshot differences.
+            summary_data = run_summary.model_dump(
+                exclude={"screenshot_baseline", "screenshot_actual"}
+            )
+            user_parts.append(f"Run summary: {json.dumps(summary_data)}")
 
         vision_summary = state.get("vision_summary")
         if vision_summary:
@@ -291,7 +299,7 @@ def compose_answer(state: AgentState) -> dict:
             "rationale": data.get("rationale", "No rationale provided."),
         }
     except Exception as e:
-        logger.warning("compose_answer failed: %s", e)
+        logger.warning("compose_answer failed: %s", e, exc_info=True)
         errors.append(f"compose_answer: {e}")
         return {
             "classification": "uncertain",
