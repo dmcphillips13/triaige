@@ -57,18 +57,25 @@ Respond with a JSON object containing:
 
 Rules:
 - "expected" means the visual change looks like a CLEAN, INTENTIONAL design \
-update that matches the stated purpose of the PR. The devil's advocate \
-found no significant concerns.
-- "unexpected" means the visual change looks like a DEFECT or UNINTENDED \
-SIDE EFFECT. The devil's advocate raised valid concerns such as:
-  * Content is clipped, cut off, or hidden
-  * Elements overlap or are misaligned
-  * Spacing looks broken
-  * The change is unrelated to the PR's stated purpose
+update that matches the stated purpose of the PR.
+- "unexpected" means the visual change shows a VISIBLE DEFECT in the \
+screenshots — content clipped, elements overlapping, broken spacing, \
+missing content, etc. — OR affects a part of the UI unrelated to the PR.
 - "uncertain" means the evidence is mixed.
-- Give significant weight to the devil's advocate review. If the QA reviewer \
-raised high-severity concerns, the classification should likely be "unexpected" \
-unless you have strong evidence the change was intentional.
+
+How to weigh evidence:
+- The VISION ANALYSIS describes what is actually visible in the screenshots. \
+This is the most important evidence. If the vision analysis says the change \
+looks clean with no defects, theoretical concerns from the devil's advocate \
+should NOT override it.
+- The DEVIL'S ADVOCATE review raises potential concerns. Only give these \
+weight if the vision analysis CONFIRMS a visible defect or if the concern \
+matches something you can see in the screenshots.
+- If the devil's advocate flags overflow:hidden or height changes as risky, \
+but the vision analysis shows the UI looks clean and complete, classify as \
+"expected".
+- If the devil's advocate flags clipping concerns AND the vision analysis \
+shows content is actually missing or cut off, classify as "unexpected".
 - Set confidence based on how strong the evidence is.
 - Always return valid JSON.
 """
