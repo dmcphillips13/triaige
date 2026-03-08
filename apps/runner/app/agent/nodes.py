@@ -3,7 +3,11 @@ import logging
 
 from langchain_openai import ChatOpenAI
 
-from app.agent.prompts import CLASSIFY_SYSTEM_PROMPT, COMPOSE_SYSTEM_PROMPT
+from app.agent.prompts import (
+    CLASSIFY_SYSTEM_PROMPT,
+    COMPOSE_SYSTEM_PROMPT,
+    DEVIL_ADVOCATE_SYSTEM_PROMPT,
+)
 from app.agent.state import AgentState
 from app.clients.openai_client import embed_texts
 from app.retrieval import qdrant_store
@@ -235,12 +239,39 @@ def retrieve_episodes(state: AgentState) -> dict:
 
 
 def compose_answer(state: AgentState) -> dict:
-    """Use LLM to classify the failure based on retrieved context."""
+    """Two-pass classification: devil's advocate review then final judgement."""
     errors = list(state.get("errors", []))
     try:
         llm = _get_llm()
 
-        # Build context blocks from semantic docs
+        # Build user message (shared by both passes)
+        pr = state.get("enriched_pr_context") or state.get("pr_context")
+        user_parts = [f"Question: {state['question']}"]
+        if pr:
+            user_parts.append(f"PR context: {pr.model_dump_json()}")
+
+        run_summary = state.get("run_summary")
+        if run_summary:
+            summary_data = run_summary.model_dump(
+                exclude={"screenshot_baseline", "screenshot_actual"}
+            )
+            user_parts.append(f"Run summary: {json.dumps(summary_data)}")
+
+        vision_summary = state.get("vision_summary")
+        if vision_summary:
+            user_parts.append(f"Vision analysis of screenshots: {vision_summary}")
+
+        user_msg = "\n\n".join(user_parts)
+
+        # --- Pass 1: Devil's advocate ---
+        devil_response = llm.invoke([
+            {"role": "system", "content": DEVIL_ADVOCATE_SYSTEM_PROMPT},
+            {"role": "user", "content": user_msg},
+        ])
+        devil_review = devil_response.content
+        logger.info("Devil's advocate review: %s", devil_review)
+
+        # --- Pass 2: Final classification with both perspectives ---
         semantic_docs = state.get("semantic_docs", [])
         if semantic_docs:
             context_lines = []
@@ -252,7 +283,6 @@ def compose_answer(state: AgentState) -> dict:
         else:
             context_blocks = "(No relevant documents found)"
 
-        # Build episode blocks
         episode_docs = state.get("episode_docs", [])
         if episode_docs:
             episode_lines = []
@@ -269,28 +299,15 @@ def compose_answer(state: AgentState) -> dict:
             episode_blocks=episode_blocks,
         )
 
-        # Build user message
-        pr = state.get("enriched_pr_context") or state.get("pr_context")
-        user_parts = [f"Question: {state['question']}"]
-        if pr:
-            user_parts.append(f"PR context: {pr.model_dump_json()}")
-
-        run_summary = state.get("run_summary")
-        if run_summary:
-            # Exclude base64 screenshots — they're huge and this is a text-only LLM call.
-            # Vision analysis already summarized the screenshot differences.
-            summary_data = run_summary.model_dump(
-                exclude={"screenshot_baseline", "screenshot_actual"}
-            )
-            user_parts.append(f"Run summary: {json.dumps(summary_data)}")
-
-        vision_summary = state.get("vision_summary")
-        if vision_summary:
-            user_parts.append(f"Vision analysis of screenshots: {vision_summary}")
+        # Append devil's advocate review to user message
+        final_user_msg = (
+            user_msg
+            + f"\n\nDevil's advocate QA review: {devil_review}"
+        )
 
         response = llm.invoke([
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": "\n\n".join(user_parts)},
+            {"role": "user", "content": final_user_msg},
         ])
         data = json.loads(response.content)
         return {
