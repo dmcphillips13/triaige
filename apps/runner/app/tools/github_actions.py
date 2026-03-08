@@ -1,0 +1,143 @@
+"""GitHub automated actions via the Git Data API.
+
+Creates a PR that updates baseline screenshots by:
+1. Getting the default branch HEAD SHA
+2. Creating blobs for each new baseline (base64 encoded)
+3. Building a tree with the updated files
+4. Creating a commit on a new branch
+5. Opening a PR back to the default branch
+
+This avoids cloning the repo — everything happens via REST API calls.
+Requires a GitHub token with repo write permissions.
+"""
+
+import logging
+
+import httpx
+
+from app.settings import settings
+
+logger = logging.getLogger(__name__)
+
+
+def _get_client() -> httpx.Client:
+    """Authenticated GitHub API client."""
+    if not settings.github_token:
+        raise RuntimeError("github_token is required for automated actions")
+    return httpx.Client(
+        base_url="https://api.github.com",
+        headers={
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {settings.github_token}",
+        },
+        timeout=30.0,
+    )
+
+
+def create_baseline_pr(
+    repo: str,
+    run_id: str,
+    baselines: list[dict],
+    source_pr_title: str | None = None,
+) -> str:
+    """Create a PR updating baseline screenshots.
+
+    Args:
+        repo: "owner/repo" format.
+        run_id: Triage run ID (used for branch naming).
+        baselines: List of dicts with 'path', 'content_base64', 'test_name'.
+        source_pr_title: Title of the PR that triggered the triage run.
+
+    Returns:
+        URL of the created pull request.
+    """
+    client = _get_client()
+    run_short = run_id[:8]
+
+    # 1. Get default branch and its HEAD SHA
+    repo_info = client.get(f"/repos/{repo}").json()
+    default_branch = repo_info["default_branch"]
+    ref_data = client.get(f"/repos/{repo}/git/ref/heads/{default_branch}").json()
+    base_sha = ref_data["object"]["sha"]
+
+    # 2. Create blobs for each baseline screenshot
+    tree_items = []
+    for bl in baselines:
+        blob_resp = client.post(
+            f"/repos/{repo}/git/blobs",
+            json={"content": bl["content_base64"], "encoding": "base64"},
+        )
+        blob_resp.raise_for_status()
+        blob_sha = blob_resp.json()["sha"]
+        tree_items.append({
+            "path": bl["path"],
+            "mode": "100644",
+            "type": "blob",
+            "sha": blob_sha,
+        })
+
+    # 3. Create tree
+    tree_resp = client.post(
+        f"/repos/{repo}/git/trees",
+        json={"base_tree": base_sha, "tree": tree_items},
+    )
+    tree_resp.raise_for_status()
+    tree_sha = tree_resp.json()["sha"]
+
+    # 4. Create commit
+    test_count = len(baselines)
+    commit_message = f"Update {test_count} baseline screenshot{'s' if test_count != 1 else ''}"
+    if source_pr_title:
+        commit_message += f"\n\nTriggered by: {source_pr_title}"
+    commit_message += f"\nTriage run: {run_id}"
+
+    commit_resp = client.post(
+        f"/repos/{repo}/git/commits",
+        json={
+            "message": commit_message,
+            "tree": tree_sha,
+            "parents": [base_sha],
+        },
+    )
+    commit_resp.raise_for_status()
+    commit_sha = commit_resp.json()["sha"]
+
+    # 5. Create branch
+    branch_name = f"triaige/update-baselines-{run_short}"
+    ref_resp = client.post(
+        f"/repos/{repo}/git/refs",
+        json={"ref": f"refs/heads/{branch_name}", "sha": commit_sha},
+    )
+    ref_resp.raise_for_status()
+
+    # 6. Open PR
+    body_lines = [
+        "## Updated baselines",
+        "",
+        f"Triage run `{run_id}` classified these failures as **expected**",
+        "and a human approved the updates.",
+        "",
+        "| Test | Snapshot |",
+        "|---|---|",
+    ]
+    for bl in baselines:
+        body_lines.append(f"| {bl['test_name']} | `{bl['path']}` |")
+
+    if source_pr_title:
+        body_lines.extend(["", f"Source PR: {source_pr_title}"])
+
+    pr_title = f"Update {test_count} baseline screenshot{'s' if test_count != 1 else ''}"
+    pr_resp = client.post(
+        f"/repos/{repo}/pulls",
+        json={
+            "title": pr_title,
+            "body": "\n".join(body_lines),
+            "head": branch_name,
+            "base": default_branch,
+        },
+    )
+    pr_resp.raise_for_status()
+    pr_url = pr_resp.json()["html_url"]
+
+    logger.info("Created baseline PR: %s", pr_url)
+    return pr_url

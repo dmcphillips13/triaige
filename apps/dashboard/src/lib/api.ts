@@ -42,3 +42,22 @@ export async function submitFeedback(
     body: JSON.stringify({ run_id: runId, test_name: testName, verdict }),
   });
 }
+
+/** Create a PR updating baseline screenshots for approved failures.
+ *  Called from the client via the /api/runner proxy. */
+export async function updateBaselines(
+  runId: string,
+  testNames: string[],
+  repo: string
+): Promise<{ pr_url: string }> {
+  const res = await fetch("/api/runner/update-baselines", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ run_id: runId, test_names: testNames, repo }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Unknown error" }));
+    throw new Error(err.detail || `Failed: ${res.status}`);
+  }
+  return res.json();
+}

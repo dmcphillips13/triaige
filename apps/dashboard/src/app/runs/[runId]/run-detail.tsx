@@ -15,10 +15,16 @@ import Link from "next/link";
 import { ClassificationBadge } from "@/components/classification-badge";
 import type { HumanVerdict, TriageRunResponse } from "@/lib/types";
 import { getVerdict, setVerdict } from "@/lib/verdicts";
+import { updateBaselines } from "@/lib/api";
 import { FailureCard } from "./failure-card";
 
 export function RunDetail({ run }: { run: TriageRunResponse }) {
   const [verdicts, setVerdicts] = useState<Record<string, HumanVerdict>>({});
+  const [baselineStatus, setBaselineStatus] = useState<
+    "idle" | "loading" | "done" | "error"
+  >("idle");
+  const [baselinePrUrl, setBaselinePrUrl] = useState<string | null>(null);
+  const [baselineError, setBaselineError] = useState<string | null>(null);
 
   // Load verdicts from localStorage on mount
   useEffect(() => {
@@ -36,6 +42,32 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
     },
     [run.run_id]
   );
+
+  // Approved failures that have screenshots and a snapshot path
+  const approvedBaselines = run.results.filter(
+    (r) =>
+      verdicts[r.test_name] === "approved" &&
+      r.screenshot_actual &&
+      r.snapshot_path
+  );
+
+  const handleUpdateBaselines = async () => {
+    if (!run.repo || approvedBaselines.length === 0) return;
+    setBaselineStatus("loading");
+    setBaselineError(null);
+    try {
+      const { pr_url } = await updateBaselines(
+        run.run_id,
+        approvedBaselines.map((r) => r.test_name),
+        run.repo
+      );
+      setBaselinePrUrl(pr_url);
+      setBaselineStatus("done");
+    } catch (err) {
+      setBaselineError(err instanceof Error ? err.message : "Failed to create PR");
+      setBaselineStatus("error");
+    }
+  };
 
   const date = new Date(run.created_at).toLocaleString();
 
@@ -100,6 +132,52 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
           </li>
         ))}
       </ul>
+
+      {/* Update Baselines button */}
+      {run.repo && approvedBaselines.length > 0 && baselineStatus !== "done" && (
+        <div className="mt-8 rounded-lg border border-zinc-200 bg-white p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-zinc-900">
+                {approvedBaselines.length} approved baseline
+                {approvedBaselines.length !== 1 && "s"} ready to update
+              </p>
+              <p className="mt-0.5 text-xs text-zinc-500">
+                Creates a PR in {run.repo} with the new screenshots
+              </p>
+            </div>
+            <button
+              onClick={handleUpdateBaselines}
+              disabled={baselineStatus === "loading"}
+              className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50"
+            >
+              {baselineStatus === "loading"
+                ? "Creating PR..."
+                : "Update Baselines"}
+            </button>
+          </div>
+          {baselineStatus === "error" && baselineError && (
+            <p className="mt-2 text-xs text-red-600">{baselineError}</p>
+          )}
+        </div>
+      )}
+
+      {/* Baseline PR link */}
+      {baselineStatus === "done" && baselinePrUrl && (
+        <div className="mt-8 rounded-lg border border-green-200 bg-green-50 p-4">
+          <p className="text-sm font-medium text-green-900">
+            Baseline update PR created
+          </p>
+          <a
+            href={baselinePrUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-1 inline-block text-sm text-green-700 hover:underline"
+          >
+            {baselinePrUrl}
+          </a>
+        </div>
+      )}
     </div>
   );
 }

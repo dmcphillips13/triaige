@@ -117,6 +117,20 @@ class TriageFailureResult(BaseModel):
     snapshot_path: str | None = None
 
 
+class UpdateBaselinesRequest(BaseModel):
+    """Request to create a PR updating baseline screenshots."""
+
+    run_id: str
+    test_names: list[str]
+    repo: str
+
+
+class UpdateBaselinesResponse(BaseModel):
+    """Response with the created PR URL."""
+
+    pr_url: str
+
+
 class TriageRunSummary(BaseModel):
     """Summary for listing runs."""
 

@@ -19,7 +19,10 @@ from app.schemas import (
     TriageRunRequest,
     TriageRunResponse,
     TriageRunSummary,
+    UpdateBaselinesRequest,
+    UpdateBaselinesResponse,
 )
+from app.tools.github_actions import create_baseline_pr
 from app.settings import settings
 from app.tools.playwright_parser import parse_report, parsed_result_to_ask_request
 
@@ -124,3 +127,39 @@ async def feedback(req: FeedbackRequest):
         raise HTTPException(status_code=404, detail="Result not found")
     point_id = await asyncio.to_thread(store_episode, result, req.verdict, req.run_id)
     return {"status": "stored", "point_id": point_id}
+
+
+@app.post("/update-baselines", response_model=UpdateBaselinesResponse)
+async def update_baselines(req: UpdateBaselinesRequest):
+    """Create a PR updating baseline screenshots for approved failures."""
+    run = store.get_run(req.run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    # Collect approved failures that have both screenshot_actual and snapshot_path
+    baselines: list[dict] = []
+    for name in req.test_names:
+        result = store.get_result(req.run_id, name)
+        if not result:
+            raise HTTPException(status_code=404, detail=f"Result not found: {name}")
+        if not result.screenshot_actual:
+            raise HTTPException(status_code=400, detail=f"No actual screenshot for: {name}")
+        if not result.snapshot_path:
+            raise HTTPException(status_code=400, detail=f"No snapshot path for: {name}")
+        baselines.append({
+            "path": result.snapshot_path,
+            "content_base64": result.screenshot_actual,
+            "test_name": result.test_name,
+        })
+
+    if not baselines:
+        raise HTTPException(status_code=400, detail="No baselines to update")
+
+    pr_url = await asyncio.to_thread(
+        create_baseline_pr,
+        repo=req.repo,
+        run_id=req.run_id,
+        baselines=baselines,
+        source_pr_title=run.pr_title,
+    )
+    return UpdateBaselinesResponse(pr_url=pr_url)
