@@ -97,6 +97,7 @@ def fetch_pr_context(repo: str, pr_number: int) -> PRContext:
 
     pr_data = _fetch_pr(owner, repo_name, pr_number)
     title = pr_data.get("title") if pr_data else None
+    description = pr_data.get("body") if pr_data else None
 
     changed_files = _fetch_changed_files(owner, repo_name, pr_number)
     commit_messages = _fetch_commits(owner, repo_name, pr_number)
@@ -104,6 +105,7 @@ def fetch_pr_context(repo: str, pr_number: int) -> PRContext:
 
     return PRContext(
         title=title,
+        description=description,
         changed_files=changed_files,
         commit_messages=commit_messages,
         diff=diff,

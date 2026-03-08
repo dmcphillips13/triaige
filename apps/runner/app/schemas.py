@@ -20,6 +20,7 @@ class RunSummary(BaseModel):
 
 class PRContext(BaseModel):
     title: str | None = None
+    description: str | None = None
     changed_files: list[str] | None = None
     commit_messages: list[str] | None = None
     diff: str | None = None

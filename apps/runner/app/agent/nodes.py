@@ -263,13 +263,16 @@ def compose_answer(state: AgentState) -> dict:
 
         user_msg = "\n\n".join(user_parts)
 
-        # --- Pass 1: Devil's advocate (vision-focused, no code diff) ---
-        # Only give the devil's advocate what's VISIBLE — the vision analysis
-        # and the PR title. This prevents it from conflating code concerns
-        # from unrelated files with the specific page being analyzed.
+        # --- Pass 1: Scope & defect review ---
+        # Give the reviewer the vision analysis, PR title, and PR description
+        # so it can assess whether this page is in the PR's stated scope.
         devil_parts = [f"Test: {state['question']}"]
         if pr and pr.title:
             devil_parts.append(f"PR title: {pr.title}")
+        if pr and pr.description:
+            devil_parts.append(f"PR description: {pr.description}")
+        else:
+            devil_parts.append("PR description: (none provided)")
         if vision_summary:
             devil_parts.append(f"Vision analysis of screenshots: {vision_summary}")
 
