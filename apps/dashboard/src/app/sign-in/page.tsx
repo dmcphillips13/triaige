@@ -1,7 +1,8 @@
-// Sign-in page — redirects to GitHub OAuth authorization.
+// Sign-in page — redirects to GitHub App OAuth authorization.
 //
-// The GITHUB_CLIENT_ID is exposed via a server component so we can build
-// the authorization URL without a client-side env var.
+// Uses a GitHub App (not an OAuth App) so users can select which specific
+// repos to grant access to, rather than giving blanket repo access.
+// Permissions (Contents + Pull Requests read/write) are defined on the App.
 
 export default function SignInPage() {
   const clientId = process.env.GITHUB_CLIENT_ID;
@@ -9,7 +10,7 @@ export default function SignInPage() {
   const redirectUri = `${appUrl}/api/auth/callback`;
 
   const githubUrl = clientId
-    ? `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=repo`
+    ? `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}`
     : null;
 
   return (

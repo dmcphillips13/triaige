@@ -1,8 +1,9 @@
-// GitHub OAuth callback handler.
+// GitHub App OAuth callback handler.
 //
 // GitHub redirects here with a ?code= parameter after the user authorizes.
-// We exchange the code for an access token, fetch the user's profile,
-// create a signed JWT session cookie, and redirect to the dashboard.
+// We exchange the code for a user access token (scoped to repos where the
+// GitHub App is installed), fetch the user's profile, create a signed JWT
+// session cookie, and redirect to the dashboard.
 
 import { NextRequest, NextResponse } from "next/server";
 import { createSession } from "@/lib/auth";

@@ -1,10 +1,12 @@
-// Lists GitHub repos the authenticated user has push access to.
-// Used by the settings page to populate the repo linking dropdown.
+// Lists repos the user has granted the Triaige GitHub App access to.
+//
+// Uses the installation API rather than listing all user repos, so only
+// repos the user explicitly selected during App installation are shown.
 
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 
-interface GitHubRepo {
+interface InstallationRepo {
   full_name: string;
   private: boolean;
 }
@@ -16,21 +18,34 @@ export async function GET() {
   }
 
   const repos: { full_name: string; private: boolean }[] = [];
-  let page = 1;
 
-  // Paginate through user repos (max 5 pages = 500 repos)
-  while (page <= 5) {
-    const res = await fetch(
-      `https://api.github.com/user/repos?per_page=100&page=${page}&sort=updated&affiliation=owner,collaborator`,
-      { headers: { Authorization: `Bearer ${session.github_token}` } }
-    );
-    if (!res.ok) break;
-    const batch: GitHubRepo[] = await res.json();
-    if (batch.length === 0) break;
-    for (const r of batch) {
-      repos.push({ full_name: r.full_name, private: r.private });
+  // Get all installations of the GitHub App accessible to this user
+  const installRes = await fetch(
+    "https://api.github.com/user/installations?per_page=100",
+    { headers: { Authorization: `Bearer ${session.github_token}` } }
+  );
+  if (!installRes.ok) {
+    return NextResponse.json(repos);
+  }
+  const { installations } = await installRes.json();
+
+  // For each installation, list the repos the user can access
+  for (const install of installations) {
+    let page = 1;
+    while (page <= 5) {
+      const repoRes = await fetch(
+        `https://api.github.com/user/installations/${install.id}/repositories?per_page=100&page=${page}`,
+        { headers: { Authorization: `Bearer ${session.github_token}` } }
+      );
+      if (!repoRes.ok) break;
+      const data = await repoRes.json();
+      const batch: InstallationRepo[] = data.repositories || [];
+      if (batch.length === 0) break;
+      for (const r of batch) {
+        repos.push({ full_name: r.full_name, private: r.private });
+      }
+      page++;
     }
-    page++;
   }
 
   return NextResponse.json(repos);
