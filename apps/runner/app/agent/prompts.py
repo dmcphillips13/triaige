@@ -58,8 +58,8 @@ failure and explain your reasoning.
 Respond with a JSON object containing:
 - "classification": one of "expected", "unexpected", or "uncertain"
 - "confidence": a float between 0.0 and 1.0
-- "rationale": a bullet-point list explaining your classification (use "- " \
-prefix for each point, 2-4 bullets)
+- "rationale": a STRING with bullet points separated by newlines (use "- " \
+prefix for each point, 2-4 bullets). Must be a single string, NOT an array.
 
 Classification rules:
 - "expected" — The visual change is on a page/component explicitly mentioned \
