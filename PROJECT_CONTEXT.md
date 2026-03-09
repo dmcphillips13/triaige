@@ -34,7 +34,7 @@ Last updated: 2026-03-08
 - [x] Step 17: GitHub Actions workflow (merged PR in sample app → Playwright → POST /triage-run)
 
 ### Up next
-- [ ] Step 18: Pre-merge triage mode — run Playwright on open PRs, post dashboard link as PR comment, approve baselines as commits on the PR branch; per-repo settings toggle (default: post-merge)
+- [ ] Step 18: Triage mode settings — two checkboxes per repo: "before merge" and "after merge" (after checked by default). Runner filters runs based on setting. Pre-merge posts dashboard link as PR comment. Customer adds `pull_request` trigger to their workflow to enable pre-merge.
 - [ ] Step 19: Runner-side Postgres persistence — Neon free tier, /runs CRUD, swap dashboard from localStorage to API
 - [ ] Step 20: Procedural memory — self-improving triage instructions via reflection (stretch)
 - [ ] Step 21: Auto-approve baselines above confidence threshold (stretch, lowest priority — needs discussion)
