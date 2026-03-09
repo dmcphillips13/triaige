@@ -27,10 +27,12 @@ export function FailureCard({
   result,
   verdict,
   onVerdict,
+  readOnly = false,
 }: {
   result: TriageFailureResult;
   verdict: HumanVerdict;
   onVerdict: (verdict: HumanVerdict) => void;
+  readOnly?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const { ask_response: res } = result;
@@ -68,33 +70,35 @@ export function FailureCard({
         )}
       </button>
 
-      {/* Approve / Reject buttons */}
-      <div className="flex gap-1 border-t border-zinc-100 px-4 py-2">
-        <button
-          onClick={() => onVerdict(verdict === "approved" ? null : "approved")}
-          className={cn(
-            "inline-flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium transition-colors",
-            verdict === "approved"
-              ? "bg-green-100 text-green-800"
-              : "text-zinc-500 hover:bg-zinc-100"
-          )}
-        >
-          <Check className="h-3.5 w-3.5" />
-          Approve
-        </button>
-        <button
-          onClick={() => onVerdict(verdict === "rejected" ? null : "rejected")}
-          className={cn(
-            "inline-flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium transition-colors",
-            verdict === "rejected"
-              ? "bg-red-100 text-red-800"
-              : "text-zinc-500 hover:bg-zinc-100"
-          )}
-        >
-          <X className="h-3.5 w-3.5" />
-          Reject
-        </button>
-      </div>
+      {/* Approve / Reject buttons (hidden for pre-merge / informational runs) */}
+      {!readOnly && (
+        <div className="flex gap-1 border-t border-zinc-100 px-4 py-2">
+          <button
+            onClick={() => onVerdict(verdict === "approved" ? null : "approved")}
+            className={cn(
+              "inline-flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium transition-colors",
+              verdict === "approved"
+                ? "bg-green-100 text-green-800"
+                : "text-zinc-500 hover:bg-zinc-100"
+            )}
+          >
+            <Check className="h-3.5 w-3.5" />
+            Approve
+          </button>
+          <button
+            onClick={() => onVerdict(verdict === "rejected" ? null : "rejected")}
+            className={cn(
+              "inline-flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium transition-colors",
+              verdict === "rejected"
+                ? "bg-red-100 text-red-800"
+                : "text-zinc-500 hover:bg-zinc-100"
+            )}
+          >
+            <X className="h-3.5 w-3.5" />
+            Reject
+          </button>
+        </div>
+      )}
 
       {/* Expanded detail */}
       {expanded && (

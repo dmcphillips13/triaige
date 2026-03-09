@@ -69,6 +69,7 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
     }
   };
 
+  const isPreMerge = run.triage_mode === "pre_merge";
   const date = new Date(run.created_at).toLocaleString();
 
   // Classification summary counts
@@ -128,13 +129,14 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
               result={result}
               verdict={verdicts[result.test_name] ?? null}
               onVerdict={(v) => handleVerdict(result.test_name, v)}
+              readOnly={isPreMerge}
             />
           </li>
         ))}
       </ul>
 
-      {/* Update Baselines button */}
-      {run.repo && approvedBaselines.length > 0 && baselineStatus !== "done" && (
+      {/* Update Baselines button — only for post-merge runs */}
+      {run.repo && approvedBaselines.length > 0 && baselineStatus !== "done" && !isPreMerge && (
         <div className="mt-8 rounded-lg border border-zinc-200 bg-white p-4">
           <div className="flex items-center justify-between">
             <div>
