@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,8 +27,11 @@ from app.schemas import (
 )
 from app.repo_settings import RepoSettings
 from app.tools.github_actions import create_baseline_pr
+from app.tools.pr_comment import post_triage_comment
 from app.settings import settings
 from app.tools.playwright_parser import parse_report, parsed_result_to_ask_request
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Triaige Runner")
 
@@ -81,7 +85,7 @@ async def ask(req: AskRequest):
 
 
 @app.post("/triage-run", response_model=TriageRunResponse)
-async def triage_run(req: TriageRunRequest):
+async def triage_run(req: TriageRunRequest, request: Request):
     """Accept a batch of test failures and triage each through the agent."""
     # Check if this triage mode is enabled for the repo
     repo = req.pr_context.repo if req.pr_context else None
@@ -124,7 +128,28 @@ async def triage_run(req: TriageRunRequest):
             for ask_req in grp.requests:
                 results.append(_build_result(ask_req, response, group_names))
 
-    return store.create_run(results, pr_context=req.pr_context, triage_mode=mode)
+    run_response = store.create_run(results, pr_context=req.pr_context, triage_mode=mode)
+
+    # Post PR comment for pre-merge runs
+    if (
+        mode == "pre_merge"
+        and run_response.results
+        and req.pr_context
+        and req.pr_context.pr_number
+        and req.pr_context.repo
+    ):
+        github_token = request.headers.get("X-GitHub-Token")
+        try:
+            post_triage_comment(
+                repo=req.pr_context.repo,
+                pr_number=req.pr_context.pr_number,
+                run=run_response,
+                github_token=github_token,
+            )
+        except Exception as e:
+            logger.warning("Failed to post PR comment: %s", e)
+
+    return run_response
 
 
 def _build_result(

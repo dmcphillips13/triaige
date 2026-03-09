@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     # API key (shared secret between dashboard and runner)
     api_key: str | None = None
 
+    # Dashboard
+    dashboard_url: str = "http://localhost:3000"
+
     # CORS
     cors_origins: str = "*"
 
