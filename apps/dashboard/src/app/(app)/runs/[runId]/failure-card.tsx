@@ -16,6 +16,7 @@
 "use client";
 
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
 import { Check, X, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ClassificationBadge } from "@/components/classification-badge";
@@ -104,7 +105,7 @@ export function FailureCard({
               <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
                 Vision Analysis
               </h4>
-              <BulletList text={res.vision_summary} />
+              <MarkdownContent text={res.vision_summary} />
             </div>
           )}
 
@@ -113,7 +114,7 @@ export function FailureCard({
             <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
               Rationale
             </h4>
-            <BulletList text={res.rationale} />
+            <MarkdownContent text={res.rationale} />
           </div>
 
           {/* Image diff stats */}
@@ -178,23 +179,12 @@ export function FailureCard({
   );
 }
 
-/** Renders text as a bullet list if it contains "- " prefixed lines, otherwise as a paragraph. */
-function BulletList({ text }: { text: string }) {
-  const lines = text.split("\n").filter((l) => l.trim().length > 0);
-  const isBullets = lines.some((l) => l.trimStart().startsWith("- "));
-
-  if (!isBullets) {
-    return <p className="mt-1 text-sm text-zinc-700">{text}</p>;
-  }
-
+/** Renders text as markdown with prose styling. */
+function MarkdownContent({ text }: { text: string }) {
   return (
-    <ul className="mt-1 list-disc space-y-1 pl-4">
-      {lines.map((line, i) => (
-        <li key={i} className="text-sm text-zinc-700">
-          {line.replace(/^-\s*/, "")}
-        </li>
-      ))}
-    </ul>
+    <div className="mt-1 text-sm text-zinc-700 prose-sm prose-zinc prose-li:my-0.5">
+      <ReactMarkdown>{text}</ReactMarkdown>
+    </div>
   );
 }
 

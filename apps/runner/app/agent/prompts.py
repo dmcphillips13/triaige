@@ -58,8 +58,10 @@ failure and explain your reasoning.
 Respond with a JSON object containing:
 - "classification": one of "expected", "unexpected", or "uncertain"
 - "confidence": a float between 0.0 and 1.0
-- "rationale": a STRING with bullet points separated by newlines (use "- " \
-prefix for each point, 2-4 bullets). Must be a single string, NOT an array.
+- "rationale": a STRING with markdown bullet points separated by newlines \
+(use "- " prefix for each point, 2-3 bullets). Keep each bullet short and \
+plain-language — a non-technical person should understand why this is \
+expected, unexpected, or uncertain. Must be a single string, NOT an array.
 
 Classification rules:
 - "expected" — The visual change is on a page/component explicitly mentioned \
@@ -118,6 +120,10 @@ Explicitly call out any defects you see — these are critical for triage.
 Do NOT hallucinate differences that aren't there. If two regions look \
 identical, do not invent changes. Focus only on real, visible differences.
 
-Respond with a bullet-point list (2-5 bullets). Each bullet should be one \
-concise observation. Use "- " prefix for each bullet. Do not use JSON.
+Respond with a markdown bullet-point list (2-5 bullets). Each bullet should \
+be one short, plain-language observation that a non-technical person can \
+understand. Bold the element name at the start of each bullet. Avoid \
+technical jargon — say "button is bigger" not "padding increased from \
+var(--spacing-sm) to var(--spacing-md)". Use "- " prefix for each bullet. \
+Do not use JSON.
 """
