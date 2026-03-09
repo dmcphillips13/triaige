@@ -31,9 +31,9 @@ Last updated: 2026-03-08
 - [x] Step 15: Deploy runner to Render + dashboard to Vercel
 
 - [x] Step 16: GitHub App OAuth + repo linking (sign-in flow, per-repo access control, token forwarding, link a repo UI)
+- [x] Step 17: GitHub Actions workflow (merged PR in sample app → Playwright → POST /triage-run)
 
 ### Up next
-- [ ] Step 17: GitHub Actions workflow (merged PR in sample app → Playwright → POST /triage-run)
 - [ ] Step 18: Pre-merge triage mode — run Playwright on open PRs, post dashboard link as PR comment, approve baselines as commits on the PR branch; per-repo settings toggle (default: post-merge)
 - [ ] Step 19: Runner-side Postgres persistence — Neon free tier, /runs CRUD, swap dashboard from localStorage to API
 - [ ] Step 20: Procedural memory — self-improving triage instructions via reflection (stretch)
@@ -41,6 +41,7 @@ Last updated: 2026-03-08
 - [ ] Step 22: Component ownership lookup (stretch)
 - [ ] Step 23: RAGAS evaluation (stretch)
 - [ ] Step 24: Polish + Loom
+- [ ] Step 25: README — repo integration guide (Playwright setup, workflow, secrets, post-failures script)
 
 ---
 
