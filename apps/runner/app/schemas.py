@@ -133,6 +133,20 @@ class UpdateBaselinesResponse(BaseModel):
     pr_url: str
 
 
+class CreateIssuesRequest(BaseModel):
+    """Request to create GitHub issues for rejected failures."""
+
+    run_id: str
+    test_names: list[str]
+    repo: str
+
+
+class CreateIssuesResponse(BaseModel):
+    """Response with URLs of created issues."""
+
+    issues: list[dict]  # [{"test_name": str, "issue_url": str}]
+
+
 class TriageRunSummary(BaseModel):
     """Summary for listing runs."""
 

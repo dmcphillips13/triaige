@@ -1,12 +1,10 @@
 // Client component for run detail — manages human approve/reject verdict state
 // and renders the list of failure cards.
 //
-// Verdict state is loaded from localStorage on mount and synced back on change.
-// This component owns the verdict state for all failures in the run and passes
-// individual verdicts + callbacks down to each FailureCard.
-//
-// Props:
-//   run — full TriageRunResponse from the server component parent.
+// "Submit Changes" processes all verdicted failures:
+//   - Approved → baseline update PR (batched into one PR)
+//   - Rejected → GitHub issues (one per failure)
+// After submission, each failure shows its link and is disabled.
 
 "use client";
 
@@ -15,16 +13,25 @@ import Link from "next/link";
 import { ClassificationBadge } from "@/components/classification-badge";
 import type { HumanVerdict, TriageRunResponse } from "@/lib/types";
 import { getVerdict, setVerdict } from "@/lib/verdicts";
-import { updateBaselines } from "@/lib/api";
+import { updateBaselines, createIssues } from "@/lib/api";
 import { FailureCard } from "./failure-card";
+
+// Per-failure submission result: link to PR or issue
+interface SubmissionResult {
+  url: string;
+  type: "pr" | "issue";
+}
 
 export function RunDetail({ run }: { run: TriageRunResponse }) {
   const [verdicts, setVerdicts] = useState<Record<string, HumanVerdict>>({});
-  const [baselineStatus, setBaselineStatus] = useState<
+  const [submitStatus, setSubmitStatus] = useState<
     "idle" | "loading" | "done" | "error"
   >("idle");
-  const [baselinePrUrl, setBaselinePrUrl] = useState<string | null>(null);
-  const [baselineError, setBaselineError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  // Track which failures have been submitted and their result links
+  const [submitted, setSubmitted] = useState<Record<string, SubmissionResult>>(
+    {}
+  );
 
   // Load verdicts from localStorage on mount
   useEffect(() => {
@@ -43,33 +50,66 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
     [run.run_id]
   );
 
-  // Approved failures that have screenshots and a snapshot path
-  const approvedBaselines = run.results.filter(
+  const isPreMerge = run.triage_mode === "pre_merge";
+
+  // Failures ready to submit (have a verdict and haven't been submitted yet)
+  const pendingApproved = run.results.filter(
     (r) =>
       verdicts[r.test_name] === "approved" &&
+      !submitted[r.test_name] &&
       r.screenshot_actual &&
       r.snapshot_path
   );
+  const pendingRejected = run.results.filter(
+    (r) => verdicts[r.test_name] === "rejected" && !submitted[r.test_name]
+  );
+  const hasPending = pendingApproved.length > 0 || pendingRejected.length > 0;
 
-  const handleUpdateBaselines = async () => {
-    if (!run.repo || approvedBaselines.length === 0) return;
-    setBaselineStatus("loading");
-    setBaselineError(null);
+  const handleSubmitChanges = async () => {
+    if (!run.repo || !hasPending) return;
+    setSubmitStatus("loading");
+    setSubmitError(null);
+
+    const newSubmitted: Record<string, SubmissionResult> = {};
+
     try {
-      const { pr_url } = await updateBaselines(
-        run.run_id,
-        approvedBaselines.map((r) => r.test_name),
-        run.repo
-      );
-      setBaselinePrUrl(pr_url);
-      setBaselineStatus("done");
+      // Process approved failures → baseline PR
+      if (pendingApproved.length > 0) {
+        const { pr_url } = await updateBaselines(
+          run.run_id,
+          pendingApproved.map((r) => r.test_name),
+          run.repo
+        );
+        for (const r of pendingApproved) {
+          newSubmitted[r.test_name] = { url: pr_url, type: "pr" };
+        }
+      }
+
+      // Process rejected failures → GitHub issues
+      if (pendingRejected.length > 0) {
+        const { issues } = await createIssues(
+          run.run_id,
+          pendingRejected.map((r) => r.test_name),
+          run.repo
+        );
+        for (const issue of issues) {
+          newSubmitted[issue.test_name] = {
+            url: issue.issue_url,
+            type: "issue",
+          };
+        }
+      }
+
+      setSubmitted((prev) => ({ ...prev, ...newSubmitted }));
+      setSubmitStatus("done");
     } catch (err) {
-      setBaselineError(err instanceof Error ? err.message : "Failed to create PR");
-      setBaselineStatus("error");
+      setSubmitError(
+        err instanceof Error ? err.message : "Failed to submit changes"
+      );
+      setSubmitStatus("error");
     }
   };
 
-  const isPreMerge = run.triage_mode === "pre_merge";
   const date = new Date(run.created_at).toLocaleString();
 
   // Classification summary counts
@@ -130,54 +170,47 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
               verdict={verdicts[result.test_name] ?? null}
               onVerdict={(v) => handleVerdict(result.test_name, v)}
               readOnly={isPreMerge}
+              submitted={submitted[result.test_name] ?? null}
             />
           </li>
         ))}
       </ul>
 
-      {/* Update Baselines button — only for post-merge runs */}
-      {run.repo && approvedBaselines.length > 0 && baselineStatus !== "done" && !isPreMerge && (
+      {/* Submit Changes button — only for post-merge runs */}
+      {run.repo && !isPreMerge && hasPending && (
         <div className="mt-8 rounded-lg border border-zinc-200 bg-white p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-zinc-900">
-                {approvedBaselines.length} approved baseline
-                {approvedBaselines.length !== 1 && "s"} ready to update
+                {pendingApproved.length > 0 &&
+                  `${pendingApproved.length} approved`}
+                {pendingApproved.length > 0 &&
+                  pendingRejected.length > 0 &&
+                  ", "}
+                {pendingRejected.length > 0 &&
+                  `${pendingRejected.length} rejected`}
               </p>
               <p className="mt-0.5 text-xs text-zinc-500">
-                Creates a PR in {run.repo} with the new screenshots
+                {pendingApproved.length > 0 && "Approved → baseline update PR"}
+                {pendingApproved.length > 0 &&
+                  pendingRejected.length > 0 &&
+                  " · "}
+                {pendingRejected.length > 0 && "Rejected → GitHub issues"}
               </p>
             </div>
             <button
-              onClick={handleUpdateBaselines}
-              disabled={baselineStatus === "loading"}
+              onClick={handleSubmitChanges}
+              disabled={submitStatus === "loading"}
               className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50"
             >
-              {baselineStatus === "loading"
-                ? "Creating PR..."
-                : "Update Baselines"}
+              {submitStatus === "loading"
+                ? "Submitting..."
+                : "Submit Changes"}
             </button>
           </div>
-          {baselineStatus === "error" && baselineError && (
-            <p className="mt-2 text-xs text-red-600">{baselineError}</p>
+          {submitStatus === "error" && submitError && (
+            <p className="mt-2 text-xs text-red-600">{submitError}</p>
           )}
-        </div>
-      )}
-
-      {/* Baseline PR link */}
-      {baselineStatus === "done" && baselinePrUrl && (
-        <div className="mt-8 rounded-lg border border-green-200 bg-green-50 p-4">
-          <p className="text-sm font-medium text-green-900">
-            Baseline update PR created
-          </p>
-          <a
-            href={baselinePrUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-1 inline-block text-sm text-green-700 hover:underline"
-          >
-            {baselinePrUrl}
-          </a>
         </div>
       )}
     </div>

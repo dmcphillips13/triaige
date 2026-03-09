@@ -17,6 +17,8 @@ from app.grouping import (
 from app.schemas import (
     AskRequest,
     AskResponse,
+    CreateIssuesRequest,
+    CreateIssuesResponse,
     FeedbackRequest,
     TriageFailureResult,
     TriageRunRequest,
@@ -27,6 +29,7 @@ from app.schemas import (
 )
 from app.repo_settings import RepoSettings
 from app.tools.github_actions import create_baseline_pr
+from app.tools.github_issues import create_bug_issue
 from app.tools.pr_comment import post_triage_comment
 from app.settings import settings
 from app.tools.playwright_parser import parse_report, parsed_result_to_ask_request
@@ -237,3 +240,36 @@ async def update_baselines(req: UpdateBaselinesRequest, request: Request):
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"GitHub API error: {e}")
     return UpdateBaselinesResponse(pr_url=pr_url)
+
+
+@app.post("/create-issues", response_model=CreateIssuesResponse)
+async def create_issues(req: CreateIssuesRequest, request: Request):
+    """Create GitHub issues for rejected visual regression failures."""
+    run = store.get_run(req.run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    github_token = request.headers.get("X-GitHub-Token")
+    issues: list[dict] = []
+
+    for name in req.test_names:
+        result = store.get_result(req.run_id, name)
+        if not result:
+            raise HTTPException(status_code=404, detail=f"Result not found: {name}")
+        try:
+            issue_url = await asyncio.to_thread(
+                create_bug_issue,
+                repo=req.repo,
+                run_id=req.run_id,
+                test_name=result.test_name,
+                classification=result.ask_response.classification,
+                confidence=result.ask_response.confidence,
+                rationale=result.ask_response.rationale,
+                github_token=github_token,
+            )
+            issues.append({"test_name": name, "issue_url": issue_url})
+        except Exception as e:
+            logger.warning("Failed to create issue for %s: %s", name, e)
+            raise HTTPException(status_code=502, detail=f"GitHub API error for {name}: {e}")
+
+    return CreateIssuesResponse(issues=issues)

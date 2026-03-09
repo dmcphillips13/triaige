@@ -33,3 +33,21 @@ export async function updateBaselines(
   }
   return res.json();
 }
+
+/** Create GitHub issues for rejected visual regression failures. */
+export async function createIssues(
+  runId: string,
+  testNames: string[],
+  repo: string
+): Promise<{ issues: { test_name: string; issue_url: string }[] }> {
+  const res = await fetch("/api/runner/create-issues", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ run_id: runId, test_names: testNames, repo }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Unknown error" }));
+    throw new Error(err.detail || `Failed: ${res.status}`);
+  }
+  return res.json();
+}
