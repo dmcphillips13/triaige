@@ -1,14 +1,9 @@
 // Runs list page — async server component that fetches all triage runs from
-// the runner and displays them as summary cards.
-//
-// Each card shows: truncated run ID, timestamp, failure count, and a breakdown
-// of classifications as colored badges. Cards link to /runs/[runId] for detail.
-//
-// Handles two edge cases: runner offline (error message) and no runs (empty state).
+// the runner and passes them to a client component with Open/Closed tabs.
 
 import Link from "next/link";
 import { fetchRuns } from "@/lib/api.server";
-import { ClassificationBadge } from "@/components/classification-badge";
+import { RunsList } from "./runs-list";
 
 export default async function RunsPage() {
   let runs;
@@ -40,43 +35,7 @@ export default async function RunsPage() {
       {runs.length === 0 ? (
         <p className="mt-8 text-center text-zinc-500">No triage runs found.</p>
       ) : (
-        <ul className="mt-6 space-y-3">
-          {runs.map((run) => {
-            const date = new Date(run.created_at).toLocaleString();
-            return (
-              <li key={run.run_id}>
-                <Link
-                  href={`/runs/${run.run_id}`}
-                  className="block rounded-lg border border-zinc-200 bg-white p-4 transition-colors hover:border-zinc-300 hover:bg-zinc-50"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-zinc-900 font-medium truncate">
-                      {run.pr_title || run.run_id.slice(0, 8)}
-                    </span>
-                    <span className="shrink-0 text-sm text-zinc-400">{date}</span>
-                  </div>
-                  <div className="mt-2 flex items-center gap-3">
-                    <span className="text-sm font-medium text-zinc-900">
-                      {run.total_failures} failure{run.total_failures !== 1 && "s"}
-                    </span>
-                    <div className="flex gap-1.5">
-                      {Object.entries(run.classifications).map(
-                        ([cls, count]) => (
-                          <span key={cls} className="flex items-center gap-1">
-                            <ClassificationBadge classification={cls} />
-                            <span className="text-xs text-zinc-500">
-                              {count}
-                            </span>
-                          </span>
-                        )
-                      )}
-                    </div>
-                  </div>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+        <RunsList runs={runs} />
       )}
     </div>
   );

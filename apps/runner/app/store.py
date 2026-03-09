@@ -73,6 +73,15 @@ def get_result(run_id: str, test_name: str) -> TriageFailureResult | None:
     return None
 
 
+def close_run(run_id: str) -> bool:
+    """Mark a run as closed. Returns True if found."""
+    entry = _runs.get(run_id)
+    if not entry:
+        return False
+    entry["response"].closed = True
+    return True
+
+
 def list_runs() -> list[TriageRunSummary]:
     """List all runs, newest first."""
     summaries = []
@@ -87,6 +96,7 @@ def list_runs() -> list[TriageRunSummary]:
             pr_url=resp.pr_url,
             repo=resp.repo,
             triage_mode=resp.triage_mode,
+            closed=resp.closed,
         ))
     summaries.sort(key=lambda s: s.created_at, reverse=True)
     return summaries

@@ -34,6 +34,17 @@ export async function updateBaselines(
   return res.json();
 }
 
+/** Mark a triage run as closed. */
+export async function closeRun(runId: string): Promise<void> {
+  const res = await fetch(`/api/runner/runs/${runId}/close`, {
+    method: "PATCH",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Unknown error" }));
+    throw new Error(err.detail || `Failed: ${res.status}`);
+  }
+}
+
 /** Create GitHub issues for rejected visual regression failures. */
 export async function createIssues(
   runId: string,

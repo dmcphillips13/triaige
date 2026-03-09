@@ -78,3 +78,11 @@ export async function DELETE(
   const { path } = await params;
   return proxyRequest(request, path.join('/'));
 }
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ path: string[] }> }
+) {
+  const { path } = await params;
+  return proxyRequest(request, path.join('/'));
+}

@@ -71,6 +71,7 @@ export interface TriageRunSummary {
   pr_url?: string | null;
   repo?: string | null;
   triage_mode?: string | null;
+  closed?: boolean;
 }
 
 export interface TriageRunResponse {
@@ -82,6 +83,7 @@ export interface TriageRunResponse {
   pr_url?: string | null;
   repo?: string | null;
   triage_mode?: string | null;
+  closed?: boolean;
 }
 
 // Human feedback on a triage classification. Stored in localStorage for now

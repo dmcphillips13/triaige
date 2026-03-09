@@ -158,6 +158,7 @@ class TriageRunSummary(BaseModel):
     pr_url: str | None = None
     repo: str | None = None
     triage_mode: str | None = None
+    closed: bool = False
 
 
 class TriageRunResponse(BaseModel):
@@ -171,3 +172,4 @@ class TriageRunResponse(BaseModel):
     pr_url: str | None = None
     repo: str | None = None
     triage_mode: str | None = None
+    closed: bool = False

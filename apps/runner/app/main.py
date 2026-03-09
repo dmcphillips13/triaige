@@ -186,6 +186,14 @@ async def get_run(run_id: str):
     return run
 
 
+@app.patch("/runs/{run_id}/close")
+async def close_run(run_id: str):
+    """Mark a triage run as closed."""
+    if not store.close_run(run_id):
+        raise HTTPException(status_code=404, detail="Run not found")
+    return {"status": "closed"}
+
+
 @app.post("/feedback")
 async def feedback(req: FeedbackRequest):
     """Store human verdict as an episode in Qdrant for future few-shot retrieval."""

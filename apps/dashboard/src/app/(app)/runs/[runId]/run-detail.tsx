@@ -13,7 +13,7 @@ import Link from "next/link";
 import { ClassificationBadge } from "@/components/classification-badge";
 import type { HumanVerdict, TriageRunResponse } from "@/lib/types";
 import { getVerdict, setVerdict } from "@/lib/verdicts";
-import { updateBaselines, createIssues } from "@/lib/api";
+import { updateBaselines, createIssues, closeRun } from "@/lib/api";
 import { FailureCard } from "./failure-card";
 
 // Per-failure submission result: link to PR or issue
@@ -57,6 +57,7 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
     "idle" | "loading" | "done" | "error"
   >("idle");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isClosed, setIsClosed] = useState(run.closed ?? false);
   // Track which failures have been submitted and their result links
   const [submitted, setSubmitted] = useState<Record<string, SubmissionResult>>(
     {}
@@ -245,6 +246,31 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
           {submitStatus === "error" && submitError && (
             <p className="mt-2 text-xs text-red-600">{submitError}</p>
           )}
+        </div>
+      )}
+
+      {/* Close Run */}
+      {!isPreMerge && !isClosed && (
+        <div className="mt-8 flex justify-end">
+          <button
+            onClick={async () => {
+              try {
+                await closeRun(run.run_id);
+                setIsClosed(true);
+              } catch {
+                // ignore
+              }
+            }}
+            className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+          >
+            Close Run
+          </button>
+        </div>
+      )}
+
+      {isClosed && (
+        <div className="mt-8 rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-center">
+          <p className="text-sm text-zinc-500">This run has been closed.</p>
         </div>
       )}
     </div>
