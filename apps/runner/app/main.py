@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
-from app import store
+from app import repo_settings, store
 from app.agent.graph import run_graph
 from app.episodic import store_episode
 from app.grouping import (
@@ -24,6 +24,7 @@ from app.schemas import (
     UpdateBaselinesRequest,
     UpdateBaselinesResponse,
 )
+from app.repo_settings import RepoSettings
 from app.tools.github_actions import create_baseline_pr
 from app.settings import settings
 from app.tools.playwright_parser import parse_report, parsed_result_to_ask_request
@@ -60,6 +61,18 @@ app.add_middleware(
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/repos/{repo:path}/settings", response_model=RepoSettings)
+async def get_repo_settings(repo: str):
+    """Get triage mode settings for a repo."""
+    return repo_settings.get_settings(repo)
+
+
+@app.put("/repos/{repo:path}/settings", response_model=RepoSettings)
+async def put_repo_settings(repo: str, req: RepoSettings):
+    """Update triage mode settings for a repo."""
+    return repo_settings.put_settings(repo, req)
 
 
 @app.post("/ask", response_model=AskResponse)
