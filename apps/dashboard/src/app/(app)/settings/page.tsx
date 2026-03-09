@@ -1,7 +1,8 @@
-// Settings page — link a GitHub repo for triage runs.
+// Settings page — link a GitHub repo and configure triage mode.
 //
 // Fetches the user's repos from /api/auth/repos and displays a dropdown.
-// The selected repo is stored in localStorage until Postgres is added (Step 18).
+// The selected repo is stored in localStorage until Postgres is added (Step 19).
+// Triage mode (before/after merge) is stored on the runner via API.
 
 "use client";
 
@@ -12,17 +13,27 @@ interface Repo {
   private: boolean;
 }
 
+interface RepoSettings {
+  pre_merge: boolean;
+  post_merge: boolean;
+}
+
 const STORAGE_KEY = "triaige:linked_repo";
 
 export default function SettingsPage() {
   const [repos, setRepos] = useState<Repo[]>([]);
   const [loading, setLoading] = useState(true);
   const [linkedRepo, setLinkedRepo] = useState<string>("");
+  const [preMerge, setPreMerge] = useState(false);
+  const [postMerge, setPostMerge] = useState(true);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) setLinkedRepo(stored);
+    if (stored) {
+      setLinkedRepo(stored);
+      loadSettings(stored);
+    }
 
     fetch("/api/auth/repos")
       .then((r) => (r.ok ? r.json() : []))
@@ -31,9 +42,38 @@ export default function SettingsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleSave = () => {
+  const loadSettings = (repo: string) => {
+    if (!repo) return;
+    fetch(`/api/runner/repos/${encodeURIComponent(repo)}/settings`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: RepoSettings | null) => {
+        if (data) {
+          setPreMerge(data.pre_merge);
+          setPostMerge(data.post_merge);
+        }
+      })
+      .catch(() => {});
+  };
+
+  const handleRepoChange = (repo: string) => {
+    setLinkedRepo(repo);
+    setSaved(false);
+    setPreMerge(false);
+    setPostMerge(true);
+    loadSettings(repo);
+  };
+
+  const handleSave = async () => {
     if (linkedRepo) {
       localStorage.setItem(STORAGE_KEY, linkedRepo);
+      await fetch(
+        `/api/runner/repos/${encodeURIComponent(linkedRepo)}/settings`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pre_merge: preMerge, post_merge: postMerge }),
+        }
+      );
     } else {
       localStorage.removeItem(STORAGE_KEY);
     }
@@ -59,10 +99,7 @@ export default function SettingsPage() {
             <>
               <select
                 value={linkedRepo}
-                onChange={(e) => {
-                  setLinkedRepo(e.target.value);
-                  setSaved(false);
-                }}
+                onChange={(e) => handleRepoChange(e.target.value)}
                 className="w-full max-w-md rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
               >
                 <option value="">Select a repository...</option>
@@ -73,15 +110,66 @@ export default function SettingsPage() {
                   </option>
                 ))}
               </select>
-              <button
-                onClick={handleSave}
-                className="shrink-0 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
-              >
-                {saved ? "Saved" : "Save"}
-              </button>
             </>
           )}
         </div>
+      </div>
+
+      {linkedRepo && (
+        <div className="mt-6 rounded-lg border border-zinc-200 bg-white p-6">
+          <h2 className="text-lg font-semibold text-zinc-900">Triage Mode</h2>
+          <p className="mt-1 text-sm text-zinc-500">
+            Choose when Triaige runs visual regression triage for this repo.
+          </p>
+
+          <div className="mt-4 flex flex-col gap-3">
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={preMerge}
+                onChange={(e) => {
+                  setPreMerge(e.target.checked);
+                  setSaved(false);
+                }}
+                className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500"
+              />
+              <div>
+                <span className="text-sm font-medium text-zinc-900">Before merge</span>
+                <p className="text-xs text-zinc-500">
+                  Run on open PRs and post results as a PR comment
+                </p>
+              </div>
+            </label>
+
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={postMerge}
+                onChange={(e) => {
+                  setPostMerge(e.target.checked);
+                  setSaved(false);
+                }}
+                className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500"
+              />
+              <div>
+                <span className="text-sm font-medium text-zinc-900">After merge</span>
+                <p className="text-xs text-zinc-500">
+                  Run after PRs are merged to the default branch
+                </p>
+              </div>
+            </label>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-6">
+        <button
+          onClick={handleSave}
+          disabled={!linkedRepo}
+          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {saved ? "Saved" : "Save"}
+        </button>
       </div>
     </div>
   );
