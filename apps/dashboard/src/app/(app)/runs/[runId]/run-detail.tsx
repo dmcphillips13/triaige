@@ -22,6 +22,35 @@ interface SubmissionResult {
   type: "pr" | "issue";
 }
 
+const SUBMISSIONS_KEY = "triaige:submissions";
+
+function loadSubmissions(
+  runId: string
+): Record<string, SubmissionResult> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(SUBMISSIONS_KEY);
+    const all = raw ? JSON.parse(raw) : {};
+    return all[runId] ?? {};
+  } catch {
+    return {};
+  }
+}
+
+function saveSubmissions(
+  runId: string,
+  subs: Record<string, SubmissionResult>
+): void {
+  try {
+    const raw = localStorage.getItem(SUBMISSIONS_KEY);
+    const all = raw ? JSON.parse(raw) : {};
+    all[runId] = subs;
+    localStorage.setItem(SUBMISSIONS_KEY, JSON.stringify(all));
+  } catch {
+    // ignore
+  }
+}
+
 export function RunDetail({ run }: { run: TriageRunResponse }) {
   const [verdicts, setVerdicts] = useState<Record<string, HumanVerdict>>({});
   const [submitStatus, setSubmitStatus] = useState<
@@ -33,13 +62,14 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
     {}
   );
 
-  // Load verdicts from localStorage on mount
+  // Load verdicts and submissions from localStorage on mount
   useEffect(() => {
     const loaded: Record<string, HumanVerdict> = {};
     for (const r of run.results) {
       loaded[r.test_name] = getVerdict(run.run_id, r.test_name);
     }
     setVerdicts(loaded);
+    setSubmitted(loadSubmissions(run.run_id));
   }, [run]);
 
   const handleVerdict = useCallback(
@@ -100,7 +130,11 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
         }
       }
 
-      setSubmitted((prev) => ({ ...prev, ...newSubmitted }));
+      setSubmitted((prev) => {
+        const merged = { ...prev, ...newSubmitted };
+        saveSubmissions(run.run_id, merged);
+        return merged;
+      });
       setSubmitStatus("done");
     } catch (err) {
       setSubmitError(
