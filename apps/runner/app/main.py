@@ -83,6 +83,15 @@ async def ask(req: AskRequest):
 @app.post("/triage-run", response_model=TriageRunResponse)
 async def triage_run(req: TriageRunRequest):
     """Accept a batch of test failures and triage each through the agent."""
+    # Check if this triage mode is enabled for the repo
+    repo = req.pr_context.repo if req.pr_context else None
+    mode = req.triage_mode or "post_merge"
+    if repo:
+        rs = repo_settings.get_settings(repo)
+        enabled = rs.pre_merge if mode == "pre_merge" else rs.post_merge
+        if not enabled:
+            return store.create_run([], pr_context=req.pr_context, triage_mode=mode)
+
     if req.report_json:
         report = parse_report(req.report_json)
         ask_requests = [
@@ -115,7 +124,7 @@ async def triage_run(req: TriageRunRequest):
             for ask_req in grp.requests:
                 results.append(_build_result(ask_req, response, group_names))
 
-    return store.create_run(results, pr_context=req.pr_context)
+    return store.create_run(results, pr_context=req.pr_context, triage_mode=mode)
 
 
 def _build_result(

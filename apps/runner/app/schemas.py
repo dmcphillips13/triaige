@@ -97,6 +97,7 @@ class TriageRunRequest(BaseModel):
     report_json: dict | None = None
     failures: list[AskRequest] | None = None
     pr_context: PRContext | None = None
+    triage_mode: str | None = None  # "pre_merge" or "post_merge"
 
     @model_validator(mode="after")
     def _require_one_input(self) -> "TriageRunRequest":
@@ -142,6 +143,7 @@ class TriageRunSummary(BaseModel):
     pr_title: str | None = None
     pr_url: str | None = None
     repo: str | None = None
+    triage_mode: str | None = None
 
 
 class TriageRunResponse(BaseModel):
@@ -154,3 +156,4 @@ class TriageRunResponse(BaseModel):
     pr_title: str | None = None
     pr_url: str | None = None
     repo: str | None = None
+    triage_mode: str | None = None

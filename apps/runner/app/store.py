@@ -18,6 +18,7 @@ _runs: dict[str, dict] = {}
 def create_run(
     results: list[TriageFailureResult],
     pr_context: PRContext | None = None,
+    triage_mode: str | None = None,
 ) -> TriageRunResponse:
     """Persist a new triage run and return the full response."""
     run_id = str(uuid.uuid4())
@@ -44,6 +45,7 @@ def create_run(
         pr_title=pr_title,
         pr_url=pr_url,
         repo=repo,
+        triage_mode=triage_mode,
     )
 
     _runs[run_id] = {
@@ -84,6 +86,7 @@ def list_runs() -> list[TriageRunSummary]:
             pr_title=resp.pr_title,
             pr_url=resp.pr_url,
             repo=resp.repo,
+            triage_mode=resp.triage_mode,
         ))
     summaries.sort(key=lambda s: s.created_at, reverse=True)
     return summaries
