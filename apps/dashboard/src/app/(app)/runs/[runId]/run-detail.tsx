@@ -1,6 +1,7 @@
 // Client component for run detail — manages human approve/reject verdict state
 // and renders the list of failure cards.
 //
+// Verdicts and submissions are persisted in Postgres via the runner API.
 // "Submit Changes" processes all verdicted failures:
 //   - Approved → baseline update PR (batched into one PR)
 //   - Rejected → GitHub issues (one per failure)
@@ -11,45 +12,18 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ClassificationBadge } from "@/components/classification-badge";
-import type { HumanVerdict, TriageRunResponse } from "@/lib/types";
-import { getVerdict, setVerdict } from "@/lib/verdicts";
-import { updateBaselines, createIssues, closeRun } from "@/lib/api";
+import type { HumanVerdict, SubmissionResult, TriageRunResponse } from "@/lib/types";
+import {
+  fetchVerdicts,
+  fetchSubmissions,
+  submitFeedback,
+  putVerdict,
+  putSubmission,
+  updateBaselines,
+  createIssues,
+  closeRun,
+} from "@/lib/api";
 import { FailureCard } from "./failure-card";
-
-// Per-failure submission result: link to PR or issue
-interface SubmissionResult {
-  url: string;
-  type: "pr" | "issue";
-}
-
-const SUBMISSIONS_KEY = "triaige:submissions";
-
-function loadSubmissions(
-  runId: string
-): Record<string, SubmissionResult> {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = localStorage.getItem(SUBMISSIONS_KEY);
-    const all = raw ? JSON.parse(raw) : {};
-    return all[runId] ?? {};
-  } catch {
-    return {};
-  }
-}
-
-function saveSubmissions(
-  runId: string,
-  subs: Record<string, SubmissionResult>
-): void {
-  try {
-    const raw = localStorage.getItem(SUBMISSIONS_KEY);
-    const all = raw ? JSON.parse(raw) : {};
-    all[runId] = subs;
-    localStorage.setItem(SUBMISSIONS_KEY, JSON.stringify(all));
-  } catch {
-    // ignore
-  }
-}
 
 export function RunDetail({ run }: { run: TriageRunResponse }) {
   const [verdicts, setVerdicts] = useState<Record<string, HumanVerdict>>({});
@@ -58,25 +32,30 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
   >("idle");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isClosed, setIsClosed] = useState(run.closed ?? false);
-  // Track which failures have been submitted and their result links
   const [submitted, setSubmitted] = useState<Record<string, SubmissionResult>>(
     {}
   );
 
-  // Load verdicts and submissions from localStorage on mount
+  // Load verdicts and submissions from the API on mount
   useEffect(() => {
-    const loaded: Record<string, HumanVerdict> = {};
-    for (const r of run.results) {
-      loaded[r.test_name] = getVerdict(run.run_id, r.test_name);
-    }
-    setVerdicts(loaded);
-    setSubmitted(loadSubmissions(run.run_id));
+    fetchVerdicts(run.run_id).then((v) => {
+      const mapped: Record<string, HumanVerdict> = {};
+      for (const r of run.results) {
+        mapped[r.test_name] = (v[r.test_name] as HumanVerdict) ?? null;
+      }
+      setVerdicts(mapped);
+    });
+    fetchSubmissions(run.run_id).then(setSubmitted);
   }, [run]);
 
   const handleVerdict = useCallback(
     (testName: string, verdict: HumanVerdict) => {
-      setVerdict(run.run_id, testName, verdict);
       setVerdicts((prev) => ({ ...prev, [testName]: verdict }));
+      if (verdict) {
+        // Persist verdict in Postgres and store episode in Qdrant (both fire-and-forget)
+        putVerdict(run.run_id, testName, verdict).catch(() => {});
+        submitFeedback(run.run_id, testName, verdict).catch(() => {});
+      }
     },
     [run.run_id]
   );
@@ -131,11 +110,12 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
         }
       }
 
-      setSubmitted((prev) => {
-        const merged = { ...prev, ...newSubmitted };
-        saveSubmissions(run.run_id, merged);
-        return merged;
-      });
+      // Persist submissions in Postgres
+      for (const [testName, sub] of Object.entries(newSubmitted)) {
+        putSubmission(run.run_id, testName, sub.url, sub.type).catch(() => {});
+      }
+
+      setSubmitted((prev) => ({ ...prev, ...newSubmitted }));
       setSubmitStatus("done");
     } catch (err) {
       setSubmitError(

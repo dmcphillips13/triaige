@@ -16,4 +16,5 @@ dependencies = [
   "langchain-openai",
   "Pillow",
   "httpx",
+  "asyncpg",
 ]

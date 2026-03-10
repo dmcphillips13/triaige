@@ -147,6 +147,19 @@ class CreateIssuesResponse(BaseModel):
     issues: list[dict]  # [{"test_name": str, "issue_url": str}]
 
 
+class VerdictRequest(BaseModel):
+    """Human verdict on a single failure."""
+
+    verdict: str  # "approved" or "rejected"
+
+
+class SubmissionRequest(BaseModel):
+    """Submission result for a single failure (PR or issue URL)."""
+
+    url: str
+    type: str  # "pr" or "issue"
+
+
 class TriageRunSummary(BaseModel):
     """Summary for listing runs."""
 

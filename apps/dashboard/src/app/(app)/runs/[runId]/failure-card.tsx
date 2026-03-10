@@ -11,7 +11,7 @@
 // Props:
 //   result   — TriageFailureResult containing test_name and the full AskResponse
 //   verdict  — current human verdict for this failure (from parent state)
-//   onVerdict — callback to update the verdict (syncs to localStorage via parent)
+//   onVerdict — callback to update the verdict (persisted to Postgres via parent)
 
 "use client";
 
@@ -21,12 +21,7 @@ import { Check, X, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ClassificationBadge } from "@/components/classification-badge";
 import { ScreenshotViewer } from "@/components/screenshot-viewer";
-import type { Citation, ToolCall, TriageFailureResult, HumanVerdict } from "@/lib/types";
-
-interface SubmissionResult {
-  url: string;
-  type: "pr" | "issue";
-}
+import type { Citation, ToolCall, TriageFailureResult, HumanVerdict, SubmissionResult } from "@/lib/types";
 
 export function FailureCard({
   result,

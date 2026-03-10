@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     langsmith_project: str = "triaige"
     langchain_tracing_v2: str | None = None
 
+    # Database
+    database_url: str = "postgresql://localhost:5432/triaige"
+
     # API key (shared secret between dashboard and runner)
     api_key: str | None = None
 

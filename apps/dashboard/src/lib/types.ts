@@ -86,7 +86,13 @@ export interface TriageRunResponse {
   closed?: boolean;
 }
 
-// Human feedback on a triage classification. Stored in localStorage for now
-// (see lib/verdicts.ts). Step 13 wires this to episodic memory in Qdrant,
-// where approved decisions become few-shot examples for future classifications.
+// Human feedback on a triage classification. Stored in Postgres via the
+// runner API. Also triggers episodic memory storage in Qdrant, where approved
+// decisions become few-shot examples for future classifications.
 export type HumanVerdict = "approved" | "rejected" | null;
+
+// Submission result for a single failure (created PR or issue)
+export interface SubmissionResult {
+  url: string;
+  type: "pr" | "issue";
+}

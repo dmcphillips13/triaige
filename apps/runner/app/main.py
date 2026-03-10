@@ -1,5 +1,13 @@
+"""FastAPI application for the Triaige runner.
+
+Handles triage run ingestion, human feedback, baseline PR creation,
+issue filing, and verdict/submission persistence. All run data is stored
+in Postgres via the store module.
+"""
+
 import asyncio
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,6 +16,7 @@ from starlette.responses import JSONResponse
 
 from app import repo_settings, store
 from app.agent.graph import run_graph
+from app.db import close_db, init_db
 from app.episodic import store_episode
 from app.grouping import (
     build_group_request,
@@ -26,6 +35,8 @@ from app.schemas import (
     TriageRunSummary,
     UpdateBaselinesRequest,
     UpdateBaselinesResponse,
+    VerdictRequest,
+    SubmissionRequest,
 )
 from app.repo_settings import RepoSettings
 from app.tools.github_actions import create_baseline_pr
@@ -36,7 +47,15 @@ from app.tools.playwright_parser import parse_report, parsed_result_to_ask_reque
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Triaige Runner")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    yield
+    await close_db()
+
+
+app = FastAPI(title="Triaige Runner", lifespan=lifespan)
 
 
 class ApiKeyMiddleware(BaseHTTPMiddleware):
@@ -73,13 +92,13 @@ async def health():
 @app.get("/repos/{repo:path}/settings", response_model=RepoSettings)
 async def get_repo_settings(repo: str):
     """Get triage mode settings for a repo."""
-    return repo_settings.get_settings(repo)
+    return await repo_settings.get_settings(repo)
 
 
 @app.put("/repos/{repo:path}/settings", response_model=RepoSettings)
 async def put_repo_settings(repo: str, req: RepoSettings):
     """Update triage mode settings for a repo."""
-    return repo_settings.put_settings(repo, req)
+    return await repo_settings.put_settings(repo, req)
 
 
 @app.post("/ask", response_model=AskResponse)
@@ -94,10 +113,10 @@ async def triage_run(req: TriageRunRequest, request: Request):
     repo = req.pr_context.repo if req.pr_context else None
     mode = req.triage_mode or "post_merge"
     if repo:
-        rs = repo_settings.get_settings(repo)
+        rs = await repo_settings.get_settings(repo)
         enabled = rs.pre_merge if mode == "pre_merge" else rs.post_merge
         if not enabled:
-            return store.create_run([], pr_context=req.pr_context, triage_mode=mode)
+            return await store.create_run([], pr_context=req.pr_context, triage_mode=mode)
 
     if req.report_json:
         report = parse_report(req.report_json)
@@ -131,7 +150,7 @@ async def triage_run(req: TriageRunRequest, request: Request):
             for ask_req in grp.requests:
                 results.append(_build_result(ask_req, response, group_names))
 
-    run_response = store.create_run(results, pr_context=req.pr_context, triage_mode=mode)
+    run_response = await store.create_run(results, pr_context=req.pr_context, triage_mode=mode)
 
     # Post PR comment for pre-merge runs
     if (
@@ -174,13 +193,13 @@ def _build_result(
 @app.get("/runs", response_model=list[TriageRunSummary])
 async def list_runs():
     """List all triage runs."""
-    return store.list_runs()
+    return await store.list_runs()
 
 
 @app.get("/runs/{run_id}", response_model=TriageRunResponse)
 async def get_run(run_id: str):
     """Get a single triage run by ID."""
-    run = store.get_run(run_id)
+    run = await store.get_run(run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
     return run
@@ -189,9 +208,46 @@ async def get_run(run_id: str):
 @app.patch("/runs/{run_id}/close")
 async def close_run(run_id: str):
     """Mark a triage run as closed."""
-    if not store.close_run(run_id):
+    if not await store.close_run(run_id):
         raise HTTPException(status_code=404, detail="Run not found")
     return {"status": "closed"}
+
+
+# --- Verdicts ---
+
+
+@app.put("/runs/{run_id}/failures/{test_name}/verdict")
+async def put_verdict(run_id: str, test_name: str, req: VerdictRequest):
+    """Store a human verdict for a failure."""
+    if req.verdict not in ("approved", "rejected"):
+        raise HTTPException(status_code=400, detail="Verdict must be 'approved' or 'rejected'")
+    await store.set_verdict(run_id, test_name, req.verdict)
+    return {"status": "stored"}
+
+
+@app.get("/runs/{run_id}/verdicts")
+async def get_verdicts(run_id: str):
+    """Fetch all verdicts for a run."""
+    return await store.get_verdicts(run_id)
+
+
+# --- Submissions ---
+
+
+@app.put("/runs/{run_id}/failures/{test_name}/submission")
+async def put_submission(run_id: str, test_name: str, req: SubmissionRequest):
+    """Store a submission result (PR or issue URL) for a failure."""
+    await store.set_submission(run_id, test_name, req.url, req.type)
+    return {"status": "stored"}
+
+
+@app.get("/runs/{run_id}/submissions")
+async def get_submissions(run_id: str):
+    """Fetch all submissions for a run."""
+    return await store.get_submissions(run_id)
+
+
+# --- Feedback (episodic memory) ---
 
 
 @app.post("/feedback")
@@ -199,24 +255,31 @@ async def feedback(req: FeedbackRequest):
     """Store human verdict as an episode in Qdrant for future few-shot retrieval."""
     if req.verdict not in ("approved", "rejected"):
         raise HTTPException(status_code=400, detail="Verdict must be 'approved' or 'rejected'")
-    result = store.get_result(req.run_id, req.test_name)
+    result = await store.get_result(req.run_id, req.test_name)
     if not result:
         raise HTTPException(status_code=404, detail="Result not found")
+
+    # Also persist the verdict in Postgres
+    await store.set_verdict(req.run_id, req.test_name, req.verdict)
+
     point_id = await asyncio.to_thread(store_episode, result, req.verdict, req.run_id)
     return {"status": "stored", "point_id": point_id}
+
+
+# --- GitHub actions ---
 
 
 @app.post("/update-baselines", response_model=UpdateBaselinesResponse)
 async def update_baselines(req: UpdateBaselinesRequest, request: Request):
     """Create a PR updating baseline screenshots for approved failures."""
-    run = store.get_run(req.run_id)
+    run = await store.get_run(req.run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
 
     # Collect approved failures that have both screenshot_actual and snapshot_path
     baselines: list[dict] = []
     for name in req.test_names:
-        result = store.get_result(req.run_id, name)
+        result = await store.get_result(req.run_id, name)
         if not result:
             raise HTTPException(status_code=404, detail=f"Result not found: {name}")
         if not result.screenshot_actual:
@@ -253,7 +316,7 @@ async def update_baselines(req: UpdateBaselinesRequest, request: Request):
 @app.post("/create-issues", response_model=CreateIssuesResponse)
 async def create_issues(req: CreateIssuesRequest, request: Request):
     """Create GitHub issues for rejected visual regression failures."""
-    run = store.get_run(req.run_id)
+    run = await store.get_run(req.run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
 
@@ -261,7 +324,7 @@ async def create_issues(req: CreateIssuesRequest, request: Request):
     issues: list[dict] = []
 
     for name in req.test_names:
-        result = store.get_result(req.run_id, name)
+        result = await store.get_result(req.run_id, name)
         if not result:
             raise HTTPException(status_code=404, detail=f"Result not found: {name}")
         try:
