@@ -1,12 +1,12 @@
 # PROJECT_CONTEXT.md — Triaige (Session Handoff)
 
-Last updated: 2026-03-08
+Last updated: 2026-03-09
 
 ---
 
 ## Current status
 
-**Phase:** Core pipeline complete and deployed, moving to GitHub OAuth + CI integration
+**Phase:** Core pipeline complete through Step 18. Final week — Postgres persistence, repo management UX, setup CLI, then polish.
 
 ### Completed
 - [x] Project planning and scoping
@@ -29,19 +29,20 @@ Last updated: 2026-03-08
 - [x] Step 13: Human-in-the-loop + episodic memory (approve/reject → Qdrant episodes → few-shot retrieval)
 - [x] Step 14: GitHub automated actions — PR-labeled runs + "Update Baselines" PR for approved expected failures via Git Data API
 - [x] Step 15: Deploy runner to Render + dashboard to Vercel
-
 - [x] Step 16: GitHub App OAuth + repo linking (sign-in flow, per-repo access control, token forwarding, link a repo UI)
 - [x] Step 17: GitHub Actions workflow (merged PR in sample app → Playwright → POST /triage-run)
+- [x] Step 18: Triage mode settings + submission actions — pre-merge/post-merge checkboxes, PR comment posting, "Submit Changes" (approved → baseline update PR, rejected → GitHub issue with bug report), submission results persisted in localStorage, open/closed run tabs with close run button, pre-merge runs are read-only
 
-### Up next
-- [ ] Step 18: Triage mode settings — two checkboxes per repo: "before merge" and "after merge" (after checked by default). Runner filters runs based on setting. Pre-merge posts dashboard link as PR comment. Customer adds `pull_request` trigger to their workflow to enable pre-merge.
+### Up next (final week — all items are must-haves)
 - [ ] Step 19: Runner-side Postgres persistence — Neon free tier, /runs CRUD, swap dashboard from localStorage to API
-- [ ] Step 20: Procedural memory — self-improving triage instructions via reflection (stretch)
-- [ ] Step 21: Auto-approve baselines above confidence threshold (stretch, lowest priority — needs discussion)
-- [ ] Step 22: Component ownership lookup (stretch)
-- [ ] Step 23: RAGAS evaluation (stretch)
-- [ ] Step 24: Polish + Loom
-- [ ] Step 25: README — repo integration guide (Playwright setup, workflow, secrets, post-failures script)
+- [ ] Step 20: Repos landing page + add repo flow — after login, land on a repos page showing linked repos as cards (repo name, last run status, failure count); click a repo → see its runs; "Connect Repo" flow to link a new repo via GitHub App installation scope
+- [ ] Step 21: Repo setup CLI — `npx triaige init` (or similar) run inside a target repo to scaffold the GitHub Actions workflow file, Playwright config, post-failures script, and guide the user through secrets setup; replaces manual repo configuration
+- [ ] Step 22: Settings UI — per-repo configuration page in dashboard for API keys (OpenAI, etc.), triage mode toggles, and other config that currently lives in env vars
+- [ ] Step 23: Procedural memory — self-improving triage instructions via reflection (stretch)
+- [ ] Step 24: Auto-approve baselines above confidence threshold (stretch, lowest priority)
+- [ ] Step 25: Component ownership lookup (stretch)
+- [ ] Step 26: RAGAS evaluation (stretch)
+- [ ] Step 27: Polish + Loom
 
 ---
 
