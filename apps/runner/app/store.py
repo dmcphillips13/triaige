@@ -263,7 +263,7 @@ async def get_known_failures(run_id: str) -> dict[str, dict]:
                JOIN runs r ON r.run_id = fr.run_id
                WHERE fr.test_name = ANY($1)
                  AND r.repo = $2
-                 AND (r.triage_mode IS NULL OR r.triage_mode != 'pre_merge')
+                 AND r.triage_mode = 'post_merge'
                  AND r.created_at < $3
                ORDER BY fr.test_name, r.created_at ASC""",
             test_names, repo, created_at,
