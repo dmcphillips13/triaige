@@ -96,3 +96,14 @@ export interface SubmissionResult {
   url: string;
   type: "pr" | "issue";
 }
+
+// Known failure context for a test — which PR introduced it and any existing submission
+export interface KnownFailureInfo {
+  failing_since: {
+    run_id: string;
+    pr_title: string | null;
+    pr_url: string | null;
+    created_at: string;
+  } | null;
+  open_submission: SubmissionResult | null;
+}

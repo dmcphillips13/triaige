@@ -69,6 +69,28 @@ export async function fetchSubmissions(
   return res.json();
 }
 
+/** Fetch known failure context for a run (failing since, open submissions). */
+export async function fetchKnownFailures(
+  runId: string
+): Promise<
+  Record<
+    string,
+    {
+      failing_since: {
+        run_id: string;
+        pr_title: string | null;
+        pr_url: string | null;
+        created_at: string;
+      } | null;
+      open_submission: { url: string; type: "pr" | "issue" } | null;
+    }
+  >
+> {
+  const res = await fetch(`/api/runner/runs/${runId}/known-failures`);
+  if (!res.ok) return {};
+  return res.json();
+}
+
 /** Create a PR updating baseline screenshots for approved failures. */
 export async function updateBaselines(
   runId: string,

@@ -1,8 +1,9 @@
 """Post a triage summary comment on a GitHub PR.
 
 Used for pre-merge triage mode: after processing visual test failures,
-posts a markdown comment with the classification summary and a link
-to the dashboard run detail page.
+posts a markdown comment with the classification summary, known failure
+annotations (with links to existing PRs/issues), and a link to the
+dashboard run detail page.
 """
 
 import logging
@@ -20,6 +21,7 @@ def post_triage_comment(
     pr_number: int,
     run: TriageRunResponse,
     github_token: str | None = None,
+    known_failures: dict[str, dict] | None = None,
 ) -> str:
     """Post a triage summary comment on a PR.
 
@@ -28,6 +30,7 @@ def post_triage_comment(
         pr_number: Pull request number.
         run: The triage run response with results.
         github_token: Per-request token. Falls back to env var.
+        known_failures: Known failure context from store.get_known_failures().
 
     Returns:
         URL of the created comment.
@@ -35,6 +38,8 @@ def post_triage_comment(
     effective_token = github_token or settings.github_token
     if not effective_token:
         raise RuntimeError("GitHub token is required for PR comments")
+
+    known = known_failures or {}
 
     # Build classification summary
     counts: dict[str, int] = {}
@@ -56,13 +61,37 @@ def post_triage_comment(
         "",
         f"**{run.total_failures} failure{'s' if run.total_failures != 1 else ''}** triaged: {summary}",
         "",
-        "| Test | Classification | Confidence |",
-        "|---|---|---|",
+        "| Test | Classification | Confidence | Status |",
+        "|---|---|---|---|",
     ]
     for r in run.results:
         res = r.ask_response
         confidence = f"{round(res.confidence * 100)}%"
-        lines.append(f"| {r.test_name} | {res.classification} | {confidence} |")
+
+        # Build status column with known failure context
+        kf = known.get(r.test_name, {})
+        status_parts = []
+
+        failing_since = kf.get("failing_since")
+        if failing_since:
+            pr_title = failing_since.get("pr_title") or "a previous run"
+            pr_url = failing_since.get("pr_url")
+            if pr_url:
+                status_parts.append(f"Known — [since {pr_title}]({pr_url})")
+            else:
+                status_parts.append(f"Known — since {pr_title}")
+
+        open_sub = kf.get("open_submission")
+        if open_sub:
+            sub_label = "Baseline PR" if open_sub["type"] == "pr" else "Issue"
+            status_parts.append(f"[{sub_label} open]({open_sub['url']})")
+
+        if not status_parts:
+            status_parts.append("New")
+
+        lines.append(
+            f"| {r.test_name} | {res.classification} | {confidence} | {' · '.join(status_parts)} |"
+        )
 
     lines.extend([
         "",

@@ -161,12 +161,14 @@ async def triage_run(req: TriageRunRequest, request: Request):
         and req.pr_context.repo
     ):
         github_token = request.headers.get("X-GitHub-Token")
+        known = await store.get_known_failures(run_response.run_id)
         try:
             post_triage_comment(
                 repo=req.pr_context.repo,
                 pr_number=req.pr_context.pr_number,
                 run=run_response,
                 github_token=github_token,
+                known_failures=known,
             )
         except Exception as e:
             logger.warning("Failed to post PR comment: %s", e)
@@ -245,6 +247,19 @@ async def put_submission(run_id: str, test_name: str, req: SubmissionRequest):
 async def get_submissions(run_id: str):
     """Fetch all submissions for a run."""
     return await store.get_submissions(run_id)
+
+
+# --- Known failures ---
+
+
+@app.get("/runs/{run_id}/known-failures")
+async def get_known_failures(run_id: str):
+    """Find known failures for a run's test names.
+
+    Returns per-test context: which PR introduced the failure and any
+    existing open submissions (PRs or issues).
+    """
+    return await store.get_known_failures(run_id)
 
 
 # --- Feedback (episodic memory) ---

@@ -1,3 +1,9 @@
+// Runs list with Main / PR / Closed tabs.
+//
+// Main: post-merge runs on main branch (actionable — approve/reject, submit, close)
+// PR: pre-merge runs from open PRs (informational, read-only)
+// Closed: runs manually closed by a reviewer
+
 "use client";
 
 import { useState } from "react";
@@ -5,41 +11,55 @@ import Link from "next/link";
 import { ClassificationBadge } from "@/components/classification-badge";
 import type { TriageRunSummary } from "@/lib/types";
 
-export function RunsList({ runs }: { runs: TriageRunSummary[] }) {
-  const [tab, setTab] = useState<"open" | "closed">("open");
+type Tab = "main" | "pr" | "closed";
 
-  const openRuns = runs.filter((r) => !r.closed);
-  const closedRuns = runs.filter((r) => r.closed);
-  const displayed = tab === "open" ? openRuns : closedRuns;
+export function RunsList({ runs }: { runs: TriageRunSummary[] }) {
+  const [tab, setTab] = useState<Tab>("main");
+
+  const mainRuns = runs.filter(
+    (r) => r.triage_mode !== "pre_merge" && !r.closed
+  );
+  const prRuns = runs.filter((r) => r.triage_mode === "pre_merge");
+  const closedRuns = runs.filter(
+    (r) => r.closed && r.triage_mode !== "pre_merge"
+  );
+
+  const tabs: { key: Tab; label: string; runs: TriageRunSummary[] }[] = [
+    { key: "main", label: "Main", runs: mainRuns },
+    { key: "pr", label: "PR", runs: prRuns },
+    { key: "closed", label: "Closed", runs: closedRuns },
+  ];
+
+  const displayed = tabs.find((t) => t.key === tab)!.runs;
+
+  const emptyMessages: Record<Tab, string> = {
+    main: "No runs on main.",
+    pr: "No PR runs.",
+    closed: "No closed runs.",
+  };
 
   return (
     <>
       <div className="mt-6 flex gap-1 border-b border-zinc-200">
-        <button
-          onClick={() => setTab("open")}
-          className={`px-3 py-2 text-sm font-medium transition-colors ${
-            tab === "open"
-              ? "border-b-2 border-zinc-900 text-zinc-900"
-              : "text-zinc-500 hover:text-zinc-700"
-          }`}
-        >
-          Open{openRuns.length > 0 && ` (${openRuns.length})`}
-        </button>
-        <button
-          onClick={() => setTab("closed")}
-          className={`px-3 py-2 text-sm font-medium transition-colors ${
-            tab === "closed"
-              ? "border-b-2 border-zinc-900 text-zinc-900"
-              : "text-zinc-500 hover:text-zinc-700"
-          }`}
-        >
-          Closed{closedRuns.length > 0 && ` (${closedRuns.length})`}
-        </button>
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`px-3 py-2 text-sm font-medium transition-colors ${
+              tab === t.key
+                ? "border-b-2 border-zinc-900 text-zinc-900"
+                : "text-zinc-500 hover:text-zinc-700"
+            }`}
+          >
+            {t.label}
+            {t.runs.length > 0 && ` (${t.runs.length})`}
+          </button>
+        ))}
       </div>
 
       {displayed.length === 0 ? (
         <p className="mt-8 text-center text-zinc-500">
-          {tab === "open" ? "No open runs." : "No closed runs."}
+          {emptyMessages[tab]}
         </p>
       ) : (
         <ul className="mt-4 space-y-3">

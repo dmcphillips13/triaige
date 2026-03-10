@@ -216,3 +216,89 @@ async def get_submissions(run_id: str) -> dict[str, dict]:
             "SELECT test_name, url, type FROM submissions WHERE run_id = $1", run_id
         )
     return {row["test_name"]: {"url": row["url"], "type": row["type"]} for row in rows}
+
+
+# --- Known failure detection ---
+
+
+async def get_known_failures(run_id: str) -> dict[str, dict]:
+    """Find known failures for a run's test names.
+
+    For each failing test in the given run, looks up:
+    1. The earliest main-branch run where that test also failed (before this run)
+    2. The most recent submission (PR or issue) for that test name across all runs
+
+    Returns {test_name: {failing_since: {...} | null, open_submission: {...} | null}}.
+    """
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        # Get the run's metadata and test names
+        run_row = await conn.fetchrow(
+            "SELECT repo, created_at FROM runs WHERE run_id = $1", run_id
+        )
+        if not run_row:
+            return {}
+
+        test_names = [
+            row["test_name"]
+            for row in await conn.fetch(
+                "SELECT test_name FROM failure_results WHERE run_id = $1", run_id
+            )
+        ]
+        if not test_names:
+            return {}
+
+        repo = run_row["repo"]
+        created_at = run_row["created_at"]
+
+        # 1. Find the earliest main-branch run where each test failed
+        failing_since_rows = await conn.fetch(
+            """SELECT DISTINCT ON (fr.test_name)
+                   fr.test_name,
+                   r.run_id,
+                   r.pr_title,
+                   r.pr_url,
+                   r.created_at
+               FROM failure_results fr
+               JOIN runs r ON r.run_id = fr.run_id
+               WHERE fr.test_name = ANY($1)
+                 AND r.repo = $2
+                 AND (r.triage_mode IS NULL OR r.triage_mode != 'pre_merge')
+                 AND r.created_at < $3
+               ORDER BY fr.test_name, r.created_at ASC""",
+            test_names, repo, created_at,
+        )
+        failing_since = {
+            row["test_name"]: {
+                "run_id": row["run_id"],
+                "pr_title": row["pr_title"],
+                "pr_url": row["pr_url"],
+                "created_at": row["created_at"].isoformat(),
+            }
+            for row in failing_since_rows
+        }
+
+        # 2. Find the most recent submission for each test name (across all runs)
+        submission_rows = await conn.fetch(
+            """SELECT DISTINCT ON (test_name)
+                   test_name, url, type
+               FROM submissions
+               WHERE test_name = ANY($1)
+               ORDER BY test_name, created_at DESC""",
+            test_names,
+        )
+        open_submissions = {
+            row["test_name"]: {"url": row["url"], "type": row["type"]}
+            for row in submission_rows
+        }
+
+    # Build combined result
+    result: dict[str, dict] = {}
+    for name in test_names:
+        entry: dict[str, dict | None] = {
+            "failing_since": failing_since.get(name),
+            "open_submission": open_submissions.get(name),
+        }
+        result[name] = entry
+
+    return result

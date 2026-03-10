@@ -1,21 +1,30 @@
 // Client component for run detail — manages human approve/reject verdict state
 // and renders the list of failure cards.
 //
-// Verdicts and submissions are persisted in Postgres via the runner API.
+// Verdicts, submissions, and known failure context are loaded from Postgres
+// via the runner API. Known failures show which PR introduced the regression
+// and any existing open submissions (PRs or issues).
+//
 // "Submit Changes" processes all verdicted failures:
 //   - Approved → baseline update PR (batched into one PR)
 //   - Rejected → GitHub issues (one per failure)
-// After submission, each failure shows its link and is disabled.
+// After submission, each failure shows its link and actions are disabled.
 
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ClassificationBadge } from "@/components/classification-badge";
-import type { HumanVerdict, SubmissionResult, TriageRunResponse } from "@/lib/types";
+import type {
+  HumanVerdict,
+  KnownFailureInfo,
+  SubmissionResult,
+  TriageRunResponse,
+} from "@/lib/types";
 import {
   fetchVerdicts,
   fetchSubmissions,
+  fetchKnownFailures,
   submitFeedback,
   putVerdict,
   putSubmission,
@@ -35,8 +44,11 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
   const [submitted, setSubmitted] = useState<Record<string, SubmissionResult>>(
     {}
   );
+  const [knownFailures, setKnownFailures] = useState<
+    Record<string, KnownFailureInfo>
+  >({});
 
-  // Load verdicts and submissions from the API on mount
+  // Load verdicts, submissions, and known failures from the API on mount
   useEffect(() => {
     fetchVerdicts(run.run_id).then((v) => {
       const mapped: Record<string, HumanVerdict> = {};
@@ -46,13 +58,13 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
       setVerdicts(mapped);
     });
     fetchSubmissions(run.run_id).then(setSubmitted);
+    fetchKnownFailures(run.run_id).then(setKnownFailures);
   }, [run]);
 
   const handleVerdict = useCallback(
     (testName: string, verdict: HumanVerdict) => {
       setVerdicts((prev) => ({ ...prev, [testName]: verdict }));
       if (verdict) {
-        // Persist verdict in Postgres and store episode in Qdrant (both fire-and-forget)
         putVerdict(run.run_id, testName, verdict).catch(() => {});
         submitFeedback(run.run_id, testName, verdict).catch(() => {});
       }
@@ -62,16 +74,21 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
 
   const isPreMerge = run.triage_mode === "pre_merge";
 
-  // Failures ready to submit (have a verdict and haven't been submitted yet)
+  // Failures ready to submit: have a verdict, no submission from this run,
+  // and no open submission from a previous run
   const pendingApproved = run.results.filter(
     (r) =>
       verdicts[r.test_name] === "approved" &&
       !submitted[r.test_name] &&
+      !knownFailures[r.test_name]?.open_submission &&
       r.screenshot_actual &&
       r.snapshot_path
   );
   const pendingRejected = run.results.filter(
-    (r) => verdicts[r.test_name] === "rejected" && !submitted[r.test_name]
+    (r) =>
+      verdicts[r.test_name] === "rejected" &&
+      !submitted[r.test_name] &&
+      !knownFailures[r.test_name]?.open_submission
   );
   const hasPending = pendingApproved.length > 0 || pendingRejected.length > 0;
 
@@ -83,7 +100,6 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
     const newSubmitted: Record<string, SubmissionResult> = {};
 
     try {
-      // Process approved failures → baseline PR
       if (pendingApproved.length > 0) {
         const { pr_url } = await updateBaselines(
           run.run_id,
@@ -95,7 +111,6 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
         }
       }
 
-      // Process rejected failures → GitHub issues
       if (pendingRejected.length > 0) {
         const { issues } = await createIssues(
           run.run_id,
@@ -110,7 +125,6 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
         }
       }
 
-      // Persist submissions in Postgres
       for (const [testName, sub] of Object.entries(newSubmitted)) {
         putSubmission(run.run_id, testName, sub.url, sub.type).catch(() => {});
       }
@@ -127,7 +141,6 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
 
   const date = new Date(run.created_at).toLocaleString();
 
-  // Classification summary counts
   const counts: Record<string, number> = {};
   for (const r of run.results) {
     const cls = r.ask_response.classification;
@@ -178,17 +191,30 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
 
       {/* Failure list */}
       <ul className="mt-6 space-y-3">
-        {run.results.map((result) => (
-          <li key={result.test_name}>
-            <FailureCard
-              result={result}
-              verdict={verdicts[result.test_name] ?? null}
-              onVerdict={(v) => handleVerdict(result.test_name, v)}
-              readOnly={isPreMerge}
-              submitted={submitted[result.test_name] ?? null}
-            />
-          </li>
-        ))}
+        {run.results.map((result) => {
+          const kf = knownFailures[result.test_name];
+          // On Main tab: if an open submission exists from a previous run,
+          // treat as action-gated (show link, hide approve/reject)
+          const existingSubmission =
+            kf?.open_submission && !submitted[result.test_name]
+              ? kf.open_submission
+              : null;
+
+          return (
+            <li key={result.test_name}>
+              <FailureCard
+                result={result}
+                verdict={verdicts[result.test_name] ?? null}
+                onVerdict={(v) => handleVerdict(result.test_name, v)}
+                readOnly={isPreMerge}
+                submitted={submitted[result.test_name] ?? null}
+                knownFailure={kf ?? null}
+                actionGated={!isPreMerge && existingSubmission !== null}
+                existingSubmission={existingSubmission}
+              />
+            </li>
+          );
+        })}
       </ul>
 
       {/* Submit Changes button — only for post-merge runs */}

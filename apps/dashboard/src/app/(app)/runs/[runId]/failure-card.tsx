@@ -1,27 +1,31 @@
 // Expandable failure card for a single test failure within a triage run.
 //
 // Collapsed view: classification badge, test name, confidence %, recommended action.
-// Expanded view: rationale text, citations (doc_id + snippet), tool calls,
-//   image diff stats (when available), and debug errors.
+// Expanded view: rationale text, citations, tool calls, image diff, screenshots.
 //
-// Approve/reject buttons toggle the human verdict. Clicking the same verdict
-// again clears it (toggles back to null). The card border changes color to
-// reflect the current verdict: green (approved), red (rejected), neutral (none).
+// Known failure annotation: if the test was failing before this run, shows
+// "Failing since PR #X: title" with a link. If an open submission (PR or issue)
+// exists from a previous run, shows the link and hides approve/reject buttons.
 //
-// Props:
-//   result   — TriageFailureResult containing test_name and the full AskResponse
-//   verdict  — current human verdict for this failure (from parent state)
-//   onVerdict — callback to update the verdict (persisted to Postgres via parent)
+// Action gating: on Main tab, if a failure already has an open PR/issue from a
+// previous run, approve/reject buttons are hidden to prevent duplicates.
 
 "use client";
 
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { Check, X, ChevronDown, ChevronRight } from "lucide-react";
+import { Check, X, ChevronDown, ChevronRight, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ClassificationBadge } from "@/components/classification-badge";
 import { ScreenshotViewer } from "@/components/screenshot-viewer";
-import type { Citation, ToolCall, TriageFailureResult, HumanVerdict, SubmissionResult } from "@/lib/types";
+import type {
+  Citation,
+  ToolCall,
+  TriageFailureResult,
+  HumanVerdict,
+  SubmissionResult,
+  KnownFailureInfo,
+} from "@/lib/types";
 
 export function FailureCard({
   result,
@@ -29,12 +33,18 @@ export function FailureCard({
   onVerdict,
   readOnly = false,
   submitted = null,
+  knownFailure = null,
+  actionGated = false,
+  existingSubmission = null,
 }: {
   result: TriageFailureResult;
   verdict: HumanVerdict;
   onVerdict: (verdict: HumanVerdict) => void;
   readOnly?: boolean;
   submitted?: SubmissionResult | null;
+  knownFailure?: KnownFailureInfo | null;
+  actionGated?: boolean;
+  existingSubmission?: SubmissionResult | null;
 }) {
   const [expanded, setExpanded] = useState(false);
   const { ask_response: res } = result;
@@ -72,8 +82,84 @@ export function FailureCard({
         )}
       </button>
 
-      {/* Approve / Reject buttons (hidden for pre-merge / informational runs) */}
-      {!readOnly && (
+      {/* Known failure annotation */}
+      {knownFailure?.failing_since && (
+        <div className="flex items-center gap-2 border-t border-zinc-100 bg-amber-50 px-4 py-2">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+          <span className="text-xs text-amber-700">
+            Failing since{" "}
+            {knownFailure.failing_since.pr_url ? (
+              <a
+                href={knownFailure.failing_since.pr_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium hover:underline"
+              >
+                {knownFailure.failing_since.pr_title ||
+                  knownFailure.failing_since.pr_url}
+              </a>
+            ) : (
+              <span className="font-medium">
+                {knownFailure.failing_since.pr_title || "a previous run"}
+              </span>
+            )}
+          </span>
+          {/* Show existing open submission link inline */}
+          {(existingSubmission || knownFailure.open_submission) && (
+            <>
+              <span className="text-xs text-amber-400">·</span>
+              <a
+                href={
+                  (existingSubmission || knownFailure.open_submission)!.url
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  "text-xs font-medium hover:underline",
+                  (existingSubmission || knownFailure.open_submission)!
+                    .type === "pr"
+                    ? "text-green-700"
+                    : "text-red-700"
+                )}
+              >
+                {(existingSubmission || knownFailure.open_submission)!
+                  .type === "pr"
+                  ? "Baseline PR pending"
+                  : "Issue open"}
+              </a>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Open submission without failing_since (submission exists but not from a prior run's failure) */}
+      {!knownFailure?.failing_since &&
+        (existingSubmission || knownFailure?.open_submission) && (
+          <div className="flex items-center gap-2 border-t border-zinc-100 bg-zinc-50 px-4 py-2">
+            <a
+              href={
+                (existingSubmission || knownFailure!.open_submission)!.url
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                "text-xs font-medium hover:underline",
+                (existingSubmission || knownFailure!.open_submission)!
+                  .type === "pr"
+                  ? "text-green-700"
+                  : "text-red-700"
+              )}
+            >
+              {(existingSubmission || knownFailure!.open_submission)!
+                .type === "pr"
+                ? "Baseline PR pending"
+                : "Issue open"}
+            </a>
+          </div>
+        )}
+
+      {/* Approve / Reject buttons */}
+      {!readOnly && !actionGated && (
         <div className="flex items-center gap-1 border-t border-zinc-100 px-4 py-2">
           {submitted ? (
             <a
