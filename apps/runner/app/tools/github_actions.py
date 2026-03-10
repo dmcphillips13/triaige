@@ -58,9 +58,13 @@ def create_baseline_pr(
     run_short = run_id[:8]
 
     # 1. Get default branch and its HEAD SHA
-    repo_info = client.get(f"/repos/{repo}").json()
+    repo_resp = client.get(f"/repos/{repo}")
+    repo_resp.raise_for_status()
+    repo_info = repo_resp.json()
     default_branch = repo_info["default_branch"]
-    ref_data = client.get(f"/repos/{repo}/git/ref/heads/{default_branch}").json()
+    ref_resp = client.get(f"/repos/{repo}/git/ref/heads/{default_branch}")
+    ref_resp.raise_for_status()
+    ref_data = ref_resp.json()
     base_sha = ref_data["object"]["sha"]
 
     # 2. Create blobs for each baseline screenshot
