@@ -34,15 +34,22 @@ Last updated: 2026-03-09
 - [x] Step 18: Triage mode settings + submission actions — pre-merge/post-merge checkboxes, PR comment posting, "Submit Changes" (approved → baseline update PR, rejected → GitHub issue with bug report), submission results persisted in localStorage, open/closed run tabs with close run button, pre-merge runs are read-only
 
 ### Up next (final week — all items are must-haves)
-- [ ] Step 19: Runner-side Postgres persistence — Neon free tier, /runs CRUD, swap dashboard from localStorage to API
-- [ ] Step 20: Repos landing page + add repo flow — after login, land on a repos page showing linked repos as cards (repo name, last run status, failure count); click a repo → see its runs; "Connect Repo" flow to link a new repo via GitHub App installation scope
-- [ ] Step 21: Repo setup CLI — `npx triaige init` (or similar) run inside a target repo to scaffold the GitHub Actions workflow file, Playwright config, post-failures script, and guide the user through secrets setup; replaces manual repo configuration
-- [ ] Step 22: Settings UI — per-repo configuration page in dashboard for API keys (OpenAI, etc.), triage mode toggles, and other config that currently lives in env vars
-- [ ] Step 23: Procedural memory — self-improving triage instructions via reflection (stretch)
-- [ ] Step 24: Auto-approve baselines above confidence threshold (stretch, lowest priority)
-- [ ] Step 25: Component ownership lookup (stretch)
-- [ ] Step 26: RAGAS evaluation (stretch)
-- [ ] Step 27: Polish + Loom
+- [x] Step 19: Runner-side Postgres persistence — Neon free tier, asyncpg, 5 tables (runs, failure_results, verdicts, submissions, repo_settings), swap dashboard from localStorage to API
+- [ ] Step 20: Runs page redesign — Main/PR/Closed tabs; known failure annotations; submission-aware action gating
+    - **Main tab** (default): post-merge runs on main branch, fully actionable (approve/reject, submit changes, close)
+    - **PR tab**: pre-merge runs from open PRs, informational only (read-only, no actions)
+    - **Closed tab**: runs manually closed by reviewer (read-only archive)
+    - **Known failure annotations** (both Main and PR tabs): if a test has been failing since a previous merged run, show "Failing since PR #X: title" with a link to the PR that introduced the regression
+    - **Open submission links**: if an open baseline PR or GitHub issue exists for a failing test, show the link on the failure card; also include these links in the PR comment posted for pre-merge runs
+    - **Action gating on Main tab**: if a failure already has an open PR or issue, hide approve/reject buttons (prevents duplicate submissions); if it's a known failure with no open submission, allow approve/reject normally
+- [ ] Step 21: Repos landing page + add repo flow — after login, land on a repos page showing linked repos as cards (repo name, last run status, failure count); click a repo → see its runs; "Connect Repo" flow to link a new repo via GitHub App installation scope
+- [ ] Step 22: Repo setup CLI — `npx triaige init` (or similar) run inside a target repo to scaffold the GitHub Actions workflow file, Playwright config, post-failures script, and guide the user through secrets setup; replaces manual repo configuration
+- [ ] Step 23: Settings UI — per-repo configuration page in dashboard for API keys (OpenAI, etc.), triage mode toggles, and other config that currently lives in env vars
+- [ ] Step 24: Procedural memory — self-improving triage instructions via reflection (stretch)
+- [ ] Step 25: Auto-approve baselines above confidence threshold (stretch, lowest priority)
+- [ ] Step 26: Component ownership lookup (stretch)
+- [ ] Step 27: RAGAS evaluation (stretch)
+- [ ] Step 28: Polish + Loom
 
 ---
 

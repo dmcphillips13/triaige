@@ -507,15 +507,22 @@ Commit messages: plain imperative sentences (e.g., "Add GitHub API client for PR
 16. GitHub App OAuth + repo linking: GitHub App (not OAuth App) for per-repo access control, sign-in flow, JWT session cookie, token forwarding to runner, "link a repo" UI with installation-scoped repo dropdown
 17. GitHub Actions workflow: merged PR in sample app repo → Playwright → POST /triage-run → results in dashboard
 18. Triage mode settings + submission actions: pre-merge/post-merge checkboxes per repo; PR comment posting for pre-merge runs; "Submit Changes" replaces "Update Baselines" — approved failures create baseline update PR, rejected failures create GitHub issues with bug reports linking to dashboard; submission results persisted in localStorage; open/closed run tabs with close run button; pre-merge runs are read-only (no approve/reject, no submit, no close)
-19. Runner-side Postgres persistence: Neon free tier, `/runs` CRUD endpoints, swap dashboard from localStorage to API-backed storage; runs survive server restarts
-20. Repos landing page + add repo flow: after login, land on a repos page showing linked repos as cards (repo name, last run status, failure count); click a repo → see its runs; "Connect Repo" flow to link a new repo via GitHub App installation scope
-21. Repo setup CLI: `npx triaige init` (or similar) run inside a target repo to scaffold the GitHub Actions workflow file, Playwright config, post-failures script, and guide the user through secrets/env setup; replaces manual repo configuration
-22. Settings UI: per-repo configuration page in dashboard for API keys (OpenAI, etc.), triage mode toggles, and other config that currently lives in env vars or is hardcoded
-23. Procedural memory: agent reflection on feedback patterns → self-updating triage instructions, versioned in Qdrant (stretch)
-24. Auto-approve baselines above confidence threshold (stretch, lowest priority — needs discussion before implementing; default should always be human-in-the-loop)
-25. Component ownership lookup (stretch)
-26. RAGAS evaluation (stretch)
-27. Polish + Loom prep
+19. Runner-side Postgres persistence: Neon free tier, asyncpg, 5 tables (runs, failure_results, verdicts, submissions, repo_settings), swap dashboard from localStorage to API-backed storage; runs survive server restarts
+20. Runs page redesign — Main/PR/Closed tabs with known failure annotations and submission-aware action gating:
+    - **Main tab** (default): post-merge runs on main branch, fully actionable (approve/reject, submit changes, close)
+    - **PR tab**: pre-merge runs from open PRs, informational only (read-only, no actions)
+    - **Closed tab**: runs manually closed by reviewer (read-only archive)
+    - **Known failure annotations** (both Main and PR tabs): if a test has been failing since a previous merged run, show "Failing since PR #X: title" with link to the PR that introduced the regression; on PR runs this tells the developer which failures are pre-existing vs caused by their changes
+    - **Open submission links**: if an open baseline PR or GitHub issue exists for a failing test, show the link on the failure card so reviewers know action is already in progress; also include these links in the PR comment posted for pre-merge runs
+    - **Action gating on Main tab**: if a failure already has an open PR or issue from a previous run, hide approve/reject buttons to prevent duplicate submissions; known failures with no open submission allow normal approve/reject
+21. Repos landing page + add repo flow: after login, land on a repos page showing linked repos as cards (repo name, last run status, failure count); click a repo → see its runs; "Connect Repo" flow to link a new repo via GitHub App installation scope
+22. Repo setup CLI: `npx triaige init` (or similar) run inside a target repo to scaffold the GitHub Actions workflow file, Playwright config, post-failures script, and guide the user through secrets/env setup; replaces manual repo configuration
+23. Settings UI: per-repo configuration page in dashboard for API keys (OpenAI, etc.), triage mode toggles, and other config that currently lives in env vars or is hardcoded
+24. Procedural memory: agent reflection on feedback patterns → self-updating triage instructions, versioned in Qdrant (stretch)
+25. Auto-approve baselines above confidence threshold (stretch, lowest priority — needs discussion before implementing; default should always be human-in-the-loop)
+26. Component ownership lookup (stretch)
+27. RAGAS evaluation (stretch)
+28. Polish + Loom prep
 
 ---
 
