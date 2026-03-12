@@ -93,8 +93,6 @@ Before running the E2E test, ensure a clean state:
    `verdicts`, `submissions` tables (connect to Neon or use a reset endpoint).
 3. **Update baselines on main**: trigger the `update-snapshots.yml` workflow so
    baselines match the current main branch code. Wait for it to complete.
-4. **Enable triage modes**: in the Triaige dashboard settings for
-   `dmcphillips13/triaige-sample-app`, enable both pre-merge and post-merge.
 
 ### Setup: Create two PRs
 
@@ -157,6 +155,7 @@ Before running the E2E test, ensure a clean state:
 
 **Verify**:
 - [ ] No new comment on the PR (post-merge runs don't post comments)
+- [ ] PR A's pre-merge run was auto-closed (moved from PR tab to Closed tab)
 
 ### Step 4 — Triage on Main tab
 
@@ -166,6 +165,7 @@ Before running the E2E test, ensure a clean state:
 - [ ] New post-merge run appears titled with PR A's title
 - [ ] Failure cards show approve/reject buttons
 - [ ] No known failure annotations (this is the first main-branch run)
+- [ ] Close Run button is disabled with "All failures must have submissions" message
 
 **Action**: For each failure, expand and review the screenshots.
 - **Approve** failures that match the PR description (accent color, font sizes)
@@ -175,28 +175,12 @@ Before running the E2E test, ensure a clean state:
 - [ ] Approved failures show green checkmark
 - [ ] Rejected failures show red X
 - [ ] "Submit Changes" button appears (or becomes enabled)
+- [ ] Close Run button is still disabled (no submissions yet)
 
-### Step 5 — Submit changes
+### Step 5 — Re-trigger PR B (net-new filtering)
 
-**Action**: Click **Submit Changes**.
-
-**Verify**:
-- [ ] Approved failures → a baseline update PR is created on the sample app repo
-- [ ] Rejected failures → GitHub issues are created (one per rejection)
-- [ ] Each failure card now shows its submission link ("Baseline PR open" or
-      "Issue open")
-- [ ] Approve/reject buttons are now hidden on submitted failures (action gating)
-
-### Step 6 — Close the run
-
-**Action**: Click **Close Run**.
-
-**Verify**:
-- [ ] Run disappears from Main tab
-- [ ] Run appears in Closed tab
-- [ ] Closed run is read-only (no actions)
-
-### Step 7 — Re-trigger PR B
+**Important**: Do this BEFORE submitting/closing PR A's post-merge run, so PR A's
+failures are still in the "existing" set for net-new filtering.
 
 **Action**: Re-trigger the workflow for PR B:
 ```
@@ -207,17 +191,39 @@ Wait ~3 minutes for the workflow to complete.
 **Action**: Check PR B on GitHub for the updated Triaige comment.
 
 **Verify**:
-- [ ] Failures that overlap with PR A's run show "Known — since \<PR A title\>"
-      with a link
-- [ ] Failures with open submissions from Step 5 show "Baseline PR pending" or
-      "Issue open"
-- [ ] New failures (unique to PR B) show "New"
+- [ ] Comment only shows failures unique to PR B (net-new), not failures
+      already present in PR A's open post-merge run
+- [ ] If PR B has zero net-new failures, no run is created and no comment posted
 
-**Action**: Open the dashboard PR tab, click PR B's latest run.
+**Action**: Open the dashboard PR tab.
 
 **Verify**:
-- [ ] Known failure annotations match the PR comment
+- [ ] PR B's old pre-merge run was auto-closed (superseded by the new retrigger)
+- [ ] PR B's new pre-merge run (if created) only shows net-new failures
 - [ ] Still read-only (no approve/reject buttons)
+
+### Step 6 — Submit changes
+
+**Action**: Go back to PR A's post-merge run on the Main tab. Click **Submit Changes**.
+
+**Verify**:
+- [ ] Approved failures → a baseline update PR is created on the sample app repo
+- [ ] Rejected failures → GitHub issues are created (one per rejection)
+- [ ] Each failure card now shows its submission link ("Baseline PR open" or
+      "Issue open")
+- [ ] Approve/reject buttons are now hidden on submitted failures (action gating)
+
+### Step 7 — Close the run
+
+**Verify**:
+- [ ] Close Run button is now enabled (all failures have submissions)
+
+**Action**: Click **Close Run**.
+
+**Verify**:
+- [ ] Run disappears from Main tab
+- [ ] Run appears in Closed tab
+- [ ] Closed run is read-only (no actions)
 
 ### What this validates
 
@@ -228,8 +234,10 @@ Wait ~3 minutes for the workflow to complete.
 - Post-merge approve/reject workflow
 - Baseline PR creation and issue filing via Submit Changes
 - Submission link display and persistence
-- Known failure detection (main-branch runs only, not PR runs)
-- Known failure annotations with links to the originating PR
+- **Net-new failure filtering** (pre-merge and post-merge runs only show failures
+  not present in open post-merge runs)
+- **Auto-close pre-merge runs** (superseded by newer run for same PR, or when PR merges)
+- **Close gating** (post-merge runs require all failures to have submissions)
 - Action gating when open submissions exist
 - Run close lifecycle (Main → Closed)
 
@@ -241,5 +249,4 @@ Wait ~3 minutes for the workflow to complete.
 - **Subtle pixel changes can pass**: Status badge style change (pill → dot) didn't trigger a test failure despite `maxDiffPixelRatio: 0`. The `display: block` on truncated tbody may mask column-level changes.
 - **Baseline timing**: Baselines must be regenerated after merging to main, before creating the next test PR. Otherwise tests compare against stale baselines.
 - **Known failures are main-branch only**: The `get_known_failures` query only considers post-merge runs. PR-to-PR failure overlap is not tracked.
-- **Runs show all failures**: Currently both post-merge and pre-merge runs include pre-existing failures from prior PRs, adding noise. Should filter to net-new only. Tracked as Step 20.1.
 - **No prior-PR attribution**: When a failure surfaces on a merge run but was caused by a different PR, there's no attribution linking to the responsible PR. Future work: a separate async agent that scans recent merge history and adds attribution comments to filed issues.
