@@ -42,16 +42,17 @@ Last updated: 2026-03-09
     - **Known failure annotations** (both Main and PR tabs): if a test has been failing since a previous merged run, show "Failing since PR #X: title" with a link to the PR that introduced the regression
     - **Open submission links**: if an open baseline PR or GitHub issue exists for a failing test, show the link on the failure card; also include these links in the PR comment posted for pre-merge runs
     - **Action gating on Main tab**: if a failure already has an open PR or issue, hide approve/reject buttons (prevents duplicate submissions); if it's a known failure with no open submission, allow approve/reject normally
-- [ ] Step 20.1: Net-new failure filtering — both post-merge and pre-merge runs only show failures not present in previous open post-merge runs; if zero new failures, skip run creation; post-merge runs can only be closed when all failures are addressed (baseline PR or issue opened); pre-merge runs are non-actionable (read-only) and auto-close when a newer run for the same PR supersedes them or when the PR merges and a post-merge run is created; PR comments also only show net-new failures; default triage mode to both pre-merge and post-merge enabled
-- [ ] Step 21: Repos landing page + add repo flow — after login, land on a repos page showing linked repos as cards (repo name, last run status, failure count); click a repo → see its runs; "Connect Repo" flow to link a new repo via GitHub App installation scope
-- [ ] Step 22: Issue attribution agent — separate async agent that runs after issues are filed; scans recent merge history and adds attribution comments linking the likely responsible PR and author
-- [ ] Step 23: Auto-approve baselines above confidence threshold (stretch)
-- [ ] Step 24: Procedural memory — self-improving triage instructions via reflection (stretch)
-- [ ] Step 25: Settings UI — per-repo configuration page in dashboard for API keys (OpenAI, etc.), triage mode toggles, and other config that currently lives in env vars
-- [ ] Step 26: Repo setup CLI — `npx triaige init` (or similar) run inside a target repo to scaffold the GitHub Actions workflow file, Playwright config, post-failures script, and guide the user through secrets setup; replaces manual repo configuration
-- [ ] Step 27: Component ownership lookup (stretch)
-- [ ] Step 28: RAGAS evaluation (stretch)
-- [ ] Step 29: Polish + Loom
+- [x] Step 20.1: Net-new failure filtering — only show failures not present in previous open post-merge runs; skip run creation when zero new failures; post-merge runs auto-close when all failures have submissions; pre-merge runs auto-close when superseded or when the PR merges; default both triage modes enabled
+- [ ] Step 21: Separate test repo support — link a UI repo with a separate Playwright/baselines repo; triage uses PR context from UI repo, baseline PRs target test repo; keeps UI repos clean of test infrastructure
+- [ ] Step 22: Repos landing page + add repo flow — repos page with cards, "Connect Repo" flow via GitHub App
+- [ ] Step 23: Issue attribution agent — async agent scans merge history, adds attribution comments to issues
+- [ ] Step 24: Auto-approve baselines above confidence threshold (stretch)
+- [ ] Step 25: Procedural memory — self-improving triage instructions via reflection (stretch)
+- [ ] Step 26: Settings UI — per-repo config page for API keys, triage mode toggles
+- [ ] Step 27: Repo setup CLI — `npx triaige init` to scaffold workflow, config, and secrets
+- [ ] Step 28: Component ownership lookup (stretch)
+- [ ] Step 29: RAGAS evaluation (stretch)
+- [ ] Step 30: Polish + Loom
 
 ---
 
