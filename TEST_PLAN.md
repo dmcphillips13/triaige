@@ -242,4 +242,4 @@ Wait ~3 minutes for the workflow to complete.
 - **Baseline timing**: Baselines must be regenerated after merging to main, before creating the next test PR. Otherwise tests compare against stale baselines.
 - **Known failures are main-branch only**: The `get_known_failures` query only considers post-merge runs. PR-to-PR failure overlap is not tracked.
 - **Runs show all failures**: Currently both post-merge and pre-merge runs include pre-existing failures from prior PRs, adding noise. Should filter to net-new only. Tracked as Step 20.1.
-- **No prior-PR attribution**: When a failure surfaces on a merge run but was caused by a different PR, there's no attribution linking to the responsible PR. Tracked as Step 20.2.
+- **No prior-PR attribution**: When a failure surfaces on a merge run but was caused by a different PR, there's no attribution linking to the responsible PR. Future work: a separate async agent that scans recent merge history and adds attribution comments to filed issues.
