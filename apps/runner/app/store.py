@@ -141,6 +141,21 @@ async def close_run(run_id: str) -> bool:
     return result == "UPDATE 1"
 
 
+async def close_superseded_runs(repo: str, exclude_run_id: str) -> int:
+    """Close all open post-merge runs for a repo except the given run."""
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        result = await conn.execute(
+            """UPDATE runs SET closed = TRUE
+               WHERE repo = $1
+                 AND triage_mode = 'post_merge'
+                 AND closed = FALSE
+                 AND run_id != $2""",
+            repo, exclude_run_id,
+        )
+    return int(result.split()[-1])
+
+
 async def list_runs() -> list[TriageRunSummary]:
     """List all runs, newest first."""
     pool = get_pool()

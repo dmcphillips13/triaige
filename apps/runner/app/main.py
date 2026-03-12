@@ -152,6 +152,12 @@ async def triage_run(req: TriageRunRequest, request: Request):
 
     run_response = await store.create_run(results, pr_context=req.pr_context, triage_mode=mode)
 
+    # Auto-close superseded post-merge runs for the same repo
+    if mode == "post_merge" and req.pr_context and req.pr_context.repo:
+        closed = await store.close_superseded_runs(req.pr_context.repo, run_response.run_id)
+        if closed:
+            logger.info("Auto-closed %d superseded run(s)", closed)
+
     # Post PR comment for pre-merge runs
     if (
         mode == "pre_merge"
