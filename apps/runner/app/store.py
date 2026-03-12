@@ -299,7 +299,9 @@ async def check_close_eligibility(run_id: str) -> bool:
                WHERE fr.run_id = $1
                  AND EXISTS (
                      SELECT 1 FROM submissions s
+                     JOIN runs r ON r.run_id = s.run_id
                      WHERE s.test_name = fr.test_name
+                       AND r.closed = FALSE
                  )""",
             run_id,
         )
@@ -364,13 +366,15 @@ async def get_known_failures(run_id: str) -> dict[str, dict]:
             for row in failing_since_rows
         }
 
-        # 2. Find the most recent submission for each test name (across all runs)
+        # 2. Find the most recent submission from an open run for each test name
         submission_rows = await conn.fetch(
-            """SELECT DISTINCT ON (test_name)
-                   test_name, url, type
-               FROM submissions
-               WHERE test_name = ANY($1)
-               ORDER BY test_name, created_at DESC""",
+            """SELECT DISTINCT ON (s.test_name)
+                   s.test_name, s.url, s.type
+               FROM submissions s
+               JOIN runs r ON r.run_id = s.run_id
+               WHERE s.test_name = ANY($1)
+                 AND r.closed = FALSE
+               ORDER BY s.test_name, s.created_at DESC""",
             test_names,
         )
         open_submissions = {
