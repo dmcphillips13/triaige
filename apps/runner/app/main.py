@@ -131,6 +131,27 @@ async def triage_run(req: TriageRunRequest, request: Request):
                 if r.pr_context is None:
                     r.pr_context = req.pr_context
 
+    # --- Net-new filtering: only triage failures not present in open post-merge runs ---
+    if repo:
+        existing = await store.get_existing_failure_test_names(repo)
+        if existing:
+            ask_requests = [
+                r for r in ask_requests
+                if extract_test_name(r) not in existing
+            ]
+
+    # If no net-new failures, skip run creation entirely
+    if not ask_requests:
+        logger.info("No net-new failures for %s (%s) — skipping run creation", repo, mode)
+        return TriageRunResponse(
+            run_id="",
+            created_at="",
+            total_failures=0,
+            results=[],
+            repo=repo,
+            triage_mode=mode,
+        )
+
     # Group related failures to reduce LLM calls
     groups = group_failures(ask_requests)
 
@@ -149,6 +170,19 @@ async def triage_run(req: TriageRunRequest, request: Request):
             response = await asyncio.to_thread(run_graph, group_request)
             for ask_req in grp.requests:
                 results.append(_build_result(ask_req, response, group_names))
+
+    # --- Auto-close superseded pre-merge runs for the same PR ---
+    pr_number = req.pr_context.pr_number if req.pr_context else None
+    if repo and pr_number and mode == "pre_merge":
+        closed_ids = await store.auto_close_pre_merge_runs(repo, pr_number)
+        if closed_ids:
+            logger.info("Auto-closed %d superseded pre-merge run(s) for PR #%d", len(closed_ids), pr_number)
+
+    # For post-merge runs, auto-close all pre-merge runs for this PR
+    if repo and pr_number and mode == "post_merge":
+        closed_ids = await store.auto_close_pre_merge_runs(repo, pr_number)
+        if closed_ids:
+            logger.info("Auto-closed %d pre-merge run(s) on merge of PR #%d", len(closed_ids), pr_number)
 
     run_response = await store.create_run(results, pr_context=req.pr_context, triage_mode=mode)
 
@@ -209,8 +243,23 @@ async def get_run(run_id: str):
 
 @app.patch("/runs/{run_id}/close")
 async def close_run(run_id: str):
-    """Mark a triage run as closed."""
-    if not await store.close_run(run_id):
+    """Mark a triage run as closed.
+
+    Post-merge runs can only be closed when all failures have submissions.
+    """
+    run = await store.get_run(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    if run.triage_mode == "post_merge":
+        eligible = await store.check_close_eligibility(run_id)
+        if not eligible:
+            raise HTTPException(
+                status_code=409,
+                detail="All failures must have submissions before closing a post-merge run",
+            )
+
+    if not await store.close_run(run_id, force=True):
         raise HTTPException(status_code=404, detail="Run not found")
     return {"status": "closed"}
 
@@ -250,6 +299,13 @@ async def get_submissions(run_id: str):
 
 
 # --- Known failures ---
+
+
+@app.get("/runs/{run_id}/close-eligibility")
+async def check_close_eligibility(run_id: str):
+    """Check if a post-merge run can be closed (all failures have submissions)."""
+    eligible = await store.check_close_eligibility(run_id)
+    return {"eligible": eligible}
 
 
 @app.get("/runs/{run_id}/known-failures")

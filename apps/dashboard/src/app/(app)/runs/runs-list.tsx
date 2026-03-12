@@ -19,10 +19,10 @@ export function RunsList({ runs }: { runs: TriageRunSummary[] }) {
   const mainRuns = runs.filter(
     (r) => r.triage_mode !== "pre_merge" && !r.closed
   );
-  const prRuns = runs.filter((r) => r.triage_mode === "pre_merge");
-  const closedRuns = runs.filter(
-    (r) => r.closed && r.triage_mode !== "pre_merge"
+  const prRuns = runs.filter(
+    (r) => r.triage_mode === "pre_merge" && !r.closed
   );
+  const closedRuns = runs.filter((r) => r.closed);
 
   const tabs: { key: Tab; label: string; runs: TriageRunSummary[] }[] = [
     { key: "main", label: "Main", runs: mainRuns },

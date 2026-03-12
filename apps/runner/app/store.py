@@ -37,6 +37,7 @@ async def create_run(
         classifications[cls] = classifications.get(cls, 0) + 1
 
     pr_title = pr_context.title if pr_context else None
+    pr_number = pr_context.pr_number if pr_context else None
     pr_url = (
         f"https://github.com/{pr_context.repo}/pull/{pr_context.pr_number}"
         if pr_context and pr_context.repo and pr_context.pr_number
@@ -47,9 +48,9 @@ async def create_run(
     async with pool.acquire() as conn:
         async with conn.transaction():
             await conn.execute(
-                """INSERT INTO runs (run_id, created_at, total_failures, pr_title, pr_url, repo, triage_mode, classifications)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8)""",
-                run_id, created_at, len(results), pr_title, pr_url, repo, triage_mode,
+                """INSERT INTO runs (run_id, created_at, total_failures, pr_title, pr_url, pr_number, repo, triage_mode, classifications)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)""",
+                run_id, created_at, len(results), pr_title, pr_url, pr_number, repo, triage_mode,
                 json.dumps(classifications),
             )
             for r in results:
@@ -131,10 +132,25 @@ async def get_result(run_id: str, test_name: str) -> TriageFailureResult | None:
     )
 
 
-async def close_run(run_id: str) -> bool:
-    """Mark a run as closed. Returns True if found."""
+async def close_run(run_id: str, force: bool = False) -> bool:
+    """Mark a run as closed.
+
+    For post-merge runs, requires all failures to have submissions unless
+    force=True. Pre-merge runs can always be closed. Returns True if closed.
+    """
     pool = get_pool()
     async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT triage_mode FROM runs WHERE run_id = $1", run_id
+        )
+        if not row:
+            return False
+
+        if not force and row["triage_mode"] == "post_merge":
+            eligible = await check_close_eligibility(run_id)
+            if not eligible:
+                return False
+
         result = await conn.execute(
             "UPDATE runs SET closed = TRUE WHERE run_id = $1", run_id
         )
@@ -219,6 +235,63 @@ async def get_submissions(run_id: str) -> dict[str, dict]:
 
 
 # --- Known failure detection ---
+
+
+async def get_existing_failure_test_names(repo: str) -> set[str]:
+    """Get test names that are failing in any open post-merge run for a repo.
+
+    Used to filter incoming failures down to net-new only.
+    """
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """SELECT DISTINCT fr.test_name
+               FROM failure_results fr
+               JOIN runs r ON r.run_id = fr.run_id
+               WHERE r.repo = $1
+                 AND r.triage_mode = 'post_merge'
+                 AND r.closed = FALSE""",
+            repo,
+        )
+    return {row["test_name"] for row in rows}
+
+
+async def auto_close_pre_merge_runs(repo: str, pr_number: int) -> list[str]:
+    """Close all open pre-merge runs for a repo/PR combo.
+
+    Called when a newer pre-merge run supersedes older ones, or when a PR
+    merges and a post-merge run is created. Returns list of closed run IDs.
+    """
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """UPDATE runs
+               SET closed = TRUE
+               WHERE repo = $1
+                 AND pr_number = $2
+                 AND triage_mode = 'pre_merge'
+                 AND closed = FALSE
+               RETURNING run_id""",
+            repo, pr_number,
+        )
+    return [row["run_id"] for row in rows]
+
+
+async def check_close_eligibility(run_id: str) -> bool:
+    """Check if a post-merge run can be closed.
+
+    A post-merge run can only be closed when every failure has a submission
+    (baseline PR or issue). Returns True if eligible.
+    """
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        total = await conn.fetchval(
+            "SELECT COUNT(*) FROM failure_results WHERE run_id = $1", run_id
+        )
+        submitted = await conn.fetchval(
+            "SELECT COUNT(*) FROM submissions WHERE run_id = $1", run_id
+        )
+    return total > 0 and submitted >= total
 
 
 async def get_known_failures(run_id: str) -> dict[str, dict]:

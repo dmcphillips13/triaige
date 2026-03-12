@@ -7,11 +7,23 @@ CREATE TABLE IF NOT EXISTS runs (
     total_failures  INTEGER NOT NULL,
     pr_title        TEXT,
     pr_url          TEXT,
+    pr_number       INTEGER,
     repo            TEXT,
     triage_mode     TEXT,
     closed          BOOLEAN NOT NULL DEFAULT FALSE,
     classifications JSONB NOT NULL DEFAULT '{}'
 );
+
+-- Migration: add pr_number column if missing (safe to re-run)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'runs' AND column_name = 'pr_number'
+    ) THEN
+        ALTER TABLE runs ADD COLUMN pr_number INTEGER;
+    END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS failure_results (
     run_id              TEXT NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
@@ -45,6 +57,6 @@ CREATE TABLE IF NOT EXISTS submissions (
 
 CREATE TABLE IF NOT EXISTS repo_settings (
     repo        TEXT PRIMARY KEY,
-    pre_merge   BOOLEAN NOT NULL DEFAULT FALSE,
+    pre_merge   BOOLEAN NOT NULL DEFAULT TRUE,
     post_merge  BOOLEAN NOT NULL DEFAULT TRUE
 );

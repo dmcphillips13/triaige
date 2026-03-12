@@ -13,7 +13,7 @@ from app.db import get_pool
 
 
 class RepoSettings(BaseModel):
-    pre_merge: bool = False
+    pre_merge: bool = True
     post_merge: bool = True
 
 
