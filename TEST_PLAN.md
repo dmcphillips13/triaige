@@ -241,6 +241,6 @@ Wait ~3 minutes for the workflow to complete.
 - **Subtle pixel changes can pass**: Status badge style change (pill → dot) didn't trigger a test failure despite `maxDiffPixelRatio: 0`. The `display: block` on truncated tbody may mask column-level changes.
 - **Baseline timing**: Baselines must be regenerated after merging to main, before creating the next test PR. Otherwise tests compare against stale baselines.
 - **Known failures are main-branch only**: The `get_known_failures` query only considers post-merge runs. PR-to-PR failure overlap is not tracked.
-- **Superseded runs accumulate**: Multiple retriggers create duplicate runs in the Main/PR tabs. No auto-close mechanism yet. Tracked as Step 20.1.
-- **PR comment noise**: Known failures are shown inline with new failures, making it hard to see what's new. Tracked as Step 20.2.
-- **Post-merge classification accuracy**: Push-triggered runs extract PR context from merge commit messages, which sometimes loses PR description context. This can cause all failures to classify as unexpected. Tracked as Step 20.3.
+- **Post-merge runs show all failures**: Currently post-merge runs include pre-existing failures from prior PRs, adding noise. Should filter to net-new only. Tracked as Step 20.1.
+- **PR comment noise**: Known failures are shown inline with new failures in PR comments, making it hard to see what's new. Tracked as Step 20.2.
+- **No prior-PR attribution**: When a failure surfaces on a merge run but was caused by a different PR, there's no attribution linking to the responsible PR. Tracked as Step 20.3.
