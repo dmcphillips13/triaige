@@ -518,8 +518,8 @@ Commit messages: plain imperative sentences (e.g., "Add GitHub API client for PR
 20.1. Net-new failure filtering: both post-merge and pre-merge runs only show failures not present in previous open post-merge runs for the same repo; if zero new failures remain, skip run creation entirely (no empty runs on dashboard); post-merge runs can only be closed when all failures are addressed — every failure must have a baseline update PR or issue opened before close is allowed; pre-merge runs are non-actionable (read-only) and auto-close when a newer run for the same PR supersedes them or when the PR merges and a post-merge run is created; PR comments also only show net-new failures
 21. Repos landing page + add repo flow: after login, land on a repos page showing linked repos as cards (repo name, last run status, failure count); click a repo → see its runs; "Connect Repo" flow to link a new repo via GitHub App installation scope
 22. Issue attribution agent: a separate async agent that runs after issues are filed; scans recent merge history and adds attribution comments to issues linking the likely responsible PR and author
-23. Procedural memory: agent reflection on feedback patterns → self-updating triage instructions, versioned in Qdrant (stretch)
-24. Auto-approve baselines above confidence threshold (stretch, lowest priority — needs discussion before implementing; default should always be human-in-the-loop)
+23. Auto-approve baselines above confidence threshold (stretch — needs discussion before implementing; default should always be human-in-the-loop)
+24. Procedural memory: agent reflection on feedback patterns → self-updating triage instructions, versioned in Qdrant (stretch)
 25. Settings UI: per-repo configuration page in dashboard for API keys (OpenAI, etc.), triage mode toggles, and other config that currently lives in env vars or is hardcoded
 26. Repo setup CLI: `npx triaige init` (or similar) run inside a target repo to scaffold the GitHub Actions workflow file, Playwright config, post-failures script, and guide the user through secrets/env setup; replaces manual repo configuration
 27. Component ownership lookup (stretch)
