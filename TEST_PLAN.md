@@ -75,9 +75,80 @@ The classifier uses the **PR description** as the primary scope reference:
 
 ---
 
+## E2E Integration Test
+
+Full workflow test using multiple PRs on the sample app to exercise pre-merge,
+post-merge, known failures, submissions, and run lifecycle.
+
+### Setup
+
+1. Enable both pre-merge and post-merge triage modes for the sample app repo
+   in the Triaige dashboard settings.
+2. Open **PR A** on the sample app with visual changes (mix of expected and
+   unexpected). Wait for the pre-merge workflow to complete.
+3. Open **PR B** from a separate branch that touches overlapping pages.
+   Wait for the pre-merge workflow to complete.
+
+### Steps
+
+**Step 1 — PR comments (pre-merge)**
+- Check PR A and PR B for the Triaige comment with classification table.
+- All failures should show "New" in the Status column (no prior main-branch
+  failures exist yet).
+- Click the dashboard link in each comment.
+
+**Step 2 — Dashboard PR tab**
+- Both runs appear in the PR tab.
+- Failures are read-only (no approve/reject buttons).
+- No known failure annotations (no main-branch history yet).
+
+**Step 3 — Merge PR A**
+- Merge PR A on GitHub.
+- The `push: branches: [main]` trigger fires a post-merge workflow run.
+- Wait for it to complete.
+
+**Step 4 — Dashboard Main tab**
+- The post-merge run appears in the Main tab.
+- Approve the expected failures (intentional design changes).
+- Reject the unexpected failures (bugs).
+
+**Step 5 — Submit Changes**
+- Click "Submit Changes".
+- Approved failures create a baseline update PR on the sample app.
+- Rejected failures create GitHub issues (one per failure).
+- Each failure card shows its submission link.
+
+**Step 6 — Close the run**
+- Click "Close Run".
+- Run moves from Main tab to Closed tab.
+
+**Step 7 — Re-trigger PR B**
+- Re-trigger the visual regression workflow for PR B
+  (`gh workflow run visual-regression.yml --field pr_number=<B>`).
+- The new pre-merge run should now show known failure annotations for tests
+  that overlap with the merged PR A run ("Known — since \<PR A title\>").
+- Tests with open submissions from Step 5 should show "Baseline PR pending"
+  or "Issue open" links.
+- Approve/reject buttons remain hidden (pre-merge is read-only).
+
+### What this validates
+
+- Pre-merge PR comments with classification table and dashboard links
+- PR tab vs Main tab vs Closed tab routing
+- Read-only mode for pre-merge runs
+- Post-merge approve/reject workflow
+- Baseline PR creation and issue filing via Submit Changes
+- Submission persistence and display
+- Known failure detection (main-branch runs only, not PR runs)
+- Known failure annotations with links to the originating PR
+- Action gating when open submissions exist
+- Run close lifecycle
+
+---
+
 ## Known limitations
 
 - **No uncertain classification yet**: The model tends toward binary expected/unexpected. May need prompt tuning or a scenario with genuinely ambiguous scope.
 - **Subtle pixel changes can pass**: Status badge style change (pill → dot) didn't trigger a test failure despite `maxDiffPixelRatio: 0`. The `display: block` on truncated tbody may mask column-level changes.
 - **Baseline timing**: Baselines must be regenerated after merging to main, before creating the next test PR. Otherwise tests compare against stale baselines.
-- **Workflow triggers on push to main only**: Visual tests run post-merge, not on PR branches. This means you can't preview failures before merging.
+- **Known failures are main-branch only**: The `get_known_failures` query only considers post-merge runs. PR-to-PR failure overlap is not tracked.
