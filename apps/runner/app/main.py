@@ -243,22 +243,7 @@ async def get_run(run_id: str):
 
 @app.patch("/runs/{run_id}/close")
 async def close_run(run_id: str):
-    """Mark a triage run as closed.
-
-    Post-merge runs can only be closed when all failures have submissions.
-    """
-    run = await store.get_run(run_id)
-    if not run:
-        raise HTTPException(status_code=404, detail="Run not found")
-
-    if run.triage_mode == "post_merge":
-        eligible = await store.check_close_eligibility(run_id)
-        if not eligible:
-            raise HTTPException(
-                status_code=409,
-                detail="All failures must have submissions before closing a post-merge run",
-            )
-
+    """Mark a triage run as closed."""
     if not await store.close_run(run_id, force=True):
         raise HTTPException(status_code=404, detail="Run not found")
     return {"status": "closed"}
@@ -299,13 +284,6 @@ async def get_submissions(run_id: str):
 
 
 # --- Known failures ---
-
-
-@app.get("/runs/{run_id}/close-eligibility")
-async def check_close_eligibility(run_id: str):
-    """Check if a post-merge run can be closed (all failures have submissions)."""
-    eligible = await store.check_close_eligibility(run_id)
-    return {"eligible": eligible}
 
 
 @app.get("/runs/{run_id}/known-failures")

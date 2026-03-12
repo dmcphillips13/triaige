@@ -133,24 +133,9 @@ async def get_result(run_id: str, test_name: str) -> TriageFailureResult | None:
 
 
 async def close_run(run_id: str, force: bool = False) -> bool:
-    """Mark a run as closed.
-
-    For post-merge runs, requires all failures to have submissions unless
-    force=True. Pre-merge runs can always be closed. Returns True if closed.
-    """
+    """Mark a run as closed. Returns True if found."""
     pool = get_pool()
     async with pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT triage_mode FROM runs WHERE run_id = $1", run_id
-        )
-        if not row:
-            return False
-
-        if not force and row["triage_mode"] == "post_merge":
-            eligible = await check_close_eligibility(run_id)
-            if not eligible:
-                return False
-
         result = await conn.execute(
             "UPDATE runs SET closed = TRUE WHERE run_id = $1", run_id
         )
@@ -212,7 +197,11 @@ async def get_verdicts(run_id: str) -> dict[str, str]:
 async def set_submission(
     run_id: str, test_name: str, url: str, sub_type: str
 ) -> None:
-    """Store a submission result (PR or issue URL) for a failure."""
+    """Store a submission result (PR or issue URL) for a failure.
+
+    After storing, checks if all failures in the run now have submissions
+    (from this or any prior run). If so, auto-closes the run.
+    """
     pool = get_pool()
     async with pool.acquire() as conn:
         await conn.execute(
@@ -222,6 +211,10 @@ async def set_submission(
                DO UPDATE SET url = $3, type = $4, created_at = NOW()""",
             run_id, test_name, url, sub_type,
         )
+
+    # Auto-close post-merge runs when all failures are addressed
+    if await check_close_eligibility(run_id):
+        await close_run(run_id, force=True)
 
 
 async def get_submissions(run_id: str) -> dict[str, dict]:
@@ -278,20 +271,39 @@ async def auto_close_pre_merge_runs(repo: str, pr_number: int) -> list[str]:
 
 
 async def check_close_eligibility(run_id: str) -> bool:
-    """Check if a post-merge run can be closed.
+    """Check if a post-merge run should be auto-closed.
 
-    A post-merge run can only be closed when every failure has a submission
-    (baseline PR or issue). Returns True if eligible.
+    Returns True if the run is an open post-merge run and every failure has
+    a submission (baseline PR or issue) from this or any prior run.
     """
     pool = get_pool()
     async with pool.acquire() as conn:
-        total = await conn.fetchval(
-            "SELECT COUNT(*) FROM failure_results WHERE run_id = $1", run_id
+        row = await conn.fetchrow(
+            "SELECT triage_mode, closed FROM runs WHERE run_id = $1", run_id
         )
-        submitted = await conn.fetchval(
-            "SELECT COUNT(*) FROM submissions WHERE run_id = $1", run_id
+        if not row or row["closed"] or row["triage_mode"] != "post_merge":
+            return False
+
+        test_names = [
+            r["test_name"]
+            for r in await conn.fetch(
+                "SELECT test_name FROM failure_results WHERE run_id = $1", run_id
+            )
+        ]
+        if not test_names:
+            return False
+
+        covered = await conn.fetchval(
+            """SELECT COUNT(DISTINCT fr.test_name)
+               FROM failure_results fr
+               WHERE fr.run_id = $1
+                 AND EXISTS (
+                     SELECT 1 FROM submissions s
+                     WHERE s.test_name = fr.test_name
+                 )""",
+            run_id,
         )
-    return total > 0 and submitted >= total
+    return covered >= len(test_names)
 
 
 async def get_known_failures(run_id: str) -> dict[str, dict]:

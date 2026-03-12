@@ -30,7 +30,6 @@ import {
   putSubmission,
   updateBaselines,
   createIssues,
-  closeRun,
 } from "@/lib/api";
 import { FailureCard } from "./failure-card";
 
@@ -47,7 +46,6 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
   const [knownFailures, setKnownFailures] = useState<
     Record<string, KnownFailureInfo>
   >({});
-  const [closeError, setCloseError] = useState<string | null>(null);
 
   // Load verdicts, submissions, and known failures from the API on mount
   useEffect(() => {
@@ -255,42 +253,6 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
           )}
         </div>
       )}
-
-      {/* Close Run — post-merge runs require all failures to have submissions */}
-      {!isPreMerge && !isClosed && (() => {
-        const allSubmitted = run.results.length > 0 && run.results.every(
-          (r) => submitted[r.test_name] || knownFailures[r.test_name]?.open_submission
-        );
-        return (
-          <div className="mt-8 flex items-center justify-end gap-3">
-            {closeError && (
-              <p className="text-xs text-red-600">{closeError}</p>
-            )}
-            {!allSubmitted && (
-              <p className="text-xs text-zinc-500">
-                All failures must have submissions before closing
-              </p>
-            )}
-            <button
-              onClick={async () => {
-                setCloseError(null);
-                try {
-                  await closeRun(run.run_id);
-                  setIsClosed(true);
-                } catch (err) {
-                  setCloseError(
-                    err instanceof Error ? err.message : "Failed to close run"
-                  );
-                }
-              }}
-              disabled={!allSubmitted}
-              className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Close Run
-            </button>
-          </div>
-        );
-      })()}
 
       {isClosed && (
         <div className="mt-8 rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-center">
