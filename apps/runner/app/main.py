@@ -40,7 +40,7 @@ from app.schemas import (
 )
 from app.repo_settings import RepoSettings
 from app.tools.github_actions import commit_baselines_to_branch, create_baseline_pr
-from app.tools.github_checks import create_check_run, update_check_run
+from app.tools.github_checks import create_check_run, create_passing_check_run, update_check_run
 from app.tools.github_issues import create_bug_issue
 from app.tools.pr_comment import post_gate_passed_comment, post_triage_comment
 from app.settings import settings
@@ -88,6 +88,29 @@ app.add_middleware(
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.post("/report-clean")
+async def report_clean(request: Request):
+    """Report that all visual tests passed — creates a passing check run."""
+    body = await request.json()
+    repo = body.get("repo")
+    head_sha = body.get("head_sha")
+    if not repo or not head_sha:
+        raise HTTPException(status_code=400, detail="repo and head_sha are required")
+
+    rs = await repo_settings.get_settings(repo)
+    if not rs.merge_gate:
+        return {"status": "skipped", "reason": "merge_gate disabled"}
+
+    try:
+        check_run_id = await asyncio.to_thread(
+            create_passing_check_run, repo=repo, head_sha=head_sha,
+        )
+        return {"status": "ok", "check_run_id": check_run_id}
+    except Exception as e:
+        logger.warning("Failed to create passing check run: %s", e)
+        raise HTTPException(status_code=502, detail=f"GitHub API error: {e}")
 
 
 @app.get("/repos/{repo:path}/settings", response_model=RepoSettings)

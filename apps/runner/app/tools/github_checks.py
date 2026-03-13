@@ -105,6 +105,32 @@ def create_check_run(
     return check_run_id
 
 
+def create_passing_check_run(
+    repo: str,
+    head_sha: str,
+) -> int:
+    """Create a passing check run — used when all visual tests pass."""
+    client = _get_client(repo)
+
+    resp = client.post(
+        f"/repos/{repo}/check-runs",
+        json={
+            "name": "Triaige Visual Regression",
+            "head_sha": head_sha,
+            "status": "completed",
+            "conclusion": "success",
+            "output": {
+                "title": "All visual tests passed",
+                "summary": "No visual regressions detected.",
+            },
+        },
+    )
+    resp.raise_for_status()
+    check_run_id = resp.json()["id"]
+    logger.info("Created passing check run %d on %s @ %s", check_run_id, repo, head_sha[:8])
+    return check_run_id
+
+
 def update_check_run(
     repo: str,
     check_run_id: int,
