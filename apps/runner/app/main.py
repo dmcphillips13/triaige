@@ -176,9 +176,28 @@ async def triage_run(req: TriageRunRequest, request: Request):
                 if extract_test_name(r) not in existing
             ]
 
-    # If no net-new failures, skip run creation entirely
+    # If no net-new failures, skip run creation but still create a passing check
     if not ask_requests:
         logger.info("No net-new failures for %s (%s) — skipping run creation", repo, mode)
+
+        if (
+            mode == "pre_merge"
+            and req.pr_context
+            and req.pr_context.head_sha
+            and req.pr_context.repo
+        ):
+            rs = await repo_settings.get_settings(req.pr_context.repo)
+            if rs.merge_gate:
+                try:
+                    await asyncio.to_thread(
+                        create_passing_check_run,
+                        repo=req.pr_context.repo,
+                        head_sha=req.pr_context.head_sha,
+                    )
+                    logger.info("Created passing check — all failures are known")
+                except Exception as e:
+                    logger.warning("Failed to create passing check run: %s", e)
+
         return TriageRunResponse(
             run_id="",
             created_at="",
