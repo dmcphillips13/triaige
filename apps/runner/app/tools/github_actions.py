@@ -205,7 +205,7 @@ def commit_baselines_to_branch(
 
     # 4. Create commit on the PR branch
     test_count = len(baselines)
-    commit_message = f"triaige/update-baselines: update {test_count} baseline{'s' if test_count != 1 else ''} [skip ci]"
+    commit_message = f"triaige/update-baselines: update {test_count} baseline{'s' if test_count != 1 else ''}"
 
     commit_resp = client.post(
         f"/repos/{repo}/git/commits",
