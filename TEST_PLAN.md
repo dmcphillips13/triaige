@@ -77,8 +77,9 @@ The classifier uses the **PR description** as the primary scope reference:
 
 ## E2E Integration Test
 
-Full workflow test using two PRs on the sample app to exercise pre-merge,
-post-merge, known failures, submissions, and run lifecycle.
+Full workflow test using three PRs on the sample app to exercise the actionable
+pre-merge workflow, merge gate, iterative PR fixes, post-merge diagnostics,
+net-new filtering, known failure passthrough, and run lifecycle.
 
 ### Prerequisites
 
@@ -86,167 +87,269 @@ Before running the E2E test, ensure a clean state:
 
 1. **Close all open PRs and issues** on the sample app repo:
    ```
-   gh pr list --state open --repo dmcphillips13/triaige-sample-app | ...close each
-   gh issue list --state open --repo dmcphillips13/triaige-sample-app | ...close each
+   gh pr list --state open --repo dmcphillips13/triaige-sample-app --json number -q '.[].number' | xargs -I{} gh pr close {} --repo dmcphillips13/triaige-sample-app
+   gh issue list --state open --repo dmcphillips13/triaige-sample-app --json number -q '.[].number' | xargs -I{} gh issue close {} --repo dmcphillips13/triaige-sample-app
    ```
-2. **Clear the Triaige database**: delete all rows from `runs`, `failure_results`,
-   `verdicts`, `submissions` tables (connect to Neon or use a reset endpoint).
+2. **Clear the Triaige database**: delete all rows from `submissions`,
+   `verdicts`, `failure_results`, `runs` tables (in that order for FK constraints).
 3. **Update baselines on main**: trigger the `update-snapshots.yml` workflow so
    baselines match the current main branch code. Wait for it to complete.
+4. **Verify GitHub App has Checks permission**: the Triaige GitHub App needs
+   Checks (read/write) for merge gate support.
+5. **Add branch protection rule**: add "Triaige Visual Regression" as a required
+   status check with `strict: true` (require up-to-date branches):
+   ```
+   gh api repos/OWNER/REPO/branches/main/protection -X PUT --input - <<'EOF'
+   {
+     "required_status_checks": {"strict": true, "contexts": ["Triaige Visual Regression"]},
+     "enforce_admins": false,
+     "required_pull_request_reviews": null,
+     "restrictions": null
+   }
+   EOF
+   ```
 
 ### Setup: Create two PRs
 
-**PR A** — mix of expected and unexpected changes:
+**PR A** — expected changes with one unexpected bug:
 1. Branch from main: `git checkout -b design-refresh`
-2. Make intentional design changes (e.g., change accent color, update font sizes
-   in `globals.css`) — these are the **expected** changes.
-3. Introduce visual bugs (e.g., `visibility: hidden` on table body in
-   `data-table.tsx`, zero out padding in `report-card.tsx`) — these are
-   **unexpected** changes.
+2. Make intentional design changes in `globals.css` (e.g., update font sizes,
+   change card background) — these are the **expected** changes.
+3. Also introduce one subtle visual bug in a component (e.g., change sidebar
+   background or border) — this is the **unexpected** change that will become
+   a known failure on main.
 4. Write a narrowly scoped PR description that only mentions the design token
-   changes, not the bugs. Example:
-   > "Updated accent color and heading font sizes. Only color palette and
-   > typography tokens in globals.css were changed."
+   changes. Example:
+   > "Update heading font sizes and card backgrounds. Only typography and color
+   > tokens in globals.css were changed."
 5. Push and open the PR. Wait for the `pull_request` workflow to complete.
 
-**PR B** — overlapping clean changes:
-1. Branch from main (not from PR A): `git checkout main && git checkout -b sidebar-update`
-2. Make clean changes to a shared component (e.g., dark sidebar theme, KPI card
-   border fix) that affect overlapping pages.
+**PR B** — clean changes on different components:
+1. Branch from main (not from PR A): `git checkout main && git checkout -b accent-update`
+2. Make clean changes to different tokens (e.g., accent color, border radius)
+   that affect different pages than PR A.
 3. Write a narrowly scoped PR description. Example:
-   > "Changed sidebar to dark theme and fixed KPI card border color. Only
-   > sidebar and KPI card components were modified."
+   > "Change accent color and update border radius. Only color and radius
+   > tokens in globals.css were changed."
 4. Push and open the PR. Wait for the `pull_request` workflow to complete.
 
-### Step 1 — Check PR comments (pre-merge)
+### Step 1 — Check PR comments and merge gate
 
-**Action**: Go to PR A on GitHub.
+**Action**: Go to PR A and PR B on GitHub.
 
-**Verify**:
+**Verify** (both PRs):
 - [ ] Triaige comment exists with classification table
-- [ ] Mix of expected/unexpected classifications (design changes = expected,
-      bugs = unexpected)
-- [ ] All failures show "New" in Status column (no prior main-branch failures)
 - [ ] "View full results" link points to dashboard
+- [ ] "Triaige Visual Regression" check shows `action_required` (blocking merge)
+- [ ] "Action required: address all failures before merging." in comment
 
-**Action**: Go to PR B on GitHub.
+**Verify** (PR A specifically):
+- [ ] Mix of expected/unexpected classifications
 
-**Verify**:
-- [ ] Triaige comment exists with classification table
-- [ ] All failures show "New" in Status column
-- [ ] Classification reflects PR B's scope (sidebar/KPI changes = expected,
-      other page changes = unexpected)
+### Step 2 — Triage PR A on dashboard
 
-### Step 2 — Check dashboard PR tab
-
-**Action**: Open the Triaige dashboard. Click the **PR** tab.
+**Action**: Open the Triaige dashboard. PR tab should be the default.
 
 **Verify**:
 - [ ] Both PR A and PR B runs appear in the PR tab
-- [ ] Clicking a run shows failure cards
-- [ ] No approve/reject buttons (pre-merge is read-only)
+- [ ] Clicking PR A's run shows failure cards with **approve/reject buttons**
 - [ ] No known failure annotations (no main-branch history yet)
 
-### Step 3 — Merge PR A
-
-**Action**: Merge PR A on GitHub (merge button or `gh pr merge <number> --merge`).
-
-**Wait**: ~3 minutes for the `push: branches: [main]` workflow to complete.
-
-**Verify**:
-- [ ] No new comment on the PR (post-merge runs don't post comments)
-- [ ] PR A's pre-merge run was auto-closed (moved from PR tab to Closed tab)
-
-### Step 4 — Triage on Main tab
-
-**Action**: Open the Triaige dashboard. Click the **Main** tab.
-
-**Verify**:
-- [ ] New post-merge run appears titled with PR A's title
-- [ ] Failure cards show approve/reject buttons
-- [ ] No known failure annotations (this is the first main-branch run)
-- [ ] Close Run button is disabled with "All failures must have submissions" message
-
-**Action**: For each failure, expand and review the screenshots.
-- **Approve** failures that match the PR description (accent color, font sizes)
-- **Reject** failures that are bugs (hidden table, crushed cards)
+**Action**: For each failure in PR A's run:
+- **Approve** failures that match the PR description (expected design changes)
+- **Reject** the unexpected failure (e.g., sidebar bug)
 
 **Verify**:
 - [ ] Approved failures show green checkmark
 - [ ] Rejected failures show red X
-- [ ] "Submit Changes" button appears (or becomes enabled)
-- [ ] Close Run button is still disabled (no submissions yet)
+- [ ] "Submit Changes" button appears
 
-### Step 5 — Re-trigger PR B (net-new filtering)
+### Step 3 — Submit changes on PR A
 
-**Important**: Do this BEFORE submitting/closing PR A's post-merge run, so PR A's
-failures are still in the "existing" set for net-new filtering.
+**Action**: Click **Submit Changes** on PR A's run.
 
-**Action**: Re-trigger the workflow for PR B:
+**Verify**:
+- [ ] Approved failures → baselines committed directly to PR A's branch
+      (check commit list for "triaige/update-baselines: update N baseline(s)")
+- [ ] Rejected failure → GitHub issue created
+- [ ] Each failure card shows its submission link
+- [ ] Approve/reject buttons hidden on submitted failures (action gating)
+
+**Action**: Go to PR A on GitHub.
+
+**Verify**:
+- [ ] "Triaige Visual Regression" check updated to `success`
+- [ ] New baseline commit visible in PR's commit list
+- [ ] PR is now mergeable (green merge button)
+
+### Step 4 — Verify baseline re-run on PR A
+
+The baseline commit triggers a new `pull_request` workflow run.
+
+**Verify**:
+- [ ] Workflow runs and completes
+- [ ] If the rejected failure still exists: new triage run with 1 failure,
+      but merge gate recognizes it already has a submission → check created
+      as `success` immediately (gate-already-passed logic)
+- [ ] If all tests pass: `/report-clean` creates a passing check
+- [ ] PR remains mergeable (no hanging check)
+
+### Step 5 — Merge PR A
+
+**Action**: Merge PR A on GitHub.
+
+**Wait**: ~3 minutes for the `push: branches: [main]` workflow to complete.
+
+**Verify**:
+- [ ] PR A's pre-merge run auto-closed (moved from PR tab to Closed tab)
+
+### Step 6 — Check Main tab
+
+**Action**: Open the Triaige dashboard. Click the **Main** tab.
+
+**Verify**:
+- [ ] If the rejected failure (e.g., sidebar) still fails on main: a post-merge
+      diagnostic run appears with "Diagnostic" badge, showing the failure with
+      its open issue link
+- [ ] If all tests pass: Main tab is empty
+- [ ] Post-merge runs are read-only (no approve/reject buttons)
+
+### Step 7 — Push a fix commit to PR B
+
+This tests the iterative workflow where a developer pushes code changes to
+address failures rather than immediately approving baselines.
+
+**Action**: Push a commit to PR B that fixes one or more of the expected
+failures (e.g., revert a change that was causing an unwanted visual diff).
+
+**Wait**: ~3 minutes for the new `pull_request` workflow to complete.
+
+**Verify**:
+- [ ] Old pre-merge run auto-closed (superseded by new run)
+- [ ] New triage run created with fewer failures (the fixed ones pass now)
+- [ ] New "Triaige Visual Regression" check on PR B (`action_required`)
+- [ ] Dashboard PR tab shows only the new run
+
+### Step 8 — Rebase PR B onto main
+
+Since PR A was merged, PR B needs to be rebased to pick up the new baselines
+(branch protection requires up-to-date branches).
+
+**Action**: Rebase PR B onto main and force push:
 ```
-gh workflow run visual-regression.yml --field pr_number=<B>
+git checkout <pr-b-branch> && git rebase main && git push --force-with-lease
 ```
-Wait ~3 minutes for the workflow to complete.
 
-**Action**: Check PR B on GitHub for the updated Triaige comment.
-
-**Verify**:
-- [ ] Comment only shows failures unique to PR B (net-new), not failures
-      already present in PR A's open post-merge run
-- [ ] If PR B has zero net-new failures, no run is created and no comment posted
-
-**Action**: Open the dashboard PR tab.
+**Wait**: ~3 minutes for the new workflow to complete.
 
 **Verify**:
-- [ ] PR B's old pre-merge run was auto-closed (superseded by the new retrigger)
-- [ ] PR B's new pre-merge run (if created) only shows net-new failures
-- [ ] Still read-only (no approve/reject buttons)
+- [ ] Old run auto-closed, new run created
+- [ ] New run only shows net-new failures (failures already on main are filtered)
+- [ ] If the sidebar bug from PR A is failing on main, it does NOT appear in
+      PR B's run (net-new filtering)
 
-### Step 6 — Submit changes
+### Step 9 — Triage and submit PR B
 
-**Action**: Go back to PR A's post-merge run on the Main tab. Click **Submit Changes**.
-
-**Verify**:
-- [ ] Approved failures → a baseline update PR is created on the sample app repo
-- [ ] Rejected failures → GitHub issues are created (one per rejection)
-- [ ] Each failure card now shows its submission link ("Baseline PR open" or
-      "Issue open")
-- [ ] Approve/reject buttons are now hidden on submitted failures (action gating)
-
-### Step 7 — Close the run
+**Action**: Approve remaining expected failures. If any unexpected failures
+remain, reject them to file issues. Click **Submit Changes**.
 
 **Verify**:
-- [ ] Close Run button is now enabled (all failures have submissions)
+- [ ] Baselines committed to PR B's branch
+- [ ] Issues created for rejections (if any)
+- [ ] Check updated to `success`
+- [ ] PR B is now mergeable
 
-**Action**: Click **Close Run**.
+### Step 10 — Verify baseline re-run on PR B
+
+The baseline commit triggers a new workflow run.
 
 **Verify**:
-- [ ] Run disappears from Main tab
-- [ ] Run appears in Closed tab
-- [ ] Closed run is read-only (no actions)
+- [ ] Workflow completes
+- [ ] If remaining failure has a submission from prior run: gate-already-passed
+      → passing check created immediately
+- [ ] If all tests pass: `/report-clean` creates passing check
+- [ ] PR remains mergeable
+
+### Step 11 — Merge PR B
+
+**Action**: Merge PR B on GitHub.
+
+**Verify**:
+- [ ] PR B's pre-merge run auto-closed
+- [ ] Post-merge workflow runs; either all tests pass or creates a diagnostic run
+
+### Step 12 — Test known failure passthrough (PR C)
+
+This tests that known failures on main don't block unrelated PRs.
+
+**Action**: Create PR C with a small change that doesn't fix the known failure
+(e.g., change a color token that doesn't affect the broken test):
+```
+git checkout -b minor-tweak main
+# make a small CSS change
+git push -u origin minor-tweak
+gh pr create --title "Minor styling tweak" --body "Small token change"
+```
+
+**Wait**: ~3 minutes for the workflow to complete.
+
+**Verify**:
+- [ ] If the only failure is the known one (e.g., sidebar): all failures
+      filtered as known → no triage run created → passing check created
+      immediately → PR is mergeable
+- [ ] If PR C introduces new failures: triage run only contains net-new
+      failures, not the known one
+- [ ] No PR comment posted (known limitation — Step 21.5 will add visibility)
+
+### Step 13 — Final dashboard state
+
+**Action**: Check all three tabs.
+
+**Verify**:
+- [ ] **PR tab**: shows only open PR runs (PR C if not yet merged, otherwise empty)
+- [ ] **Main tab**: shows diagnostic run(s) with known failures and open issue links
+- [ ] **Closed tab**: shows closed runs from all merged PRs
+- [ ] Run counts in tab labels are accurate
 
 ### What this validates
 
-- Pre-merge PR comments with classification table and dashboard links
-- Mixed expected/unexpected/uncertain classifications from narrowly scoped PRs
-- PR tab vs Main tab vs Closed tab routing
-- Read-only mode for pre-merge runs
-- Post-merge approve/reject workflow
-- Baseline PR creation and issue filing via Submit Changes
-- Submission link display and persistence
-- **Net-new failure filtering** (pre-merge and post-merge runs only show failures
-  not present in open post-merge runs)
-- **Auto-close pre-merge runs** (superseded by newer run for same PR, or when PR merges)
-- **Close gating** (post-merge runs require all failures to have submissions)
-- Action gating when open submissions exist
-- Run close lifecycle (Main → Closed)
+- **Actionable pre-merge runs**: approve/reject + submit on PR tab
+- **Baseline commits to PR branch**: approved baselines go directly into the PR
+- **Merge gate**: check blocks merge until all failures addressed, updates to
+  `success` when gate passes
+- **Gate-already-passed**: re-triggered runs with already-submitted failures
+  get a passing check immediately
+- **Iterative PR workflow**: push fixes → new run with fewer failures
+- **Rebase workflow**: rebase onto main → new run with updated baselines
+- **Baseline re-run**: baseline commits trigger workflow, passing check created
+  (no hanging checks)
+- **Diagnostic post-merge runs**: Main tab is read-only with "Diagnostic" badge
+- **Net-new failure filtering**: only failures not in open post-merge runs
+- **Known failure passthrough**: known failures on main don't block unrelated PRs
+- **Auto-close pre-merge runs**: superseded by newer run, on merge, or on clean
+  merge via `/report-clean`
+- **Baseline commit skip**: workflow skips when commit message contains
+  "triaige/update-baselines"
+- PR comment with classification table and dashboard links
+- Issue filing for rejected failures
+- Submission link display and action gating
+- Run lifecycle across PR / Main / Closed tabs
+- `strict: true` branch protection (require up-to-date before merging)
 
 ---
 
 ## Known limitations
 
-- **No uncertain classification yet**: The model tends toward binary expected/unexpected. May need prompt tuning or a scenario with genuinely ambiguous scope.
-- **Subtle pixel changes can pass**: Status badge style change (pill → dot) didn't trigger a test failure despite `maxDiffPixelRatio: 0`. The `display: block` on truncated tbody may mask column-level changes.
-- **Baseline timing**: Baselines must be regenerated after merging to main, before creating the next test PR. Otherwise tests compare against stale baselines.
-- **Known failures are main-branch only**: The `get_known_failures` query only considers post-merge runs. PR-to-PR failure overlap is not tracked.
-- **No prior-PR attribution**: When a failure surfaces on a merge run but was caused by a different PR, there's no attribution linking to the responsible PR. Future work: a separate async agent that scans recent merge history and adds attribution comments to filed issues.
+- **Known failure visibility on PRs**: When net-new filtering skips known failures,
+  no PR comment is posted and the failures are invisible to the developer. Step 21.5
+  will add a comment listing skipped tests with issue links and a manual verification note.
+- **Subtle pixel changes can pass**: Very small visual changes may not trigger a
+  test failure depending on Playwright's diff threshold configuration.
+- **Baseline timing**: After merging to main, PR branches should be rebased to
+  pick up new baselines. `strict: true` branch protection enforces this.
+- **Known failures are main-branch only**: The `get_known_failures` query only
+  considers post-merge runs. PR-to-PR failure overlap is not tracked.
+- **No prior-PR attribution**: When a failure surfaces on a merge run but was
+  caused by a different PR, there's no attribution. Future work: Step 23.
+- **Duplicate PR comments**: Gate-passed "Ready to merge" comment can post
+  multiple times. Step 21.2 will remove these entirely.
