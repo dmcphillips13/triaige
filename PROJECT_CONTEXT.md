@@ -49,11 +49,12 @@ Last updated: 2026-03-09
 - [ ] Step 24: Repos landing page + add repo flow — repos page with cards, "Connect Repo" flow via GitHub App
 - [ ] Step 25: Settings UI — per-repo config page for API keys, triage mode toggles, merge gate toggle
 - [ ] Step 26: Repo setup CLI — `npx triaige init` to scaffold workflow, config, and secrets
-- [ ] Step 27: Auto-approve baselines above confidence threshold (stretch)
-- [ ] Step 28: Procedural memory — self-improving triage instructions via reflection (stretch)
-- [ ] Step 29: Component ownership lookup (stretch)
-- [ ] Step 30: RAGAS evaluation (stretch)
-- [ ] Step 31: Polish + Loom
+- [ ] Step 27: Separate test repo support — link a dedicated Playwright/baselines repo separate from the UI repo
+- [ ] Step 28: Auto-approve baselines above confidence threshold (stretch)
+- [ ] Step 29: Procedural memory — self-improving triage instructions via reflection (stretch)
+- [ ] Step 30: Component ownership lookup (stretch)
+- [ ] Step 31: RAGAS evaluation (stretch)
+- [ ] Step 32: Polish + Loom
 
 ---
 

@@ -530,11 +530,12 @@ Commit messages: plain imperative sentences (e.g., "Add GitHub API client for PR
 24. Repos landing page + add repo flow: after login, land on a repos page showing linked repos as cards (repo name, last run status, failure count); click a repo → see its runs; "Connect Repo" flow to link a new repo via GitHub App installation scope
 25. Settings UI: per-repo configuration page in dashboard for API keys (OpenAI, etc.), triage mode toggles, merge gate toggle, and other config that currently lives in env vars or is hardcoded
 26. Repo setup CLI: `npx triaige init` (or similar) run inside a target repo to scaffold the GitHub Actions workflow file, Playwright config, post-failures script, and guide the user through secrets/env setup; replaces manual repo configuration
-27. Auto-approve baselines above confidence threshold (stretch — needs discussion before implementing; default should always be human-in-the-loop)
-28. Procedural memory: agent reflection on feedback patterns → self-updating triage instructions, versioned in Qdrant (stretch)
-29. Component ownership lookup (stretch)
-30. RAGAS evaluation (stretch)
-31. Polish + Loom prep
+27. Separate test repo support: allow linking a dedicated Playwright/baselines repo separate from the UI repo; baseline commits and issues target the test repo; merge gate still applies to the UI repo's PRs; configured via a "baseline target repo" setting in repo_settings
+28. Auto-approve baselines above confidence threshold (stretch — needs discussion before implementing; default should always be human-in-the-loop)
+29. Procedural memory: agent reflection on feedback patterns → self-updating triage instructions, versioned in Qdrant (stretch)
+30. Component ownership lookup (stretch)
+31. RAGAS evaluation (stretch)
+32. Polish + Loom prep
 
 ---
 
