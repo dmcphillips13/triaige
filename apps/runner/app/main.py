@@ -234,13 +234,25 @@ async def triage_run(req: TriageRunRequest, request: Request):
         if rs.merge_gate:
             github_token = request.headers.get("X-GitHub-Token")
             try:
-                check_run_id = await asyncio.to_thread(
-                    create_check_run,
-                    repo=req.pr_context.repo,
-                    head_sha=req.pr_context.head_sha,
-                    total_failures=len(run_response.results),
-                    github_token=github_token,
-                )
+                # Check if all failures already have submissions from previous runs
+                gate_already_passed = await store.check_pre_merge_gate(run_response.run_id)
+
+                if gate_already_passed:
+                    # All failures already addressed — create a passing check
+                    check_run_id = await asyncio.to_thread(
+                        create_passing_check_run,
+                        repo=req.pr_context.repo,
+                        head_sha=req.pr_context.head_sha,
+                    )
+                    logger.info("Merge gate already satisfied for run %s", run_response.run_id)
+                else:
+                    check_run_id = await asyncio.to_thread(
+                        create_check_run,
+                        repo=req.pr_context.repo,
+                        head_sha=req.pr_context.head_sha,
+                        total_failures=len(run_response.results),
+                        github_token=github_token,
+                    )
                 await store.set_check_run_id(run_response.run_id, check_run_id)
             except Exception as e:
                 logger.warning("Failed to create check run: %s", e)
