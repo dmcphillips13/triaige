@@ -534,8 +534,9 @@ Commit messages: plain imperative sentences (e.g., "Add GitHub API client for PR
 28. Auto-approve baselines above confidence threshold (stretch — needs discussion before implementing; default should always be human-in-the-loop)
 29. Procedural memory: agent reflection on feedback patterns → self-updating triage instructions, versioned in Qdrant (stretch)
 30. Component ownership lookup (stretch)
-31. RAGAS evaluation (stretch)
-32. Polish + Loom prep
+31. Auto-close main dashboard failures when linked GitHub issue closes: add a webhook endpoint that listens for `issues` closed events and automatically removes resolved failures from the Main tab health dashboard; until then, failures are manually dismissed from the dashboard
+32. RAGAS evaluation (stretch)
+33. Polish + Loom prep
 
 ---
 

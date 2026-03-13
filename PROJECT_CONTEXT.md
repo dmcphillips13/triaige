@@ -53,8 +53,9 @@ Last updated: 2026-03-09
 - [ ] Step 28: Auto-approve baselines above confidence threshold (stretch)
 - [ ] Step 29: Procedural memory — self-improving triage instructions via reflection (stretch)
 - [ ] Step 30: Component ownership lookup (stretch)
-- [ ] Step 31: RAGAS evaluation (stretch)
-- [ ] Step 32: Polish + Loom
+- [ ] Step 31: Auto-close main dashboard failures when linked issue closes (webhook)
+- [ ] Step 32: RAGAS evaluation (stretch)
+- [ ] Step 33: Polish + Loom
 
 ---
 
