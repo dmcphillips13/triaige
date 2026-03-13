@@ -48,8 +48,8 @@ Last updated: 2026-03-09
 - [ ] Step 23: Issue attribution agent — async agent scans merge history, adds attribution comments to issues
 - [ ] Step 24: Auto-approve baselines above confidence threshold (stretch)
 - [ ] Step 25: Settings UI — per-repo config page for API keys, triage mode toggles, merge gate toggle
-- [ ] Step 26: Procedural memory — self-improving triage instructions via reflection (stretch)
-- [ ] Step 27: Repo setup CLI — `npx triaige init` to scaffold workflow, config, and secrets
+- [ ] Step 26: Repo setup CLI — `npx triaige init` to scaffold workflow, config, and secrets
+- [ ] Step 27: Procedural memory — self-improving triage instructions via reflection (stretch)
 - [ ] Step 28: Component ownership lookup (stretch)
 - [ ] Step 29: RAGAS evaluation (stretch)
 - [ ] Step 30: Polish + Loom

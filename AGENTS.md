@@ -529,8 +529,8 @@ Commit messages: plain imperative sentences (e.g., "Add GitHub API client for PR
 23. Issue attribution agent: a separate async agent that runs after issues are filed; scans recent merge history and adds attribution comments to issues linking the likely responsible PR and author
 24. Auto-approve baselines above confidence threshold (stretch — needs discussion before implementing; default should always be human-in-the-loop)
 25. Settings UI: per-repo configuration page in dashboard for API keys (OpenAI, etc.), triage mode toggles, merge gate toggle, and other config that currently lives in env vars or is hardcoded
-26. Procedural memory: agent reflection on feedback patterns → self-updating triage instructions, versioned in Qdrant (stretch)
-27. Repo setup CLI: `npx triaige init` (or similar) run inside a target repo to scaffold the GitHub Actions workflow file, Playwright config, post-failures script, and guide the user through secrets/env setup; replaces manual repo configuration
+26. Repo setup CLI: `npx triaige init` (or similar) run inside a target repo to scaffold the GitHub Actions workflow file, Playwright config, post-failures script, and guide the user through secrets/env setup; replaces manual repo configuration
+27. Procedural memory: agent reflection on feedback patterns → self-updating triage instructions, versioned in Qdrant (stretch)
 28. Component ownership lookup (stretch)
 29. RAGAS evaluation (stretch)
 30. Polish + Loom prep
