@@ -18,6 +18,8 @@ class Settings(BaseSettings):
 
     # GitHub
     github_token: str | None = None
+    github_app_id: str | None = None
+    github_app_private_key: str | None = None
 
     # LangSmith
     langsmith_api_key: str | None = None

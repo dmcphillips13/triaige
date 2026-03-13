@@ -17,4 +17,5 @@ dependencies = [
   "Pillow",
   "httpx",
   "asyncpg",
+  "pyjwt[crypto]>=2.12.0",
 ]
