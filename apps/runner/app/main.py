@@ -92,16 +92,28 @@ async def health():
 
 @app.post("/report-clean")
 async def report_clean(request: Request):
-    """Report that all visual tests passed — creates a passing check run."""
+    """Report that all visual tests passed — creates a passing check run.
+
+    Also auto-closes pre-merge runs when a PR merges and all tests pass
+    (no post-merge triage run is created in this case).
+    """
     body = await request.json()
     repo = body.get("repo")
     head_sha = body.get("head_sha")
+    pr_number = body.get("pr_number")
+    event = body.get("event")
     if not repo or not head_sha:
         raise HTTPException(status_code=400, detail="repo and head_sha are required")
 
+    # Auto-close pre-merge runs when a PR merges with all tests passing
+    if event == "push" and pr_number:
+        closed_ids = await store.auto_close_pre_merge_runs(repo, int(pr_number))
+        if closed_ids:
+            logger.info("Auto-closed %d pre-merge run(s) on clean merge of PR #%s", len(closed_ids), pr_number)
+
     rs = await repo_settings.get_settings(repo)
     if not rs.merge_gate:
-        return {"status": "skipped", "reason": "merge_gate disabled"}
+        return {"status": "ok", "reason": "merge_gate disabled, runs closed"}
 
     try:
         check_run_id = await asyncio.to_thread(
