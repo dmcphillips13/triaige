@@ -339,12 +339,13 @@ async def check_close_eligibility(run_id: str) -> bool:
 async def check_pre_merge_gate(run_id: str) -> bool:
     """Check if all net-new failures in a pre-merge run have submissions.
 
-    Returns True if every failure has a submission (baseline committed or issue filed).
+    Returns True if every failure has a submission (baseline committed or
+    issue filed) — from this run OR any previous run for the same PR.
     """
     pool = get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT triage_mode, closed FROM runs WHERE run_id = $1", run_id
+            "SELECT triage_mode, closed, repo, pr_number FROM runs WHERE run_id = $1", run_id
         )
         if not row or row["closed"] or row["triage_mode"] != "pre_merge":
             return False
@@ -358,13 +359,15 @@ async def check_pre_merge_gate(run_id: str) -> bool:
         if not test_names:
             return False
 
-        # Count failures that have a submission in this run
+        # Count failures that have a submission from any run for the same PR
         covered = await conn.fetchval(
             """SELECT COUNT(DISTINCT s.test_name)
                FROM submissions s
-               WHERE s.run_id = $1
-                 AND s.test_name = ANY($2)""",
-            run_id, test_names,
+               JOIN runs r ON r.run_id = s.run_id
+               WHERE s.test_name = ANY($1)
+                 AND r.repo = $2
+                 AND r.pr_number = $3""",
+            test_names, row["repo"], row["pr_number"],
         )
     return covered >= len(test_names)
 
