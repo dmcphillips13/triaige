@@ -35,7 +35,11 @@ def create_check_run(
     total_failures: int,
     github_token: str | None = None,
 ) -> int:
-    """Create a pending check run on a PR commit.
+    """Create a check run on a PR commit that blocks merge.
+
+    Created as completed/action_required so it doesn't appear as a
+    spinning "in progress" check — just a clear signal that review
+    is needed before merging.
 
     Returns the check run ID for later updates.
     """
@@ -48,7 +52,8 @@ def create_check_run(
         json={
             "name": "Triaige Visual Regression",
             "head_sha": head_sha,
-            "status": "in_progress",
+            "status": "completed",
+            "conclusion": "action_required",
             "output": {
                 "title": "Visual failures need review",
                 "summary": summary,

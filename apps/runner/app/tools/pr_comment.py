@@ -96,6 +96,8 @@ def post_triage_comment(
     lines.extend([
         "",
         f"[View full results]({dashboard_link})",
+        "",
+        "> **Action required**: address all failures before merging.",
     ])
 
     body = "\n".join(lines)
@@ -117,4 +119,41 @@ def post_triage_comment(
     comment_url = resp.json()["html_url"]
 
     logger.info("Posted triage comment on %s#%d: %s", repo, pr_number, comment_url)
+    return comment_url
+
+
+def post_gate_passed_comment(
+    repo: str,
+    pr_number: int,
+    github_token: str | None = None,
+) -> str:
+    """Post a comment indicating all visual failures have been addressed.
+
+    Returns the URL of the created comment.
+    """
+    effective_token = github_token or settings.github_token
+    if not effective_token:
+        raise RuntimeError("GitHub token is required for PR comments")
+
+    body = (
+        "## Triaige Visual Regression\n\n"
+        "All visual failures have been addressed. Ready to merge."
+    )
+
+    client = httpx.Client(
+        base_url="https://api.github.com",
+        headers={
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {effective_token}",
+        },
+        timeout=15.0,
+    )
+    resp = client.post(
+        f"/repos/{repo}/issues/{pr_number}/comments",
+        json={"body": body},
+    )
+    resp.raise_for_status()
+    comment_url = resp.json()["html_url"]
+
+    logger.info("Posted gate-passed comment on %s#%d: %s", repo, pr_number, comment_url)
     return comment_url

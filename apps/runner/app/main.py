@@ -42,7 +42,7 @@ from app.repo_settings import RepoSettings
 from app.tools.github_actions import commit_baselines_to_branch, create_baseline_pr
 from app.tools.github_checks import create_check_run, update_check_run
 from app.tools.github_issues import create_bug_issue
-from app.tools.pr_comment import post_triage_comment
+from app.tools.pr_comment import post_gate_passed_comment, post_triage_comment
 from app.settings import settings
 from app.tools.playwright_parser import parse_report, parsed_result_to_ask_request
 
@@ -317,6 +317,18 @@ async def put_submission(run_id: str, test_name: str, req: SubmissionRequest, re
                         github_token=github_token,
                     )
                     logger.info("Merge gate passed for run %s", run_id)
+                    # Post "all clear" comment on the PR
+                    pr_number = await store.get_run_pr_number(run_id)
+                    if pr_number:
+                        try:
+                            await asyncio.to_thread(
+                                post_gate_passed_comment,
+                                repo=repo,
+                                pr_number=pr_number,
+                                github_token=github_token,
+                            )
+                        except Exception as e:
+                            logger.warning("Failed to post gate-passed comment: %s", e)
                 except Exception as e:
                     logger.warning("Failed to update check run: %s", e)
 
