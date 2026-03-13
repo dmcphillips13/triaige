@@ -39,7 +39,8 @@ from app.schemas import (
     SubmissionRequest,
 )
 from app.repo_settings import RepoSettings
-from app.tools.github_actions import create_baseline_pr
+from app.tools.github_actions import commit_baselines_to_branch, create_baseline_pr
+from app.tools.github_checks import create_check_run, update_check_run
 from app.tools.github_issues import create_bug_issue
 from app.tools.pr_comment import post_triage_comment
 from app.settings import settings
@@ -186,6 +187,29 @@ async def triage_run(req: TriageRunRequest, request: Request):
 
     run_response = await store.create_run(results, pr_context=req.pr_context, triage_mode=mode)
 
+    # Create merge gate check run for pre-merge runs
+    if (
+        mode == "pre_merge"
+        and run_response.results
+        and req.pr_context
+        and req.pr_context.head_sha
+        and req.pr_context.repo
+    ):
+        rs = await repo_settings.get_settings(req.pr_context.repo)
+        if rs.merge_gate:
+            github_token = request.headers.get("X-GitHub-Token")
+            try:
+                check_run_id = await asyncio.to_thread(
+                    create_check_run,
+                    repo=req.pr_context.repo,
+                    head_sha=req.pr_context.head_sha,
+                    total_failures=len(run_response.results),
+                    github_token=github_token,
+                )
+                await store.set_check_run_id(run_response.run_id, check_run_id)
+            except Exception as e:
+                logger.warning("Failed to create check run: %s", e)
+
     # Post PR comment for pre-merge runs
     if (
         mode == "pre_merge"
@@ -271,9 +295,31 @@ async def get_verdicts(run_id: str):
 
 
 @app.put("/runs/{run_id}/failures/{test_name}/submission")
-async def put_submission(run_id: str, test_name: str, req: SubmissionRequest):
+async def put_submission(run_id: str, test_name: str, req: SubmissionRequest, request: Request):
     """Store a submission result (PR or issue URL) for a failure."""
     await store.set_submission(run_id, test_name, req.url, req.type)
+
+    # Check if all pre-merge failures are now addressed → update merge gate
+    if await store.check_pre_merge_gate(run_id):
+        check_run_id = await store.get_check_run_id(run_id)
+        if check_run_id:
+            run = await store.get_run(run_id)
+            repo = run.repo if run else None
+            if repo:
+                github_token = request.headers.get("X-GitHub-Token")
+                try:
+                    await asyncio.to_thread(
+                        update_check_run,
+                        repo=repo,
+                        check_run_id=check_run_id,
+                        conclusion="success",
+                        summary="All visual failures have been addressed",
+                        github_token=github_token,
+                    )
+                    logger.info("Merge gate passed for run %s", run_id)
+                except Exception as e:
+                    logger.warning("Failed to update check run: %s", e)
+
     return {"status": "stored"}
 
 
@@ -320,7 +366,11 @@ async def feedback(req: FeedbackRequest):
 
 @app.post("/update-baselines", response_model=UpdateBaselinesResponse)
 async def update_baselines(req: UpdateBaselinesRequest, request: Request):
-    """Create a PR updating baseline screenshots for approved failures."""
+    """Update baseline screenshots for approved failures.
+
+    For pre-merge runs: commits directly to the PR branch.
+    For post-merge runs: creates a separate baseline PR.
+    """
     run = await store.get_run(req.run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
@@ -347,14 +397,30 @@ async def update_baselines(req: UpdateBaselinesRequest, request: Request):
     github_token = request.headers.get("X-GitHub-Token")
 
     try:
-        pr_url = await asyncio.to_thread(
-            create_baseline_pr,
-            repo=req.repo,
-            run_id=req.run_id,
-            baselines=baselines,
-            source_pr_title=run.pr_title,
-            github_token=github_token,
-        )
+        if run.triage_mode == "pre_merge":
+            # Pre-merge: commit directly to the PR branch
+            pr_number = await store.get_run_pr_number(req.run_id)
+            if not pr_number:
+                raise HTTPException(status_code=400, detail="No PR number for pre-merge run")
+            commit_sha = await asyncio.to_thread(
+                commit_baselines_to_branch,
+                repo=req.repo,
+                pr_number=pr_number,
+                baselines=baselines,
+                github_token=github_token,
+            )
+            # Return the commit URL as the "pr_url" for consistency
+            pr_url = f"https://github.com/{req.repo}/pull/{pr_number}/commits/{commit_sha}"
+        else:
+            # Post-merge: create a separate baseline PR
+            pr_url = await asyncio.to_thread(
+                create_baseline_pr,
+                repo=req.repo,
+                run_id=req.run_id,
+                baselines=baselines,
+                source_pr_title=run.pr_title,
+                github_token=github_token,
+            )
     except RuntimeError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

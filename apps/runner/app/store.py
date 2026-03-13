@@ -132,6 +132,34 @@ async def get_result(run_id: str, test_name: str) -> TriageFailureResult | None:
     )
 
 
+async def set_check_run_id(run_id: str, check_run_id: int) -> None:
+    """Store the GitHub check run ID on a triage run."""
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE runs SET check_run_id = $2 WHERE run_id = $1",
+            run_id, check_run_id,
+        )
+
+
+async def get_check_run_id(run_id: str) -> int | None:
+    """Get the GitHub check run ID for a triage run."""
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        return await conn.fetchval(
+            "SELECT check_run_id FROM runs WHERE run_id = $1", run_id
+        )
+
+
+async def get_run_pr_number(run_id: str) -> int | None:
+    """Get the PR number for a run."""
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        return await conn.fetchval(
+            "SELECT pr_number FROM runs WHERE run_id = $1", run_id
+        )
+
+
 async def close_run(run_id: str, force: bool = False) -> bool:
     """Mark a run as closed. Returns True if found."""
     pool = get_pool()
@@ -304,6 +332,39 @@ async def check_close_eligibility(run_id: str) -> bool:
                        AND r.closed = FALSE
                  )""",
             run_id,
+        )
+    return covered >= len(test_names)
+
+
+async def check_pre_merge_gate(run_id: str) -> bool:
+    """Check if all net-new failures in a pre-merge run have submissions.
+
+    Returns True if every failure has a submission (baseline committed or issue filed).
+    """
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT triage_mode, closed FROM runs WHERE run_id = $1", run_id
+        )
+        if not row or row["closed"] or row["triage_mode"] != "pre_merge":
+            return False
+
+        test_names = [
+            r["test_name"]
+            for r in await conn.fetch(
+                "SELECT test_name FROM failure_results WHERE run_id = $1", run_id
+            )
+        ]
+        if not test_names:
+            return False
+
+        # Count failures that have a submission in this run
+        covered = await conn.fetchval(
+            """SELECT COUNT(DISTINCT s.test_name)
+               FROM submissions s
+               WHERE s.run_id = $1
+                 AND s.test_name = ANY($2)""",
+            run_id, test_names,
         )
     return covered >= len(test_names)
 

@@ -1,8 +1,8 @@
-// Runs list with Main / PR / Closed tabs.
+// Runs list with PR / Main / Closed tabs.
 //
-// Main: post-merge runs on main branch (actionable — approve/reject, submit, close)
-// PR: pre-merge runs from open PRs (informational, read-only)
-// Closed: runs manually closed by a reviewer
+// PR (default): pre-merge runs from open PRs — primary workspace for triage
+// Main: post-merge runs on main branch — diagnostic health dashboard
+// Closed: auto-closed or manually closed runs
 
 "use client";
 
@@ -11,10 +11,10 @@ import Link from "next/link";
 import { ClassificationBadge } from "@/components/classification-badge";
 import type { TriageRunSummary } from "@/lib/types";
 
-type Tab = "main" | "pr" | "closed";
+type Tab = "pr" | "main" | "closed";
 
 export function RunsList({ runs }: { runs: TriageRunSummary[] }) {
-  const [tab, setTab] = useState<Tab>("main");
+  const [tab, setTab] = useState<Tab>("pr");
 
   const mainRuns = runs.filter(
     (r) => r.triage_mode !== "pre_merge" && !r.closed
@@ -25,8 +25,8 @@ export function RunsList({ runs }: { runs: TriageRunSummary[] }) {
   const closedRuns = runs.filter((r) => r.closed);
 
   const tabs: { key: Tab; label: string; runs: TriageRunSummary[] }[] = [
-    { key: "main", label: "Main", runs: mainRuns },
     { key: "pr", label: "PR", runs: prRuns },
+    { key: "main", label: "Main", runs: mainRuns },
     { key: "closed", label: "Closed", runs: closedRuns },
   ];
 

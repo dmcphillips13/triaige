@@ -26,6 +26,7 @@ class PRContext(BaseModel):
     diff: str | None = None
     repo: str | None = None
     pr_number: int | None = None
+    head_sha: str | None = None
 
 
 class AskRequest(BaseModel):

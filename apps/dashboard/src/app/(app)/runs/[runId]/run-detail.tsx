@@ -5,10 +5,16 @@
 // via the runner API. Known failures show which PR introduced the regression
 // and any existing open submissions (PRs or issues).
 //
-// "Submit Changes" processes all verdicted failures:
-//   - Approved → baseline update PR (batched into one PR)
-//   - Rejected → GitHub issues (one per failure)
-// After submission, each failure shows its link and actions are disabled.
+// Pre-merge runs are the primary workspace:
+//   - Approved → baseline committed directly to PR branch
+//   - Rejected → GitHub issues
+//   - Pre-existing failures (failing on main) are shown but non-actionable
+//   - Merge gate check updated to success when all failures addressed
+//
+// Post-merge runs:
+//   - Approved → baseline update PR
+//   - Rejected → GitHub issues
+//   - Auto-close when all failures addressed
 
 "use client";
 
@@ -72,6 +78,7 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
   );
 
   const isPreMerge = run.triage_mode === "pre_merge";
+  const isPostMerge = run.triage_mode !== "pre_merge";
 
   // Failures ready to submit: have a verdict, no submission from this run,
   // and no open submission from a previous run
@@ -177,6 +184,11 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
           <span className="text-sm text-zinc-600">
             {run.total_failures} failure{run.total_failures !== 1 && "s"}
           </span>
+          {isPostMerge && (
+            <span className="rounded bg-zinc-100 px-2 py-0.5 text-xs text-zinc-500">
+              Diagnostic
+            </span>
+          )}
           <div className="flex gap-1.5">
             {Object.entries(counts).map(([cls, count]) => (
               <span key={cls} className="flex items-center gap-1">
@@ -192,12 +204,17 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
       <ul className="mt-6 space-y-3">
         {run.results.map((result) => {
           const kf = knownFailures[result.test_name];
-          // On Main tab: if an open submission exists from a previous run,
+          // If an open submission exists from a previous run,
           // treat as action-gated (show link, hide approve/reject)
           const existingSubmission =
             kf?.open_submission && !submitted[result.test_name]
               ? kf.open_submission
               : null;
+
+          // Pre-existing failures (failing on main) are non-actionable
+          // on pre-merge runs — they're already tracked on main
+          const isPreExisting =
+            isPreMerge && kf?.failing_since != null;
 
           return (
             <li key={result.test_name}>
@@ -205,10 +222,10 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
                 result={result}
                 verdict={verdicts[result.test_name] ?? null}
                 onVerdict={(v) => handleVerdict(result.test_name, v)}
-                readOnly={isPreMerge}
+                readOnly={isClosed || isPostMerge || isPreExisting}
                 submitted={submitted[result.test_name] ?? null}
                 knownFailure={kf ?? null}
-                actionGated={!isPreMerge && existingSubmission !== null}
+                actionGated={existingSubmission !== null}
                 existingSubmission={existingSubmission}
               />
             </li>
@@ -216,8 +233,8 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
         })}
       </ul>
 
-      {/* Submit Changes button — only for post-merge runs */}
-      {run.repo && !isPreMerge && hasPending && (
+      {/* Submit Changes button — only for pre-merge (actionable) runs */}
+      {run.repo && !isClosed && !isPostMerge && hasPending && (
         <div className="mt-8 rounded-lg border border-zinc-200 bg-white p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -231,7 +248,10 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
                   `${pendingRejected.length} rejected`}
               </p>
               <p className="mt-0.5 text-xs text-zinc-500">
-                {pendingApproved.length > 0 && "Approved → baseline update PR"}
+                {pendingApproved.length > 0 &&
+                  (isPreMerge
+                    ? "Approved → commit baselines to PR"
+                    : "Approved → baseline update PR")}
                 {pendingApproved.length > 0 &&
                   pendingRejected.length > 0 &&
                   " · "}

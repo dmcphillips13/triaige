@@ -11,7 +11,8 @@ CREATE TABLE IF NOT EXISTS runs (
     repo            TEXT,
     triage_mode     TEXT,
     closed          BOOLEAN NOT NULL DEFAULT FALSE,
-    classifications JSONB NOT NULL DEFAULT '{}'
+    classifications JSONB NOT NULL DEFAULT '{}',
+    check_run_id    BIGINT
 );
 
 -- Migration: add pr_number column if missing (safe to re-run)
@@ -56,7 +57,30 @@ CREATE TABLE IF NOT EXISTS submissions (
 );
 
 CREATE TABLE IF NOT EXISTS repo_settings (
-    repo        TEXT PRIMARY KEY,
-    pre_merge   BOOLEAN NOT NULL DEFAULT TRUE,
-    post_merge  BOOLEAN NOT NULL DEFAULT TRUE
+    repo            TEXT PRIMARY KEY,
+    pre_merge       BOOLEAN NOT NULL DEFAULT TRUE,
+    post_merge      BOOLEAN NOT NULL DEFAULT TRUE,
+    merge_gate      BOOLEAN NOT NULL DEFAULT TRUE
 );
+
+-- Migration: add check_run_id column to runs if missing (safe to re-run)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'runs' AND column_name = 'check_run_id'
+    ) THEN
+        ALTER TABLE runs ADD COLUMN check_run_id BIGINT;
+    END IF;
+END $$;
+
+-- Migration: add merge_gate column to repo_settings if missing (safe to re-run)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'repo_settings' AND column_name = 'merge_gate'
+    ) THEN
+        ALTER TABLE repo_settings ADD COLUMN merge_gate BOOLEAN NOT NULL DEFAULT TRUE;
+    END IF;
+END $$;

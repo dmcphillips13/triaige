@@ -148,3 +148,82 @@ def create_baseline_pr(
 
     logger.info("Created baseline PR: %s", pr_url)
     return pr_url
+
+
+def commit_baselines_to_branch(
+    repo: str,
+    pr_number: int,
+    baselines: list[dict],
+    github_token: str | None = None,
+) -> str:
+    """Commit updated baselines directly to a PR's head branch.
+
+    Used for pre-merge runs where approved baselines go into the open PR
+    rather than creating a separate baseline PR.
+
+    Args:
+        repo: "owner/repo" format.
+        pr_number: PR number to commit to.
+        baselines: List of dicts with 'path', 'content_base64', 'test_name'.
+        github_token: Per-request token (from OAuth user).
+
+    Returns:
+        SHA of the created commit.
+    """
+    client = _get_client(github_token)
+
+    # 1. Get the PR's head branch and its current SHA
+    pr_resp = client.get(f"/repos/{repo}/pulls/{pr_number}")
+    pr_resp.raise_for_status()
+    pr_data = pr_resp.json()
+    branch = pr_data["head"]["ref"]
+    base_sha = pr_data["head"]["sha"]
+
+    # 2. Create blobs for each baseline screenshot
+    tree_items = []
+    for bl in baselines:
+        blob_resp = client.post(
+            f"/repos/{repo}/git/blobs",
+            json={"content": bl["content_base64"], "encoding": "base64"},
+        )
+        blob_resp.raise_for_status()
+        blob_sha = blob_resp.json()["sha"]
+        tree_items.append({
+            "path": bl["path"],
+            "mode": "100644",
+            "type": "blob",
+            "sha": blob_sha,
+        })
+
+    # 3. Create tree
+    tree_resp = client.post(
+        f"/repos/{repo}/git/trees",
+        json={"base_tree": base_sha, "tree": tree_items},
+    )
+    tree_resp.raise_for_status()
+    tree_sha = tree_resp.json()["sha"]
+
+    # 4. Create commit on the PR branch
+    test_count = len(baselines)
+    commit_message = f"triaige/update-baselines: update {test_count} baseline{'s' if test_count != 1 else ''}"
+
+    commit_resp = client.post(
+        f"/repos/{repo}/git/commits",
+        json={
+            "message": commit_message,
+            "tree": tree_sha,
+            "parents": [base_sha],
+        },
+    )
+    commit_resp.raise_for_status()
+    commit_sha = commit_resp.json()["sha"]
+
+    # 5. Update the branch ref to point to the new commit
+    ref_resp = client.patch(
+        f"/repos/{repo}/git/refs/heads/{branch}",
+        json={"sha": commit_sha},
+    )
+    ref_resp.raise_for_status()
+
+    logger.info("Committed %d baseline(s) to %s @ %s", test_count, branch, commit_sha[:8])
+    return commit_sha
