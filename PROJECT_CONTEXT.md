@@ -44,15 +44,16 @@ Last updated: 2026-03-09
     - **Action gating on Main tab**: if a failure already has an open PR or issue, hide approve/reject buttons (prevents duplicate submissions); if it's a known failure with no open submission, allow approve/reject normally
 - [x] Step 20.1: Net-new failure filtering — only show failures not present in previous open post-merge runs; skip run creation when zero new failures; post-merge runs auto-close when all failures have submissions; pre-merge runs auto-close when superseded or when the PR merges; default both triage modes enabled
 - [ ] Step 21: Actionable pre-merge workflow with merge gate — pre-merge becomes the primary workspace; approved baselines commit directly to PR branch; unexpected changes file issues; GitHub check gates merge until all net-new failures addressed; pre-existing failures (failing on main with open issue) shown but not actionable; Main tab becomes health dashboard showing open issues on failing tests; post-merge runs are diagnostic only
-- [ ] Step 22: Repos landing page + add repo flow — repos page with cards, "Connect Repo" flow via GitHub App
+- [ ] Step 22: Baseline knowledge doc — LLM auto-generates semantic descriptions of each page from baseline screenshots and app code; classifier references during triage for richer context
 - [ ] Step 23: Issue attribution agent — async agent scans merge history, adds attribution comments to issues
-- [ ] Step 24: Auto-approve baselines above confidence threshold (stretch)
+- [ ] Step 24: Repos landing page + add repo flow — repos page with cards, "Connect Repo" flow via GitHub App
 - [ ] Step 25: Settings UI — per-repo config page for API keys, triage mode toggles, merge gate toggle
 - [ ] Step 26: Repo setup CLI — `npx triaige init` to scaffold workflow, config, and secrets
-- [ ] Step 27: Procedural memory — self-improving triage instructions via reflection (stretch)
-- [ ] Step 28: Component ownership lookup (stretch)
-- [ ] Step 29: RAGAS evaluation (stretch)
-- [ ] Step 30: Polish + Loom
+- [ ] Step 27: Auto-approve baselines above confidence threshold (stretch)
+- [ ] Step 28: Procedural memory — self-improving triage instructions via reflection (stretch)
+- [ ] Step 29: Component ownership lookup (stretch)
+- [ ] Step 30: RAGAS evaluation (stretch)
+- [ ] Step 31: Polish + Loom
 
 ---
 

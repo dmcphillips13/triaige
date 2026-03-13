@@ -525,15 +525,16 @@ Commit messages: plain imperative sentences (e.g., "Add GitHub API client for PR
     - **Main tab becomes a health dashboard**: shows tests currently failing on main, each linked to an open issue; no approve/reject — action already happened in the PR; should be empty if the gate is working; only unexpected changes with open issues appear here
     - **Post-merge runs are diagnostic only**: capture the current state of main after each merge; no triage workflow, just a snapshot feeding the Main tab health view
     - **Auto-close pre-merge runs**: same as today — superseded by newer run for same PR, or when PR merges
-22. Repos landing page + add repo flow: after login, land on a repos page showing linked repos as cards (repo name, last run status, failure count); click a repo → see its runs; "Connect Repo" flow to link a new repo via GitHub App installation scope
+22. Baseline knowledge doc: LLM scans baseline screenshots and app code to auto-generate a semantic description of each page (layout, color usage, key UI elements, design patterns); doc lives in the target repo (version controlled, human-editable); classifier references the doc during triage for richer semantic context beyond pixel diffs; can be regenerated when baselines change; optionally generated during `triaige init` or as a standalone command
 23. Issue attribution agent: a separate async agent that runs after issues are filed; scans recent merge history and adds attribution comments to issues linking the likely responsible PR and author
-24. Auto-approve baselines above confidence threshold (stretch — needs discussion before implementing; default should always be human-in-the-loop)
+24. Repos landing page + add repo flow: after login, land on a repos page showing linked repos as cards (repo name, last run status, failure count); click a repo → see its runs; "Connect Repo" flow to link a new repo via GitHub App installation scope
 25. Settings UI: per-repo configuration page in dashboard for API keys (OpenAI, etc.), triage mode toggles, merge gate toggle, and other config that currently lives in env vars or is hardcoded
 26. Repo setup CLI: `npx triaige init` (or similar) run inside a target repo to scaffold the GitHub Actions workflow file, Playwright config, post-failures script, and guide the user through secrets/env setup; replaces manual repo configuration
-27. Procedural memory: agent reflection on feedback patterns → self-updating triage instructions, versioned in Qdrant (stretch)
-28. Component ownership lookup (stretch)
-29. RAGAS evaluation (stretch)
-30. Polish + Loom prep
+27. Auto-approve baselines above confidence threshold (stretch — needs discussion before implementing; default should always be human-in-the-loop)
+28. Procedural memory: agent reflection on feedback patterns → self-updating triage instructions, versioned in Qdrant (stretch)
+29. Component ownership lookup (stretch)
+30. RAGAS evaluation (stretch)
+31. Polish + Loom prep
 
 ---
 
