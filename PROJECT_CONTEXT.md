@@ -63,7 +63,8 @@ Last updated: 2026-03-09
 - [ ] Step 22.4: Delete stale PR comments when runs are superseded
 - [ ] Step 22.5: Hide skipped `close-pr-runs` job on PR checks
 - [ ] Step 22.6: Fix swipe screenshot viewer — baseline and actual screenshots are not aligned/sized consistently for swipe comparison; both images need to be the same dimensions and overlaid properly
-- [ ] Step 22.7: Screenshot viewer improvements — make the diff viewer larger or add a fullscreen/modal mode so users can more easily compare baseline vs actual across all three modes (side-by-side, swipe, diff overlay) — either split into separate workflows or use a different approach so the push-only job doesn't show as "skipped" on PRs — store comment ID on creation, delete when run is auto-closed so only the latest triage comment remains
+- [ ] Step 22.7: Make screenshot diff viewer larger — current size is too small to see meaningful visual differences
+- [ ] Step 22.8: Add fullscreen/modal mode for screenshot comparison — click to expand into a full-viewport overlay for detailed inspection across all three modes — either split into separate workflows or use a different approach so the push-only job doesn't show as "skipped" on PRs — store comment ID on creation, delete when run is auto-closed so only the latest triage comment remains
 - [ ] Step 22.2: Fix GitHub OAuth session duration — token expires too frequently, forcing re-auth during normal usage; investigate token refresh flow and extend session lifetime
 - [ ] Step 23: Repos landing page — repo cards with setup checklist, "Connect Repo" via GitHub App, unconfigured repos rejected
 - [ ] Step 24: Settings UI — auto-generated API key + runner URL for copy-paste, triage/merge gate toggles, inline CLI instructions
