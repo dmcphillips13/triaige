@@ -23,10 +23,10 @@ All agents (Claude Code, Codex, Cursor, etc.) should follow this document to avo
 Build a **production-ready agentic AI app** that automates visual regression testing end-to-end. The target is a polished, reliable live demo — quality over breadth.
 
 ### Product flow
-Merged PR (sample app repo) → Playwright tests run → failed screenshots + results → Triaige agent classifies failures → automated actions (PRs for baselines, issues for bugs) → human reviews in dashboard → feedback loops back into triage memory.
+PR opened/updated (sample app repo) → Playwright tests run → failed screenshots + results → Triaige agent classifies failures → developer reviews in dashboard → approved baselines committed to PR branch, unexpected changes filed as issues → merge gate passes once all failures addressed → PR merges. Known failures (tests already failing on main) are tracked on a health dashboard with linked GitHub issues.
 
 ### Demo target
-Live end-to-end pipeline: merge a real PR to the sample app repo, Playwright runs, Triaige classifies, results appear in the dashboard. The full product flow is the definition of "demo-ready."
+Live end-to-end pipeline: open a PR on the sample app repo, Playwright runs, Triaige classifies, results appear in the dashboard with merge gate blocking until addressed. The full product flow is the definition of "demo-ready."
 
 ### Sample app (separate repo)
 A separate GitHub repo with a moderate dashboard-style web app (3–5 pages: nav, cards, tables, forms) and Playwright visual tests. PRs to this repo trigger the GitHub Actions workflow. The sample app exists solely to generate realistic visual regressions for the demo.
@@ -77,11 +77,16 @@ triaige/
   pnpm-workspace.yaml
   package.json
   .gitignore
-  apps/dashboard/                    # Next.js scaffold (exists)
+  apps/dashboard/                    # Next.js dashboard (Vercel)
     src/app/page.tsx
+    src/app/(app)/runs/              # Triage run list + detail views
     src/app/api/runner/[...path]/route.ts   # proxy to runner
     .env.example
-  apps/runner/                       # empty — must be created
+  apps/runner/                       # FastAPI backend (Render)
+    app/main.py                      # FastAPI app
+    app/agent/                       # LangGraph workflow, prompts
+    app/tools/                       # GitHub, image diff, vision
+    app/retrieval/                   # Qdrant client
   packages/shared/                   # TS shared types (unused for now)
   docs/
 ```
@@ -139,8 +144,8 @@ apps/runner/
 
 ### Sample app (separate repo)
 - Separate GitHub repo (not in this monorepo).
-- 3–5 page dashboard-style web app with Playwright visual tests.
-- Contains GitHub Actions workflow that triggers on merged PRs: runs Playwright → POSTs failures to Triaige runner.
+- 4-page dashboard-style web app (Overview, Users, Settings, Reports) with Playwright visual tests.
+- Contains GitHub Actions workflow that triggers on PRs (opened/synchronize) and push-to-main: runs Playwright → POSTs failures to Triaige runner for pre-merge triage; on push-to-main calls `/report-clean` for run cleanup.
 - Built in Step 2.
 
 ---
@@ -389,14 +394,16 @@ The agent stores its own triage instructions in Qdrant (`doc_type: procedure`). 
 ### Additional graph nodes
 6. `compute_image_diff` — programmatic pixel comparison of screenshots; outputs feed into vision prompt [conditional]
 7. `analyze_screenshots` — GPT-4o vision analysis using baseline, actual, and diff overlay + diff metrics as context [conditional]
-8. `update_baselines` — batch-create a PR updating baseline screenshots for all approved expected failures (via GitHub Git Data API); triggered from dashboard "Update Baselines" button
-9. `store_episode` — after human feedback, save the decision as an episode in Qdrant [triggered by feedback endpoint]
+8. `devil_advocate` — scope/defect review: checks whether visual changes align with PR description and flags defects
+9. `commit_baselines` — commit approved baseline screenshots directly to the PR branch (via GitHub Git Data API); triggered from dashboard "Submit Changes" button
+10. `store_episode` — after human feedback, save the decision as an episode in Qdrant [triggered by feedback endpoint]
 
 ### Routing rules
 - Always retrieve semantic memory and episodic memory from Qdrant (RAG-first).
 - Fetch PR context if `repo` and `pr_number` are provided in the request.
 - Run image diff + vision only if `screenshot_baseline` and `screenshot_actual` are provided.
-- Update baselines only after human has approved failures as expected; triggered explicitly from dashboard UI.
+- Run devil's advocate review after vision analysis to assess scope alignment and defects.
+- Commit baselines to PR branch after human approves failures as expected; triggered from dashboard "Submit Changes".
 - Store episode after human approves/rejects a classification via the feedback endpoint.
 - Degrade gracefully: accumulate errors in state, never crash on tool failure.
 
@@ -416,7 +423,7 @@ Responses are built deterministically in `format.py` where possible. The LLM gen
 - `uncertain` → recommend `request_human_review`
 
 ### Rationale
-Short paragraph grounded in retrieved context. Must reference specific cases/runbooks when available.
+Exactly 3 markdown bullets. Each bullet: bold key fact + short explanation after a dash. Max 12 words per bullet. No filler words. Example: `- **Card backgrounds changed** — matches color token update`.
 
 ### Citations
 List of `{doc_id, snippet, source}` from Qdrant retrieval + GitHub context + vision analysis.
@@ -432,9 +439,11 @@ List of `{doc_id, snippet, source}` from Qdrant retrieval + GitHub context + vis
 - Logo: red cross + "riaige" in dark navy with "ai" highlighted in red (on local machine, will be added to `apps/dashboard/public/`).
 
 ### Dashboard views
-- Triage list: classification badge (color-coded), test name, confidence, recommended action.
-- Screenshot comparison: side-by-side, swipe slider (`react-compare-slider`), diff overlay.
-- Detail view: rationale, citations, tool calls, image diff stats, approve/reject buttons.
+- **PR tab** (primary): pre-merge runs from open PRs; developers approve/reject failures; merge gate blocks until all addressed.
+- **Main tab** (health dashboard): known failures on main, each linked to an open GitHub issue; should be empty if merge gate is working.
+- **Closed tab**: archived runs (auto-closed on merge/supersede, or manually closed).
+- **Failure card expanded**: rationale (3 bullets) → image diff stats → screenshots (side-by-side, swipe, diff overlay) → vision analysis (collapsed) → citations (collapsed) → tool calls (collapsed).
+- **Actions**: approve → baseline committed to PR branch; reject → GitHub issue filed. Both satisfy the merge gate.
 
 ---
 
@@ -525,8 +534,8 @@ Commit messages: plain imperative sentences (e.g., "Add GitHub API client for PR
     - **Main tab becomes a health dashboard**: shows tests currently failing on main, each linked to an open issue; no approve/reject — action already happened in the PR; should be empty if the gate is working; only unexpected changes with open issues appear here
     - **Post-merge runs are diagnostic only**: capture the current state of main after each merge; no triage workflow, just a snapshot feeding the Main tab health view
     - **Auto-close pre-merge runs**: same as today — superseded by newer run for same PR, or when PR merges
-22. Baseline knowledge doc: LLM scans baseline screenshots and app code to auto-generate a semantic description of each page (layout, color usage, key UI elements, design patterns); doc lives in the target repo (version controlled, human-editable); classifier references the doc during triage for richer semantic context beyond pixel diffs; can be regenerated when baselines change; optionally generated during `triaige init` or as a standalone command
-23. Issue attribution agent: a separate async agent that runs after issues are filed; scans recent merge history and adds attribution comments to issues linking the likely responsible PR and author
+22. Failure card UX + rationale format: reorder expanded sections (rationale first, vision analysis collapsed), improve rationale prompt (3 short bullets, 12-word max, bold key facts), fix markdown bullet rendering
+23. Classification improvements: two-signal classification (visual diff + git diff + PR description), mixed-scope separation, temperature=0, git diff context, few-shot calibration, per-component analysis
 24. Repos landing page + add repo flow: after login, land on a repos page showing linked repos as cards (repo name, last run status, failure count, setup status); click a repo → see its runs; "Connect Repo" flow installs the GitHub App on selected repos; each repo card shows a setup checklist (GitHub App installed, API key generated, `triaige init` run — detected by first successful run); unconfigured repos are rejected by the runner
 25. Settings UI: per-repo configuration page in dashboard; auto-generates API key and displays runner URL for easy copy-paste into CLI; triage mode toggles, merge gate toggle (on by default); shows the exact `npx triaige init` command with inline instructions; all config that currently lives in env vars moves here
 26. Repo setup CLI (`npx triaige init`): guided setup run inside a target repo that handles all configuration for a frictionless first run:
@@ -538,13 +547,15 @@ Commit messages: plain imperative sentences (e.g., "Add GitHub API client for PR
     - **Branch protection setup**: if merge gate is enabled (default), offers to add "Triaige Visual Regression" as a required status check on the default branch via `gh api` with `strict: true` (require branches to be up-to-date before merging); uses the user's own `gh` credentials (no extra GitHub App permissions needed); skips gracefully if branch protection already exists or if user declines
     - **Initial baselines**: offers to generate initial baselines (`npx playwright test --update-snapshots`) if app can be started locally; commits them so the first PR run has a clean comparison
     - **Validation**: runs a dry-run check — verifies secrets are set, workflow file is valid YAML, script is executable, Playwright config has JSON reporter, branch protection is configured; prints a summary of what's ready and what needs manual attention
-27. Separate test repo support: allow linking a dedicated Playwright/baselines repo separate from the UI repo; baseline commits and issues target the test repo; merge gate still applies to the UI repo's PRs; configured via a "baseline target repo" setting in repo_settings
-28. Auto-approve baselines above confidence threshold (stretch — needs discussion before implementing; default should always be human-in-the-loop)
-29. Procedural memory: agent reflection on feedback patterns → self-updating triage instructions, versioned in Qdrant (stretch)
-30. Component ownership lookup (stretch)
-31. Auto-close main dashboard failures when linked GitHub issue closes: add a webhook endpoint that listens for `issues` closed events and automatically removes resolved failures from the Main tab health dashboard; until then, failures are manually dismissed from the dashboard
-32. RAGAS evaluation (stretch)
-33. Polish + Loom prep
+27. Polish + Loom prep
+28 (stretch). Issue attribution agent: a separate async agent that runs after issues are filed; scans recent merge history and adds attribution comments to issues linking the likely responsible PR and author
+29 (stretch). Baseline knowledge doc: LLM auto-generates semantic descriptions of each page from baseline screenshots and app code; classifier references during triage for richer context
+30 (stretch). Separate test repo support: allow linking a dedicated Playwright/baselines repo separate from the UI repo; baseline commits and issues target the test repo; merge gate still applies to the UI repo's PRs; configured via a "baseline target repo" setting in repo_settings
+31 (stretch). Auto-approve baselines above confidence threshold (needs discussion; default should always be human-in-the-loop)
+32 (stretch). Procedural memory: agent reflection on feedback patterns → self-updating triage instructions, versioned in Qdrant
+33 (stretch). Component ownership lookup
+34 (stretch). Auto-close main dashboard failures when linked GitHub issue closes: webhook endpoint for `issues` closed events
+35 (stretch). RAGAS evaluation
 
 ---
 

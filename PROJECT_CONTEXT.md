@@ -1,12 +1,12 @@
 # PROJECT_CONTEXT.md — Triaige (Session Handoff)
 
-Last updated: 2026-03-09
+Last updated: 2026-03-14
 
 ---
 
 ## Current status
 
-**Phase:** Core pipeline complete through Step 18. Final week — Postgres persistence, repo management UX, setup CLI, then polish.
+**Phase:** Core pipeline complete through Step 22.2. Polish and demo prep — classification improvements, UX fixes, then CLI + landing page.
 
 ### Completed
 - [x] Project planning and scoping
@@ -43,13 +43,14 @@ Last updated: 2026-03-09
     - **Open submission links**: if an open baseline PR or GitHub issue exists for a failing test, show the link on the failure card; also include these links in the PR comment posted for pre-merge runs
     - **Action gating on Main tab**: if a failure already has an open PR or issue, hide approve/reject buttons (prevents duplicate submissions); if it's a known failure with no open submission, allow approve/reject normally
 - [x] Step 20.1: Net-new failure filtering — only show failures not present in previous open post-merge runs; skip run creation when zero new failures; post-merge runs auto-close when all failures have submissions; pre-merge runs auto-close when superseded or when the PR merges; default both triage modes enabled
-- [ ] Step 21: Actionable pre-merge workflow with merge gate — pre-merge becomes the primary workspace; approved baselines commit directly to PR branch; unexpected changes file issues; GitHub check gates merge until all net-new failures addressed; pre-existing failures (failing on main with open issue) shown but not actionable; Main tab becomes health dashboard showing open issues on failing tests; post-merge runs are diagnostic only
-- [ ] Step 21.1a: Remove post-merge runs — strip triage path for push-to-main events; workflow just calls `/report-clean` for PR run cleanup; remove post-merge run creation logic
-- [ ] Step 21.1b: Main tab health dashboard — replace run cards with individual failing baseline cards; each shows screenshot from when issue was filed, issue title/number/link, test name; add `known_failures` table (test_name, repo, screenshot_base64, issue_url, issue_number, filed_from_run_id); closing from UI also closes the GitHub issue
-- [ ] Step 21.1c: Known failure visibility on PRs — when net-new filtering skips known failures, compare PR screenshot against stored screenshot from `known_failures` table; if different, post comment on GitHub issue noting the PR that modified it further with link; show skipped tests as non-actionable in dashboard run detail and PR comment with issue links and manual verification note
-- [ ] Step 21.2: Remove "Ready to merge" PR comments — redundant since the check passing already signals this; remove gate-passed comment entirely
-- [ ] Step 21.3: Fix "Baseline committed" label — submission label on pre-merge runs should say "Baseline committed" not "Baseline PR opened"
-- [ ] Step 22: Classification improvements — observed issues and fixes:
+- [x] Step 21: Actionable pre-merge workflow with merge gate — pre-merge becomes the primary workspace; approved baselines commit directly to PR branch; unexpected changes file issues; GitHub check gates merge until all net-new failures addressed; pre-existing failures (failing on main with open issue) shown but not actionable; Main tab becomes health dashboard showing open issues on failing tests; post-merge runs are diagnostic only
+- [x] Step 21.1a: Remove post-merge runs — strip triage path for push-to-main events; workflow just calls `/report-clean` for PR run cleanup; remove post-merge run creation logic
+- [x] Step 21.1b: Main tab health dashboard — replace run cards with individual failing baseline cards; each shows screenshot from when issue was filed, issue title/number/link, test name; add `known_failures` table (test_name, repo, screenshot_base64, issue_url, issue_number, filed_from_run_id); closing from UI also closes the GitHub issue
+- [x] Step 21.1c: Known failure visibility on PRs — when net-new filtering skips known failures, compare PR screenshot against stored screenshot from `known_failures` table; if different, post comment on GitHub issue noting the PR that modified it further with link; show skipped tests as non-actionable in dashboard run detail and PR comment with issue links and manual verification note
+- [x] Step 21.2: Remove "Ready to merge" PR comments — redundant since the check passing already signals this; remove gate-passed comment entirely
+- [x] Step 21.3: Fix "Baseline committed" label — submission label on pre-merge runs should say "Baseline committed" not "Baseline PR opened"
+- [x] Step 22: **DEMO CRITICAL** — Reorder failure card sections (rationale at top, image diff next, vision analysis collapsed) + improve rationale format (3 brief bullet points, fix markdown bullet rendering)
+- [ ] Step 23: Classification improvements — observed issues and fixes:
   - **Core approach — two-signal classification**: the classifier gets three inputs: (1) visual diff screenshots (what it looks like), (2) git diff (what code changed), (3) PR description (what was intended). A change is **expected** only if it traces to a diff change AND that change aligns with the PR description. A change is **unexpected** if it traces to a diff change NOT mentioned in the PR description (unintentional side effect) or if it's a visual defect. **Uncertain** only when the visual change cannot be traced to a specific diff change. This prevents the git diff from making everything "expected" — the PR description is still the scope gate.
   - **Mixed-scope contamination**: when a page has both expected changes (font sizes) and unexpected changes (sidebar color), the classifier compromises to "uncertain" instead of separating them. Fix: the two-signal approach lets the classifier say "font size change = expected (in diff + mentioned in PR), sidebar color change = unexpected (in diff but NOT mentioned in PR)" on the same page.
   - **Temperature**: set to 0 for deterministic results. Won't fix the mixed-scope issue but eliminates classification instability across retriggers.
@@ -57,35 +58,33 @@ Last updated: 2026-03-09
   - **Prompt structure**: "You have three inputs: (1) the visual diff screenshots, (2) the git diff showing exactly which properties changed, (3) the PR description stating what was intended. A change is expected if it traces to a diff change that aligns with the PR description. A change is unexpected if it traces to a diff change NOT mentioned in the PR description, or if it appears to be a visual defect. A change is uncertain only if you cannot determine which diff change caused the visual difference."
   - **Few-shot calibration**: retrieve 3-5 similar past decisions from episodic memory as examples in the prompt. Anchors the model's judgment to actual human verdicts.
   - **Per-component analysis**: long-term — instead of classifying the whole page, identify which UI components changed and classify each separately. A page with expected header changes and unexpected sidebar changes should yield two classifications.
-- [ ] Step 22.1: **DEMO CRITICAL** — Reorder failure card sections — rationale at top, image diff next, vision analysis collapsed
-- [ ] Step 22.2: **DEMO CRITICAL** — Improve rationale format — 3 brief bullet points a non-technical person could understand; fix markdown bullet rendering
-- [ ] Step 22.3: Debug and complete known failure screenshot comparison — the comparison + issue comment logic isn't firing despite screenshots differing; likely a silent exception in the comparison path or screenshot extraction; once fixed: (a) update PR comment to distinguish "unchanged known failure" from "further modified by this PR (adding drift)" with issue link; (b) on merge of a PR with drift, post issue comment with the new screenshot showing the visual progression — but keep the original screenshot in known_failures as the permanent reference so future comparisons always compare against the state when the bug was filed, not the drifted state
-- [ ] Step 22.4: Auto-close pre-merge runs after submit — close run immediately once all failures have submissions
-- [ ] Step 22.4: Known failure PR comment should link to open GitHub issues
-- [ ] Step 22.5: Rename "Main" tab to "Issues", add "Closed Issues" tab for resolved known failures
-- [ ] Step 22.6: Persist active tab across page refreshes via URL hash/query param
-- [ ] Step 22.7: Main tab should work without requiring Settings setup — derive repo from runs
-- [ ] Step 22.8: PR run cards should show gate status (action required vs ready to merge)
-- [ ] Step 22.9: Real-time run updates — polling every 10-15s on runs list and run detail
-- [ ] Step 22.10: All links open in new tab (target="_blank")
-- [ ] Step 22.11: Delete stale PR comments when runs are superseded — store comment ID, delete on auto-close
-- [ ] Step 22.12: Hide skipped `close-pr-runs` job on PR checks — split into separate workflows
-- [ ] Step 22.13: Fix swipe screenshot viewer — images not aligned for comparison
-- [ ] Step 22.14: Make screenshot diff viewer larger
-- [ ] Step 22.15: Add fullscreen/modal mode for screenshot comparison
-- [ ] Step 22.16: Fix GitHub OAuth session duration — extend token lifetime or add refresh flow
-- [ ] Step 23: Repos landing page — repo cards with setup checklist, "Connect Repo" via GitHub App, unconfigured repos rejected
-- [ ] Step 24: Settings UI — auto-generated API key + runner URL for copy-paste, triage/merge gate toggles, inline CLI instructions
-- [ ] Step 25: Repo setup CLI (`npx triaige init`) — frictionless guided setup: checks `gh` auth, verifies dashboard connection + GitHub App Checks permission, sets GitHub secrets via `gh secret set`, scaffolds workflow (with correct permissions block + baseline commit skip condition) + script (with executable bit) + .env.example, detects Playwright config and ensures JSON reporter is configured, detects monorepo structure, offers initial baseline generation + commit, branch protection with `strict: true`, and a final validation dry-run
-- [ ] Step 26: Polish + Loom
-- [ ] Step 27 (stretch): Issue attribution agent — async agent scans merge history, adds attribution comments to issues
-- [ ] Step 28 (stretch): Baseline knowledge doc — LLM auto-generates semantic descriptions of each page from baseline screenshots and app code; classifier references during triage for richer context
-- [ ] Step 29 (stretch): Separate test repo support — link a dedicated Playwright/baselines repo separate from the UI repo
-- [ ] Step 30 (stretch): Auto-approve baselines above confidence threshold
-- [ ] Step 31 (stretch): Procedural memory — self-improving triage instructions via reflection
-- [ ] Step 32 (stretch): Component ownership lookup
-- [ ] Step 33 (stretch): Auto-close main dashboard failures when linked issue closes (webhook)
-- [ ] Step 34 (stretch): RAGAS evaluation
+- [ ] Step 23.1: Debug and complete known failure screenshot comparison — the comparison + issue comment logic isn't firing despite screenshots differing; likely a silent exception in the comparison path or screenshot extraction; once fixed: (a) update PR comment to distinguish "unchanged known failure" from "further modified by this PR (adding drift)" with issue link; (b) on merge of a PR with drift, post issue comment with the new screenshot showing the visual progression — but keep the original screenshot in known_failures as the permanent reference so future comparisons always compare against the state when the bug was filed, not the drifted state
+- [ ] Step 23.2: Auto-close pre-merge runs after submit — close run immediately once all failures have submissions
+- [ ] Step 23.3: Known failure PR comment should link to open GitHub issues
+- [ ] Step 23.4: Rename "Main" tab to "Issues", add "Closed Issues" tab for resolved known failures
+- [ ] Step 23.5: Persist active tab across page refreshes via URL hash/query param
+- [ ] Step 23.6: Main tab should work without requiring Settings setup — derive repo from runs
+- [ ] Step 23.7: PR run cards should show gate status (action required vs ready to merge)
+- [ ] Step 23.8: Real-time run updates — polling every 10-15s on runs list and run detail
+- [ ] Step 23.9: All links open in new tab (target="_blank")
+- [ ] Step 23.10: Delete stale PR comments when runs are superseded — store comment ID, delete on auto-close
+- [ ] Step 23.11: Hide skipped `close-pr-runs` job on PR checks — split into separate workflows
+- [ ] Step 23.12: Fix swipe screenshot viewer — images not aligned for comparison
+- [ ] Step 23.13: Make screenshot diff viewer larger
+- [ ] Step 23.14: Add fullscreen/modal mode for screenshot comparison
+- [ ] Step 23.15: Fix GitHub OAuth session duration — extend token lifetime or add refresh flow
+- [ ] Step 24: Repos landing page — repo cards with setup checklist, "Connect Repo" via GitHub App, unconfigured repos rejected
+- [ ] Step 25: Settings UI — auto-generated API key + runner URL for copy-paste, triage/merge gate toggles, inline CLI instructions
+- [ ] Step 26: Repo setup CLI (`npx triaige init`) — frictionless guided setup: checks `gh` auth, verifies dashboard connection + GitHub App Checks permission, sets GitHub secrets via `gh secret set`, scaffolds workflow (with correct permissions block + baseline commit skip condition) + script (with executable bit) + .env.example, detects Playwright config and ensures JSON reporter is configured, detects monorepo structure, offers initial baseline generation + commit, branch protection with `strict: true`, and a final validation dry-run
+- [ ] Step 27: Polish + Loom
+- [ ] Step 28 (stretch): Issue attribution agent — async agent scans merge history, adds attribution comments to issues
+- [ ] Step 29 (stretch): Baseline knowledge doc — LLM auto-generates semantic descriptions of each page from baseline screenshots and app code; classifier references during triage for richer context
+- [ ] Step 30 (stretch): Separate test repo support — link a dedicated Playwright/baselines repo separate from the UI repo
+- [ ] Step 31 (stretch): Auto-approve baselines above confidence threshold
+- [ ] Step 32 (stretch): Procedural memory — self-improving triage instructions via reflection
+- [ ] Step 33 (stretch): Component ownership lookup
+- [ ] Step 34 (stretch): Auto-close main dashboard failures when linked issue closes (webhook)
+- [ ] Step 35 (stretch): RAGAS evaluation
 
 ---
 
