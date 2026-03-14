@@ -94,3 +94,31 @@ def create_bug_issue(
 
     logger.info("Created issue for %s: %s", test_name, issue_url)
     return issue_url
+
+
+def post_issue_comment(
+    repo: str,
+    issue_number: int,
+    body: str,
+    github_token: str | None = None,
+) -> None:
+    """Post a comment on an existing GitHub issue."""
+    effective_token = github_token or settings.github_token
+    if not effective_token:
+        raise RuntimeError("No GitHub token available for posting issue comment")
+
+    client = httpx.Client(
+        base_url="https://api.github.com",
+        headers={
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {effective_token}",
+        },
+        timeout=15.0,
+    )
+
+    resp = client.post(
+        f"/repos/{repo}/issues/{issue_number}/comments",
+        json={"body": body},
+    )
+    resp.raise_for_status()
+    logger.info("Posted comment on %s#%d", repo, issue_number)

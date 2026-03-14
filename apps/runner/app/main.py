@@ -41,7 +41,7 @@ from app.schemas import (
 from app.repo_settings import RepoSettings
 from app.tools.github_actions import commit_baselines_to_branch, create_baseline_pr
 from app.tools.github_checks import create_check_run, create_passing_check_run, update_check_run
-from app.tools.github_issues import create_bug_issue
+from app.tools.github_issues import create_bug_issue, post_issue_comment
 from app.tools.pr_comment import post_triage_comment
 from app.settings import settings
 from app.tools.playwright_parser import parse_report, parsed_result_to_ask_request
@@ -166,14 +166,65 @@ async def triage_run(req: TriageRunRequest, request: Request):
                 if r.pr_context is None:
                     r.pr_context = req.pr_context
 
-    # --- Net-new filtering: only triage failures not present in open post-merge runs ---
+    # --- Net-new filtering: only triage failures not present in known failures ---
+    skipped_known: list[dict] = []  # Known failures skipped by filtering
     if repo:
         existing = await store.get_existing_failure_test_names(repo)
         if existing:
+            skipped_requests = [
+                r for r in ask_requests
+                if extract_test_name(r) in existing
+            ]
             ask_requests = [
                 r for r in ask_requests
                 if extract_test_name(r) not in existing
             ]
+            # Collect skipped failure info for PR comment + screenshot comparison
+            for r in skipped_requests:
+                test_name = extract_test_name(r)
+                screenshot = r.run_summary.screenshot_actual if r.run_summary else None
+                skipped_known.append({"test_name": test_name, "screenshot": screenshot})
+
+    # --- Screenshot comparison for skipped known failures ---
+    # If a PR modifies an area that's already broken, notify the issue
+    if skipped_known and repo and mode == "pre_merge" and req.pr_context:
+        github_token = request.headers.get("X-GitHub-Token")
+        for skipped in skipped_known:
+            try:
+                stored = await store.get_known_failure_screenshot(
+                    repo, skipped["test_name"]
+                )
+                if stored and skipped["screenshot"] and stored != skipped["screenshot"]:
+                    # Screenshots differ — this PR further modifies the broken area
+                    kf_rows = await store.list_known_failures(repo)
+                    matching = [
+                        kf for kf in kf_rows
+                        if kf["test_name"] == skipped["test_name"]
+                    ]
+                    for kf in matching:
+                        pr_number = req.pr_context.pr_number
+                        pr_url = f"https://github.com/{repo}/pull/{pr_number}" if pr_number else ""
+                        comment = (
+                            f"**Note:** PR #{pr_number} ([view]({pr_url})) "
+                            f"further modifies this area. The visual appearance has changed "
+                            f"since this issue was filed. Please verify manually."
+                        )
+                        await asyncio.to_thread(
+                            post_issue_comment,
+                            repo=repo,
+                            issue_number=kf["issue_number"],
+                            body=comment,
+                            github_token=github_token,
+                        )
+                        logger.info(
+                            "Posted modification notice on issue #%d for %s",
+                            kf["issue_number"], skipped["test_name"],
+                        )
+            except Exception as e:
+                logger.warning(
+                    "Failed screenshot comparison for %s: %s",
+                    skipped["test_name"], e,
+                )
 
     # If no net-new failures, skip run creation but still create a passing check
     if not ask_requests:
@@ -196,6 +247,27 @@ async def triage_run(req: TriageRunRequest, request: Request):
                     logger.info("Created passing check — all failures are known")
                 except Exception as e:
                     logger.warning("Failed to create passing check run: %s", e)
+
+        # Post PR comment noting skipped known failures
+        if (
+            skipped_known
+            and mode == "pre_merge"
+            and req.pr_context
+            and req.pr_context.pr_number
+            and req.pr_context.repo
+        ):
+            github_token = request.headers.get("X-GitHub-Token")
+            try:
+                post_triage_comment(
+                    repo=req.pr_context.repo,
+                    pr_number=req.pr_context.pr_number,
+                    run=None,
+                    github_token=github_token,
+                    known_failures={},
+                    skipped_known=skipped_known,
+                )
+            except Exception as e:
+                logger.warning("Failed to post known failures PR comment: %s", e)
 
         return TriageRunResponse(
             run_id="",
@@ -286,6 +358,7 @@ async def triage_run(req: TriageRunRequest, request: Request):
                 run=run_response,
                 github_token=github_token,
                 known_failures=known,
+                skipped_known=skipped_known,
             )
         except Exception as e:
             logger.warning("Failed to post PR comment: %s", e)
