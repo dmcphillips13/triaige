@@ -179,7 +179,7 @@ export function FailureCard({
                   onVerdict(verdict === "approved" ? null : "approved")
                 }
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-all duration-200",
+                  "inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-all duration-200",
                   verdict === "approved"
                     ? "border-emerald-300 bg-emerald-100 text-emerald-800"
                     : verdict === "rejected"
@@ -197,7 +197,7 @@ export function FailureCard({
                   onVerdict(verdict === "rejected" ? null : "rejected")
                 }
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-all duration-200",
+                  "inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-all duration-200",
                   verdict === "rejected"
                     ? "border-rose-300 bg-rose-100 text-rose-800"
                     : verdict === "approved"

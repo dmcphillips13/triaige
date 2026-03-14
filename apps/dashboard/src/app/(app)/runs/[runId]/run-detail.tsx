@@ -194,6 +194,12 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
         </div>
       </div>
 
+      {isClosed && (
+        <div className="mt-6 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-center">
+          <p className="text-sm text-zinc-500">This run has been closed.</p>
+        </div>
+      )}
+
       {/* Failure list */}
       <ul className="mt-6 space-y-3">
         {run.results.map((result) => {
@@ -271,11 +277,6 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
         </div>
       )}
 
-      {isClosed && (
-        <div className="mt-8 rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-center">
-          <p className="text-sm text-zinc-500">This run has been closed.</p>
-        </div>
-      )}
     </div>
   );
 }
