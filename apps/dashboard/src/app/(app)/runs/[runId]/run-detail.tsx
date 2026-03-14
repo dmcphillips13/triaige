@@ -228,10 +228,10 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
         })}
       </ul>
 
-      {/* Submit Changes button — only for pre-merge (actionable) runs */}
+      {/* Fixed submit bar — sticks to bottom when pending actions exist */}
       {run.repo && !isClosed && !isPostMerge && hasPending && (
-        <div className="mt-8 rounded-lg border border-zinc-200 bg-white p-4">
-          <div className="flex items-center justify-between">
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 backdrop-blur-sm shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+          <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
             <div>
               <p className="text-sm font-medium text-zinc-900">
                 {pendingApproved.length > 0 &&
@@ -256,7 +256,7 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
             <button
               onClick={handleSubmitChanges}
               disabled={submitStatus === "loading"}
-              className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50"
+              className="rounded-md bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50"
             >
               {submitStatus === "loading"
                 ? "Submitting..."
@@ -264,7 +264,9 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
             </button>
           </div>
           {submitStatus === "error" && submitError && (
-            <p className="mt-2 text-xs text-red-600">{submitError}</p>
+            <div className="mx-auto max-w-5xl px-6 pb-2">
+              <p className="text-xs text-rose-600">{submitError}</p>
+            </div>
           )}
         </div>
       )}

@@ -189,7 +189,7 @@ export function FailureCard({
               >
                 <Check className="h-3.5 w-3.5 shrink-0" />
                 <span className="whitespace-nowrap">
-                  {verdict === "approved" ? "Approved — click to undo" : "Approve"}
+                  {verdict === "approved" ? "Approved — click to undo" : "Approve baseline"}
                 </span>
               </button>
               <button
@@ -207,7 +207,7 @@ export function FailureCard({
               >
                 <X className="h-3.5 w-3.5 shrink-0" />
                 <span className="whitespace-nowrap">
-                  {verdict === "rejected" ? "Rejected — click to undo" : "Reject"}
+                  {verdict === "rejected" ? "Rejected — click to undo" : "Reject — open issue"}
                 </span>
               </button>
             </div>
