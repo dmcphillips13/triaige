@@ -120,6 +120,41 @@ export async function closeRun(runId: string): Promise<void> {
   }
 }
 
+/** Fetch open known failures for a repo (Main tab health dashboard). */
+export async function fetchRepoKnownFailures(
+  repo: string
+): Promise<
+  {
+    id: number;
+    test_name: string;
+    issue_url: string;
+    issue_number: number;
+    screenshot_base64: string | null;
+    created_at: string;
+  }[]
+> {
+  const res = await fetch(
+    `/api/runner/repos/${encodeURIComponent(repo)}/known-failures`
+  );
+  if (!res.ok) return [];
+  return res.json();
+}
+
+/** Close a known failure and its GitHub issue. */
+export async function closeKnownFailure(
+  repo: string,
+  failureId: number
+): Promise<void> {
+  const res = await fetch(
+    `/api/runner/repos/${encodeURIComponent(repo)}/known-failures/${failureId}/close`,
+    { method: "PATCH" }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Unknown error" }));
+    throw new Error(err.detail || `Failed: ${res.status}`);
+  }
+}
+
 /** Create GitHub issues for rejected visual regression failures. */
 export async function createIssues(
   runId: string,

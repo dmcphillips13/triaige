@@ -240,9 +240,6 @@ async def set_submission(
             run_id, test_name, url, sub_type,
         )
 
-    # Auto-close post-merge runs when all failures are addressed
-    if await check_close_eligibility(run_id):
-        await close_run(run_id, force=True)
 
 
 async def get_submissions(run_id: str) -> dict[str, dict]:
@@ -259,19 +256,17 @@ async def get_submissions(run_id: str) -> dict[str, dict]:
 
 
 async def get_existing_failure_test_names(repo: str) -> set[str]:
-    """Get test names that are failing in any open post-merge run for a repo.
+    """Get test names with open known failures for a repo.
 
     Used to filter incoming failures down to net-new only.
     """
     pool = get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            """SELECT DISTINCT fr.test_name
-               FROM failure_results fr
-               JOIN runs r ON r.run_id = fr.run_id
-               WHERE r.repo = $1
-                 AND r.triage_mode = 'post_merge'
-                 AND r.closed = FALSE""",
+            """SELECT DISTINCT test_name
+               FROM known_failures
+               WHERE repo = $1
+                 AND closed_at IS NULL""",
             repo,
         )
     return {row["test_name"] for row in rows}
@@ -456,3 +451,71 @@ async def get_known_failures(run_id: str) -> dict[str, dict]:
         result[name] = entry
 
     return result
+
+
+# --- Known failures ---
+
+
+async def add_known_failure(
+    repo: str,
+    test_name: str,
+    issue_url: str,
+    issue_number: int,
+    screenshot_base64: str | None = None,
+    filed_from_run_id: str | None = None,
+) -> int:
+    """Record a known failure when an issue is filed."""
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """INSERT INTO known_failures (repo, test_name, issue_url, issue_number, screenshot_base64, filed_from_run_id)
+               VALUES ($1, $2, $3, $4, $5, $6)
+               ON CONFLICT (repo, test_name, issue_number)
+               DO UPDATE SET screenshot_base64 = $5, closed_at = NULL
+               RETURNING id""",
+            repo, test_name, issue_url, issue_number, screenshot_base64, filed_from_run_id,
+        )
+    return row["id"]
+
+
+async def list_known_failures(repo: str) -> list[dict]:
+    """List open known failures for a repo."""
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """SELECT id, test_name, issue_url, issue_number, screenshot_base64, created_at
+               FROM known_failures
+               WHERE repo = $1
+                 AND closed_at IS NULL
+               ORDER BY created_at DESC""",
+            repo,
+        )
+    return [dict(row) for row in rows]
+
+
+async def close_known_failure(failure_id: int) -> dict | None:
+    """Close a known failure. Returns the row if found."""
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """UPDATE known_failures
+               SET closed_at = NOW()
+               WHERE id = $1 AND closed_at IS NULL
+               RETURNING id, repo, test_name, issue_url, issue_number""",
+            failure_id,
+        )
+    return dict(row) if row else None
+
+
+async def get_known_failure_screenshot(repo: str, test_name: str) -> str | None:
+    """Get the stored screenshot for a known failure (for comparison)."""
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """SELECT screenshot_base64
+               FROM known_failures
+               WHERE repo = $1 AND test_name = $2 AND closed_at IS NULL
+               ORDER BY created_at DESC LIMIT 1""",
+            repo, test_name,
+        )
+    return row["screenshot_base64"] if row else None

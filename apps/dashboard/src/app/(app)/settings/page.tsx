@@ -15,7 +15,6 @@ interface Repo {
 
 interface RepoSettings {
   pre_merge: boolean;
-  post_merge: boolean;
 }
 
 const STORAGE_KEY = "triaige:linked_repo";
@@ -25,7 +24,6 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [linkedRepo, setLinkedRepo] = useState<string>("");
   const [preMerge, setPreMerge] = useState(false);
-  const [postMerge, setPostMerge] = useState(true);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -49,7 +47,6 @@ export default function SettingsPage() {
       .then((data: RepoSettings | null) => {
         if (data) {
           setPreMerge(data.pre_merge);
-          setPostMerge(data.post_merge);
         }
       })
       .catch(() => {});
@@ -59,7 +56,6 @@ export default function SettingsPage() {
     setLinkedRepo(repo);
     setSaved(false);
     setPreMerge(false);
-    setPostMerge(true);
     loadSettings(repo);
   };
 
@@ -71,7 +67,7 @@ export default function SettingsPage() {
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pre_merge: preMerge, post_merge: postMerge }),
+          body: JSON.stringify({ pre_merge: preMerge }),
         }
       );
     } else {
@@ -141,23 +137,6 @@ export default function SettingsPage() {
               </div>
             </label>
 
-            <label className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={postMerge}
-                onChange={(e) => {
-                  setPostMerge(e.target.checked);
-                  setSaved(false);
-                }}
-                className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500"
-              />
-              <div>
-                <span className="text-sm font-medium text-zinc-900">After merge</span>
-                <p className="text-xs text-zinc-500">
-                  Run after PRs are merged to the default branch
-                </p>
-              </div>
-            </label>
           </div>
         </div>
       )}

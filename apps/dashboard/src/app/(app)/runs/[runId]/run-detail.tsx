@@ -227,6 +227,7 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
                 knownFailure={kf ?? null}
                 actionGated={existingSubmission !== null}
                 existingSubmission={existingSubmission}
+                isPreMerge={isPreMerge}
               />
             </li>
           );

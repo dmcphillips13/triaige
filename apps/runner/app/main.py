@@ -42,7 +42,7 @@ from app.repo_settings import RepoSettings
 from app.tools.github_actions import commit_baselines_to_branch, create_baseline_pr
 from app.tools.github_checks import create_check_run, create_passing_check_run, update_check_run
 from app.tools.github_issues import create_bug_issue
-from app.tools.pr_comment import post_gate_passed_comment, post_triage_comment
+from app.tools.pr_comment import post_triage_comment
 from app.settings import settings
 from app.tools.playwright_parser import parse_report, parsed_result_to_ask_request
 
@@ -147,11 +147,10 @@ async def triage_run(req: TriageRunRequest, request: Request):
     """Accept a batch of test failures and triage each through the agent."""
     # Check if this triage mode is enabled for the repo
     repo = req.pr_context.repo if req.pr_context else None
-    mode = req.triage_mode or "post_merge"
+    mode = req.triage_mode or "pre_merge"
     if repo:
         rs = await repo_settings.get_settings(repo)
-        enabled = rs.pre_merge if mode == "pre_merge" else rs.post_merge
-        if not enabled:
+        if mode == "pre_merge" and not rs.pre_merge:
             return await store.create_run([], pr_context=req.pr_context, triage_mode=mode)
 
     if req.report_json:
@@ -232,12 +231,6 @@ async def triage_run(req: TriageRunRequest, request: Request):
         closed_ids = await store.auto_close_pre_merge_runs(repo, pr_number)
         if closed_ids:
             logger.info("Auto-closed %d superseded pre-merge run(s) for PR #%d", len(closed_ids), pr_number)
-
-    # For post-merge runs, auto-close all pre-merge runs for this PR
-    if repo and pr_number and mode == "post_merge":
-        closed_ids = await store.auto_close_pre_merge_runs(repo, pr_number)
-        if closed_ids:
-            logger.info("Auto-closed %d pre-merge run(s) on merge of PR #%d", len(closed_ids), pr_number)
 
     run_response = await store.create_run(results, pr_context=req.pr_context, triage_mode=mode)
 
@@ -383,18 +376,6 @@ async def put_submission(run_id: str, test_name: str, req: SubmissionRequest, re
                         github_token=github_token,
                     )
                     logger.info("Merge gate passed for run %s", run_id)
-                    # Post "all clear" comment on the PR
-                    pr_number = await store.get_run_pr_number(run_id)
-                    if pr_number:
-                        try:
-                            await asyncio.to_thread(
-                                post_gate_passed_comment,
-                                repo=repo,
-                                pr_number=pr_number,
-                                github_token=github_token,
-                            )
-                        except Exception as e:
-                            logger.warning("Failed to post gate-passed comment: %s", e)
                 except Exception as e:
                     logger.warning("Failed to update check run: %s", e)
 
@@ -532,8 +513,63 @@ async def create_issues(req: CreateIssuesRequest, request: Request):
                 github_token=github_token,
             )
             issues.append({"test_name": name, "issue_url": issue_url})
+
+            # Record as known failure for Main tab health dashboard
+            try:
+                issue_number = int(issue_url.rstrip("/").split("/")[-1])
+                screenshot = result.screenshot_actual
+                await store.add_known_failure(
+                    repo=req.repo,
+                    test_name=name,
+                    issue_url=issue_url,
+                    issue_number=issue_number,
+                    screenshot_base64=screenshot,
+                    filed_from_run_id=req.run_id,
+                )
+            except Exception as e:
+                logger.warning("Failed to record known failure for %s: %s", name, e)
+
         except Exception as e:
             logger.warning("Failed to create issue for %s: %s", name, e)
             raise HTTPException(status_code=502, detail=f"GitHub API error for {name}: {e}")
 
     return CreateIssuesResponse(issues=issues)
+
+
+# --- Known failures (Main tab health dashboard) ---
+
+
+@app.get("/repos/{repo:path}/known-failures")
+async def list_repo_known_failures(repo: str):
+    """List open known failures for a repo's Main tab health dashboard."""
+    return await store.list_known_failures(repo)
+
+
+@app.patch("/repos/{repo:path}/known-failures/{failure_id}/close")
+async def close_repo_known_failure(repo: str, failure_id: int, request: Request):
+    """Close a known failure and its GitHub issue."""
+    row = await store.close_known_failure(failure_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Known failure not found or already closed")
+
+    # Close the GitHub issue too
+    github_token = request.headers.get("X-GitHub-Token")
+    if row["issue_number"] and github_token:
+        try:
+            import httpx
+            client = httpx.Client(
+                base_url="https://api.github.com",
+                headers={
+                    "Accept": "application/vnd.github+json",
+                    "Authorization": f"Bearer {github_token}",
+                },
+                timeout=15.0,
+            )
+            client.patch(
+                f"/repos/{repo}/issues/{row['issue_number']}",
+                json={"state": "closed"},
+            )
+        except Exception as e:
+            logger.warning("Failed to close GitHub issue #%s: %s", row["issue_number"], e)
+
+    return {"status": "closed", "id": failure_id}

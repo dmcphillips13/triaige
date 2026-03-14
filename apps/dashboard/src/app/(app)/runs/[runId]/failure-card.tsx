@@ -36,6 +36,7 @@ export function FailureCard({
   knownFailure = null,
   actionGated = false,
   existingSubmission = null,
+  isPreMerge = false,
 }: {
   result: TriageFailureResult;
   verdict: HumanVerdict;
@@ -45,6 +46,7 @@ export function FailureCard({
   knownFailure?: KnownFailureInfo | null;
   actionGated?: boolean;
   existingSubmission?: SubmissionResult | null;
+  isPreMerge?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const { ask_response: res } = result;
@@ -124,7 +126,7 @@ export function FailureCard({
               >
                 {(existingSubmission || knownFailure.open_submission)!
                   .type === "pr"
-                  ? "Baseline PR pending"
+                  ? (isPreMerge ? "Baseline committed" : "Baseline PR pending")
                   : "Issue open"}
               </a>
             </>
@@ -174,7 +176,7 @@ export function FailureCard({
               )}
             >
               {submitted.type === "pr"
-                ? "Baseline PR opened"
+                ? (isPreMerge ? "Baseline committed" : "Baseline PR opened")
                 : "Issue created"}
               <span className="text-[10px] opacity-60">&rarr;</span>
             </a>

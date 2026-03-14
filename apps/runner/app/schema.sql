@@ -74,6 +74,21 @@ BEGIN
     END IF;
 END $$;
 
+-- Known failures: tests currently broken on main with open GitHub issues.
+-- Populated when issues are filed via /create-issues. Closed from dashboard UI.
+CREATE TABLE IF NOT EXISTS known_failures (
+    id                  SERIAL PRIMARY KEY,
+    repo                TEXT NOT NULL,
+    test_name           TEXT NOT NULL,
+    issue_url           TEXT NOT NULL,
+    issue_number        INTEGER NOT NULL,
+    screenshot_base64   TEXT,
+    filed_from_run_id   TEXT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    closed_at           TIMESTAMPTZ,
+    UNIQUE(repo, test_name, issue_number)
+);
+
 -- Migration: add merge_gate column to repo_settings if missing (safe to re-run)
 DO $$
 BEGIN
