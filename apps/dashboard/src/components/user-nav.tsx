@@ -1,4 +1,4 @@
-// User navigation bar — shows avatar, username, and sign-out link.
+// User navigation bar — shows logo and avatar dropdown.
 // Displayed at the top of authenticated pages via the layout.
 //
 // Fetches the current user from /api/auth/me on mount. If the session
@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Logo } from "./logo";
 
@@ -17,6 +17,8 @@ interface User {
 
 export function UserNav() {
   const [user, setUser] = useState<User | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -25,36 +27,57 @@ export function UserNav() {
       .catch(() => {});
   }, []);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
   if (!user) return null;
 
   return (
     <nav className="border-b border-zinc-200 bg-white">
-      <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-3">
+      <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
         <Link href="/runs">
           <Logo />
         </Link>
-        <div className="flex items-center gap-4">
-          <Link
-            href="/settings"
-            className="text-sm text-zinc-500 hover:text-zinc-700"
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="flex items-center gap-2 rounded-full p-1 transition-colors hover:bg-zinc-100"
           >
-            Settings
-          </Link>
-          <div className="flex items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={user.avatar_url}
               alt={user.login}
-              className="h-6 w-6 rounded-full"
+              className="h-7 w-7 rounded-full"
             />
-            <span className="text-sm text-zinc-700">{user.login}</span>
-          </div>
-          <a
-            href="/api/auth/logout"
-            className="text-sm text-zinc-400 hover:text-zinc-600"
-          >
-            Sign out
-          </a>
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 mt-2 w-48 rounded-lg border border-zinc-200 bg-white py-1 shadow-lg">
+              <div className="border-b border-zinc-100 px-4 py-2">
+                <p className="text-sm font-medium text-zinc-900">{user.login}</p>
+              </div>
+              <Link
+                href="/settings"
+                onClick={() => setMenuOpen(false)}
+                className="block px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50"
+              >
+                Settings
+              </Link>
+              <a
+                href="/api/auth/logout"
+                className="block px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50"
+              >
+                Sign out
+              </a>
+            </div>
+          )}
         </div>
       </div>
     </nav>

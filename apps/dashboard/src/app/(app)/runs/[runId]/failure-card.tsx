@@ -215,17 +215,17 @@ export function FailureCard({
         </div>
       )}
 
+      {/* Rationale — always visible */}
+      <div className="border-t border-zinc-100 px-4 py-3">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+          Rationale
+        </h4>
+        <MarkdownContent text={res.rationale} />
+      </div>
+
       {/* Expanded detail */}
       {expanded && (
         <div className="space-y-4 border-t border-zinc-100 px-4 py-4">
-          {/* Rationale */}
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-              Rationale
-            </h4>
-            <MarkdownContent text={res.rationale} />
-          </div>
-
           {/* Image diff stats */}
           {res.image_diff && (
             <div>

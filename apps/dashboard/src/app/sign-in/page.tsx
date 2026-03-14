@@ -4,6 +4,8 @@
 // repos to grant access to, rather than giving blanket repo access.
 // Permissions (Contents + Pull Requests read/write) are defined on the App.
 
+import { Logo } from "@/components/logo";
+
 export default function SignInPage() {
   const clientId = process.env.GITHUB_CLIENT_ID;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -16,11 +18,9 @@ export default function SignInPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-50">
       <div className="w-full max-w-sm space-y-6 px-6 text-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-zinc-900">
-            Triaige
-          </h1>
-          <p className="mt-2 text-sm text-zinc-500">
+        <div className="flex flex-col items-center">
+          <Logo className="h-10" />
+          <p className="mt-3 text-sm text-zinc-500">
             AI-powered visual regression triage
           </p>
         </div>

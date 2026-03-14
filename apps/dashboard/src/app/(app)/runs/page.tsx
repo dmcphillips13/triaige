@@ -1,7 +1,6 @@
 // Runs list page — async server component that fetches all triage runs from
 // the runner and passes them to a client component with Open/Closed tabs.
 
-import Link from "next/link";
 import { fetchRuns } from "@/lib/api.server";
 import { RunsList } from "./runs-list";
 
@@ -22,15 +21,7 @@ export default async function RunsPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-zinc-900">Triage Runs</h1>
-        <Link
-          href="/"
-          className="text-sm text-zinc-500 hover:text-zinc-700"
-        >
-          Home
-        </Link>
-      </div>
+      <h1 className="text-2xl font-bold text-zinc-900">Triage Runs</h1>
 
       {runs.length === 0 ? (
         <p className="mt-8 text-center text-zinc-500">No triage runs found.</p>
