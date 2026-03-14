@@ -78,8 +78,9 @@ The classifier uses the **PR description** as the primary scope reference:
 ## E2E Integration Test
 
 Full workflow test using three PRs on the sample app to exercise the actionable
-pre-merge workflow, merge gate, iterative PR fixes, post-merge diagnostics,
-net-new filtering, known failure passthrough, and run lifecycle.
+pre-merge workflow, merge gate, iterative PR fixes, known failures health
+dashboard, net-new filtering, known failure passthrough with screenshot
+comparison, and run lifecycle.
 
 ### Prerequisites
 
@@ -91,7 +92,7 @@ Before running the E2E test, ensure a clean state:
    gh issue list --state open --repo dmcphillips13/triaige-sample-app --json number -q '.[].number' | xargs -I{} gh issue close {} --repo dmcphillips13/triaige-sample-app
    ```
 2. **Clear the Triaige database**: delete all rows from `submissions`,
-   `verdicts`, `failure_results`, `runs` tables (in that order for FK constraints).
+   `verdicts`, `failure_results`, `runs`, `known_failures` tables.
 3. **Update baselines on main**: trigger the `update-snapshots.yml` workflow so
    baselines match the current main branch code. Wait for it to complete.
 4. **Verify GitHub App has Checks permission**: the Triaige GitHub App needs
@@ -171,6 +172,7 @@ Before running the E2E test, ensure a clean state:
 **Verify**:
 - [ ] Approved failures → baselines committed directly to PR A's branch
       (check commit list for "triaige/update-baselines: update N baseline(s)")
+- [ ] Approved failure cards show **"Baseline committed"** label (not "Baseline PR opened")
 - [ ] Rejected failure → GitHub issue created
 - [ ] Each failure card shows its submission link
 - [ ] Approve/reject buttons hidden on submitted failures (action gating)
@@ -181,6 +183,7 @@ Before running the E2E test, ensure a clean state:
 - [ ] "Triaige Visual Regression" check updated to `success`
 - [ ] New baseline commit visible in PR's commit list
 - [ ] PR is now mergeable (green merge button)
+- [ ] No "Ready to merge" comment posted (removed — check status is sufficient)
 
 ### Step 4 — Verify baseline re-run on PR A
 
@@ -199,20 +202,24 @@ The baseline commit triggers a new `pull_request` workflow run.
 **Action**: Merge PR A on GitHub.
 
 **Wait**: ~3 minutes for the `push: branches: [main]` workflow to complete.
+Push-to-main no longer creates post-merge triage runs — it just calls
+`/report-clean` to auto-close pre-merge runs.
 
 **Verify**:
 - [ ] PR A's pre-merge run auto-closed (moved from PR tab to Closed tab)
+- [ ] No post-merge triage run created
 
-### Step 6 — Check Main tab
+### Step 6 — Check Main tab (known failures health dashboard)
 
 **Action**: Open the Triaige dashboard. Click the **Main** tab.
 
 **Verify**:
-- [ ] If the rejected failure (e.g., sidebar) still fails on main: a post-merge
-      diagnostic run appears with "Diagnostic" badge, showing the failure with
-      its open issue link
-- [ ] If all tests pass: Main tab is empty
-- [ ] Post-merge runs are read-only (no approve/reject buttons)
+- [ ] Known failure card appears for the rejected failure (e.g., sidebar)
+- [ ] Card shows the failing baseline screenshot prominently
+- [ ] Card shows issue number with link to the GitHub issue
+- [ ] Card has a "Close" button
+- [ ] No run cards or "Diagnostic" badges — Main tab shows individual known
+      failures, not runs
 
 ### Step 7 — Push a fix commit to PR B
 
@@ -274,16 +281,19 @@ The baseline commit triggers a new workflow run.
 
 **Action**: Merge PR B on GitHub.
 
+**Wait**: ~3 minutes for the push-to-main workflow to complete.
+
 **Verify**:
 - [ ] PR B's pre-merge run auto-closed
-- [ ] Post-merge workflow runs; either all tests pass or creates a diagnostic run
+- [ ] No post-merge triage run created (just `/report-clean` cleanup)
 
 ### Step 12 — Test known failure passthrough (PR C)
 
-This tests that known failures on main don't block unrelated PRs.
+This tests that known failures on main don't block unrelated PRs, and that
+developers are notified about skipped known failures.
 
-**Action**: Create PR C with a small change that doesn't fix the known failure
-(e.g., change a color token that doesn't affect the broken test):
+**Action**: Create PR C with a small change that also triggers the known failure
+(e.g., change a color token that affects the same page as the broken test):
 ```
 git checkout -b minor-tweak main
 # make a small CSS change
@@ -294,20 +304,32 @@ gh pr create --title "Minor styling tweak" --body "Small token change"
 **Wait**: ~3 minutes for the workflow to complete.
 
 **Verify**:
-- [ ] If the only failure is the known one (e.g., sidebar): all failures
-      filtered as known → no triage run created → passing check created
-      immediately → PR is mergeable
+- [ ] If the only failure is the known one: all failures filtered as known →
+      no triage run created → passing check created immediately → PR is mergeable
 - [ ] If PR C introduces new failures: triage run only contains net-new
       failures, not the known one
-- [ ] No PR comment posted (known limitation — Step 21.5 will add visibility)
+- [ ] **PR comment posted** listing skipped known failures with manual
+      verification note: "These tests are failing on main with open issues.
+      Please verify these areas manually..."
+- [ ] If the known failure's screenshot changed (PR C modified the area):
+      **comment posted on the GitHub issue** noting the PR that modified it further
 
-### Step 13 — Final dashboard state
+### Step 13 — Close known failure from Main tab
+
+**Action**: Click the "Close" button on the known failure card in the Main tab.
+
+**Verify**:
+- [ ] Known failure card disappears from Main tab
+- [ ] GitHub issue is also closed
+- [ ] Main tab shows "No known failures. All baselines are passing."
+
+### Step 14 — Final dashboard state
 
 **Action**: Check all three tabs.
 
 **Verify**:
 - [ ] **PR tab**: shows only open PR runs (PR C if not yet merged, otherwise empty)
-- [ ] **Main tab**: shows diagnostic run(s) with known failures and open issue links
+- [ ] **Main tab**: empty (known failure was closed)
 - [ ] **Closed tab**: shows closed runs from all merged PRs
 - [ ] Run counts in tab labels are accurate
 
@@ -315,23 +337,33 @@ gh pr create --title "Minor styling tweak" --body "Small token change"
 
 - **Actionable pre-merge runs**: approve/reject + submit on PR tab
 - **Baseline commits to PR branch**: approved baselines go directly into the PR
+- **"Baseline committed" label**: correct submission label on pre-merge runs
 - **Merge gate**: check blocks merge until all failures addressed, updates to
   `success` when gate passes
+- **No "Ready to merge" comments**: check status is sufficient
 - **Gate-already-passed**: re-triggered runs with already-submitted failures
   get a passing check immediately
 - **Iterative PR workflow**: push fixes → new run with fewer failures
 - **Rebase workflow**: rebase onto main → new run with updated baselines
 - **Baseline re-run**: baseline commits trigger workflow, passing check created
   (no hanging checks)
-- **Diagnostic post-merge runs**: Main tab is read-only with "Diagnostic" badge
-- **Net-new failure filtering**: only failures not in open post-merge runs
+- **No post-merge triage runs**: push-to-main just calls `/report-clean` for cleanup
+- **Known failures health dashboard**: Main tab shows individual failing baselines
+  with screenshots, issue links, and close button
+- **Close known failure**: closing from UI also closes the GitHub issue
+- **Net-new failure filtering**: known failures (from `known_failures` table) are
+  filtered out of pre-merge runs
 - **Known failure passthrough**: known failures on main don't block unrelated PRs
-- **Auto-close pre-merge runs**: superseded by newer run, on merge, or on clean
-  merge via `/report-clean`
+- **Known failure PR comment**: skipped known failures listed with manual
+  verification note
+- **Screenshot comparison**: if a PR changes a known-broken area, comment posted
+  on the GitHub issue
+- **Auto-close pre-merge runs**: superseded by newer run, or on merge via
+  `/report-clean`
 - **Baseline commit skip**: workflow skips when commit message contains
   "triaige/update-baselines"
 - PR comment with classification table and dashboard links
-- Issue filing for rejected failures
+- Issue filing for rejected failures → populates `known_failures` table
 - Submission link display and action gating
 - Run lifecycle across PR / Main / Closed tabs
 - `strict: true` branch protection (require up-to-date before merging)
@@ -340,16 +372,12 @@ gh pr create --title "Minor styling tweak" --body "Small token change"
 
 ## Known limitations
 
-- **Known failure visibility on PRs**: When net-new filtering skips known failures,
-  no PR comment is posted and the failures are invisible to the developer. Step 21.5
-  will add a comment listing skipped tests with issue links and a manual verification note.
 - **Subtle pixel changes can pass**: Very small visual changes may not trigger a
   test failure depending on Playwright's diff threshold configuration.
 - **Baseline timing**: After merging to main, PR branches should be rebased to
   pick up new baselines. `strict: true` branch protection enforces this.
-- **Known failures are main-branch only**: The `get_known_failures` query only
-  considers post-merge runs. PR-to-PR failure overlap is not tracked.
-- **No prior-PR attribution**: When a failure surfaces on a merge run but was
-  caused by a different PR, there's no attribution. Future work: Step 23.
-- **Duplicate PR comments**: Gate-passed "Ready to merge" comment can post
-  multiple times. Step 21.2 will remove these entirely.
+- **Known failures are repo-scoped**: The `known_failures` table tracks failures
+  per repo. PR-to-PR failure overlap is not tracked.
+- **Screenshot comparison is binary**: Compares base64 strings for equality —
+  any difference (even re-render noise) triggers the "further modified" notice.
+  May need perceptual hashing in the future.
