@@ -57,19 +57,27 @@ Last updated: 2026-03-14
 - [x] Step 23.13: Make screenshot diff viewer larger — fullscreen modal with Escape to close
 - [x] Step 23.14: Add fullscreen/modal mode for screenshot comparison
 
-### Up next — 23.x follow-ups
-- [ ] Step 23.1: Debug and complete known failure screenshot comparison — the comparison + issue comment logic isn't firing despite screenshots differing; likely a silent exception in the comparison path or screenshot extraction; once fixed: (a) update PR comment to distinguish "unchanged known failure" from "further modified by this PR (adding drift)" with issue link; (b) on merge of a PR with drift, post issue comment with the new screenshot showing the visual progression — but keep the original screenshot in known_failures as the permanent reference so future comparisons always compare against the state when the bug was filed, not the drifted state
-- [ ] Step 23.2: Auto-close pre-merge runs after submit — close run immediately once all failures have submissions
-- [ ] Step 23.3: Known failure PR comment should link to open GitHub issues
-- [ ] Step 23.4: Rename "Main" tab to "Issues", add "Closed Issues" tab for resolved known failures
-- [ ] Step 23.5: Persist active tab across page refreshes via URL hash/query param
-- [ ] Step 23.6: Main tab should work without requiring Settings setup — derive repo from runs
-- [ ] Step 23.7: PR run cards should show gate status (action required vs ready to merge)
-- [ ] Step 23.9: All links open in new tab (target="_blank")
-- [ ] Step 23.10: Delete stale PR comments when runs are superseded — store comment ID, delete on auto-close
-- [ ] Step 23.11: Hide skipped `close-pr-runs` job on PR checks — split into separate workflows
-- [ ] Step 23.15: Fix GitHub OAuth session duration — extend token lifetime or add refresh flow
+### Up next — 23.x follow-ups (ordered by priority)
+
+**Block A — Quick wins (dashboard polish, can do in one pass):**
+- [ ] Step 23.9: All links open in new tab (target="_blank") — grep for `<a href` and `<Link`, add target="_blank" + rel="noopener noreferrer" to all external links
+- [ ] Step 23.5: Persist active tab across page refreshes via URL hash/query param — read hash on mount, update hash on tab change
+- [ ] Step 23.4: Rename "Main" tab to "Issues", add "Closed Issues" tab for resolved known failures — tab label + optional 4th tab or filter within Closed
+- [ ] Step 23.6: Main tab should work without requiring Settings setup — derive repo from runs data instead of reading from localStorage/Settings
+
+**Block B — Workflow improvements (runner + dashboard changes):**
+- [ ] Step 23.2: Auto-close pre-merge runs after submit — after all failures have submissions, call close endpoint from dashboard; or have runner auto-close when gate passes
+- [ ] Step 23.7: PR run cards should show gate status (action required vs ready to merge) — runner returns gate status, dashboard shows badge on run card
 - [ ] Step 23.16: Run card status indicator on PR tab ("All addressed" badge when all failures have submissions)
+- [ ] Step 23.3: Known failure PR comment should link to open GitHub issues — update PR comment template in runner to include issue URLs
+
+**Block C — CI/GitHub cleanup:**
+- [ ] Step 23.10: Delete stale PR comments when runs are superseded — store comment_id on run creation, delete via GitHub API on auto-close
+- [ ] Step 23.11: Hide skipped `close-pr-runs` job on PR checks — split into separate workflows so skipped jobs don't show
+- [ ] Step 23.15: Fix GitHub OAuth session duration — extend token lifetime or add refresh flow
+
+**Block D — Complex (split to own step):**
+- [ ] Step 23.1: Debug and complete known failure screenshot comparison — the comparison + issue comment logic isn't firing despite screenshots differing; likely a silent exception in the comparison path or screenshot extraction; once fixed: (a) update PR comment to distinguish "unchanged known failure" from "further modified by this PR (adding drift)" with issue link; (b) on merge of a PR with drift, post issue comment with the new screenshot showing the visual progression — but keep the original screenshot in known_failures as the permanent reference so future comparisons always compare against the state when the bug was filed, not the drifted state
 
 ### After follow-ups — Steps 24-25
 - [ ] Step 24: Repos landing page — repo cards with setup checklist, "Connect Repo" via GitHub App, unconfigured repos rejected
