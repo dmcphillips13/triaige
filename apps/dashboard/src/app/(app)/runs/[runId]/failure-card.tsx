@@ -126,54 +126,29 @@ export function FailureCard({
         </div>
       )}
 
-      {/* Open submission without failing_since (submission exists but not from a prior run's failure) */}
-      {!knownFailure?.failing_since &&
-        (existingSubmission || knownFailure?.open_submission) && (
-          <div className="flex items-center gap-2 border-t border-zinc-100 bg-zinc-50 px-4 py-2">
-            <a
-              href={
-                (existingSubmission || knownFailure!.open_submission)!.url
-              }
-              target="_blank"
-              rel="noopener noreferrer"
-              className={cn(
-                "text-xs font-medium hover:underline",
-                (existingSubmission || knownFailure!.open_submission)!
-                  .type === "pr"
-                  ? "text-emerald-700"
-                  : "text-rose-700"
-              )}
-            >
-              {(existingSubmission || knownFailure!.open_submission)!
-                .type === "pr"
-                ? "Baseline committed"
-                : "Issue open"}
-            </a>
-          </div>
-        )}
-
-      {/* Approve / Reject buttons */}
-      {!readOnly && !actionGated && (
-        <div className="flex items-center gap-1 border-t border-zinc-100 px-4 py-2">
-          {submitted ? (
-            <a
-              href={submitted.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={cn(
-                "inline-flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium",
-                submitted.type === "pr"
-                  ? "bg-emerald-50 text-emerald-700 hover:underline"
-                  : "bg-rose-50 text-rose-700 hover:underline"
-              )}
-            >
-              {submitted.type === "pr"
-                ? (isPreMerge ? "Baseline committed" : "Baseline committed")
-                : "Issue created"}
-              <span className="text-[10px] opacity-60">&rarr;</span>
-            </a>
-          ) : (
-            <div className="flex items-center gap-1">
+      {/* Submission display — unified for both current and existing submissions */}
+      {(() => {
+        const sub = submitted || existingSubmission || (!knownFailure?.failing_since && knownFailure?.open_submission) || null;
+        if (sub) {
+          return (
+            <div className="flex items-center gap-2 border-t border-zinc-100 bg-zinc-50 px-4 py-2">
+              <a
+                href={sub.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  "text-xs font-medium hover:underline",
+                  sub.type === "pr" ? "text-emerald-700" : "text-rose-700"
+                )}
+              >
+                {sub.type === "pr" ? "Baseline committed" : "Issue open"}
+              </a>
+            </div>
+          );
+        }
+        if (!readOnly && !actionGated) {
+          return (
+            <div className="flex items-center gap-1 border-t border-zinc-100 px-4 py-2">
               <button
                 onClick={() =>
                   onVerdict(verdict === "approved" ? null : "approved")
@@ -211,9 +186,10 @@ export function FailureCard({
                 </span>
               </button>
             </div>
-          )}
-        </div>
-      )}
+          );
+        }
+        return null;
+      })()}
 
       {/* Rationale — always visible */}
       <div className="border-t border-zinc-100 px-4 py-3">

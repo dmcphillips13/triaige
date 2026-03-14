@@ -9,6 +9,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ClassificationBadge } from "@/components/classification-badge";
+import { RunCardSkeleton } from "@/components/skeleton";
 import { fetchRepoKnownFailures, closeKnownFailure } from "@/lib/api";
 import type { TriageRunSummary } from "@/lib/types";
 
@@ -119,7 +120,11 @@ function MainTab({
 }) {
   if (loading) {
     return (
-      <p className="mt-8 text-center text-zinc-500">Loading...</p>
+      <ul className="mt-4 space-y-3">
+        {[1, 2, 3].map((i) => (
+          <li key={i}><RunCardSkeleton /></li>
+        ))}
+      </ul>
     );
   }
 
