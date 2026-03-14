@@ -62,7 +62,8 @@ Last updated: 2026-03-09
 - [ ] Step 22.3: Auto-close pre-merge runs after submit — once all failures have submissions (baselines committed + issues filed), close the run immediately rather than waiting for the next workflow trigger
 - [ ] Step 22.4: Known failure PR comment should link to the open GitHub issue — each skipped test name should be a link to its issue, and "(already tracked on main)" text should also link to the issue
 - [ ] Step 22.5: Rename "Main" tab to "Issues" and add a "Closed Issues" tab for resolved known failures; track history of closed known failures
-- [ ] Step 22.6: Main tab should work without requiring Settings setup — derive repo from existing runs or default to first available; current flow requires user to visit Settings and link a repo before Main tab shows anything
+- [ ] Step 22.6: Persist active tab across page refreshes — use URL hash or query param so refreshing stays on the current tab; PR tab remains the default on first visit
+- [ ] Step 22.7: Main tab should work without requiring Settings setup — derive repo from existing runs or default to first available; current flow requires user to visit Settings and link a repo before Main tab shows anything
 - [ ] Step 22.6: PR run cards should show gate status — indicate when the merge gate has been satisfied (all failures addressed) vs still blocking; visual distinction between "action required" and "ready to merge" states on the runs list
 - [ ] Step 22.4: Real-time run updates — runs list and run detail should update without manual refresh; options: polling (simplest, every 10-15s), SSE (server-sent events), or WebSocket. Polling is probably sufficient given runs take minutes to complete.
 - [ ] Step 22.5: All links open in new tab — PR comment dashboard link, issue links, submission links, "View PR" link on run detail should all use target="_blank"
