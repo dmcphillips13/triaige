@@ -6,7 +6,7 @@ Last updated: 2026-03-14
 
 ## Current status
 
-**Phase:** Classification pipeline improved (Step 23), dashboard visual polish complete (Step 23-UI). Next: SSE real-time updates, then remaining demo prep (Steps 24-27).
+**Phase:** Classification pipeline and dashboard visual polish complete. Next: 23.x follow-ups, then Steps 24-25 (repos page + settings UI), then SSE.
 
 ### Completed
 - [x] Project planning and scoping
