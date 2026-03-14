@@ -60,7 +60,8 @@ Last updated: 2026-03-09
 - [ ] Step 22.1: PR run cards should show gate status — indicate when the merge gate has been satisfied (all failures addressed) vs still blocking; visual distinction between "action required" and "ready to merge" states on the runs list
 - [ ] Step 22.2: Real-time run updates — runs list and run detail should update without manual refresh; options: polling (simplest, every 10-15s), SSE (server-sent events), or WebSocket. Polling is probably sufficient given runs take minutes to complete.
 - [ ] Step 22.3: All links open in new tab — PR comment dashboard link, issue links, submission links, "View PR" link on run detail should all use target="_blank"
-- [ ] Step 22.4: Delete stale PR comments when runs are superseded — store comment ID on creation, delete when run is auto-closed so only the latest triage comment remains
+- [ ] Step 22.4: Delete stale PR comments when runs are superseded
+- [ ] Step 22.5: Hide skipped `close-pr-runs` job on PR checks — either split into separate workflows or use a different approach so the push-only job doesn't show as "skipped" on PRs — store comment ID on creation, delete when run is auto-closed so only the latest triage comment remains
 - [ ] Step 22.2: Fix GitHub OAuth session duration — token expires too frequently, forcing re-auth during normal usage; investigate token refresh flow and extend session lifetime
 - [ ] Step 23: Repos landing page — repo cards with setup checklist, "Connect Repo" via GitHub App, unconfigured repos rejected
 - [ ] Step 24: Settings UI — auto-generated API key + runner URL for copy-paste, triage/merge gate toggles, inline CLI instructions
