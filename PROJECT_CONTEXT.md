@@ -59,6 +59,24 @@ Last updated: 2026-03-14
   - **Prompt structure**: "You have three inputs: (1) the visual diff screenshots, (2) the git diff showing exactly which properties changed, (3) the PR description stating what was intended. A change is expected if it traces to a diff change that aligns with the PR description. A change is unexpected if it traces to a diff change NOT mentioned in the PR description, or if it appears to be a visual defect. A change is uncertain only if you cannot determine which diff change caused the visual difference."
   - **Few-shot calibration**: retrieve 3-5 similar past decisions from episodic memory as examples in the prompt. Anchors the model's judgment to actual human verdicts.
   - **Per-component analysis**: long-term — instead of classifying the whole page, identify which UI components changed and classify each separately. A page with expected header changes and unexpected sidebar changes should yield two classifications.
+- [x] Step 23 (temperature + git diff): DONE — temperature=0 on all LLM calls, git diff injected into Pass 1 + Pass 2, code traceability dimension added, conservative bias toward uncertain
+- [ ] Step 23-UI: Dashboard visual polish (in progress):
+  - [x] Font swap: DM Sans (body) + Lora (logo wordmark only)
+  - [x] SVG logo with stylized plus and red "ai" highlight
+  - [x] Widen layout from max-w-3xl to max-w-5xl
+  - [x] Warm off-white background
+  - [x] Muted stoplight colors (emerald/amber/rose)
+  - [x] Card shadows (shadow-sm)
+  - [ ] Rationale visible by default, citations/tool calls collapsed
+  - [ ] Summary breakdown at top of run detail (e.g., "3 expected, 1 unexpected")
+  - [ ] PR link restyled as badge ("PR #59 ↗")
+  - [ ] Avatar dropdown for settings/sign-out (consolidate nav)
+  - [ ] Loading skeletons for tab switching (fix flash)
+  - [ ] Remove or rename "Diagnostic" label
+  - [ ] Sign-in page: use Logo component
+  - [ ] Empty state improvements (helpful guidance instead of bare text)
+  - [ ] Hover states and transitions on cards
+- [ ] Step 23-POLL: Polling for live run updates (10-15s on runs list and run detail) — big demo impact, simple to add
 - [ ] Step 23.1: Debug and complete known failure screenshot comparison — the comparison + issue comment logic isn't firing despite screenshots differing; likely a silent exception in the comparison path or screenshot extraction; once fixed: (a) update PR comment to distinguish "unchanged known failure" from "further modified by this PR (adding drift)" with issue link; (b) on merge of a PR with drift, post issue comment with the new screenshot showing the visual progression — but keep the original screenshot in known_failures as the permanent reference so future comparisons always compare against the state when the bug was filed, not the drifted state
 - [ ] Step 23.2: Auto-close pre-merge runs after submit — close run immediately once all failures have submissions
 - [ ] Step 23.3: Known failure PR comment should link to open GitHub issues
