@@ -60,7 +60,8 @@ Last updated: 2026-03-09
 - [ ] Step 22.1: **DEMO CRITICAL** — Reorder failure card sections — rationale at top (most important for reviewer), image diff next, vision analysis collapsed; designed for designers/non-technical reviewers who need to quickly scan and decide
 - [ ] Step 22.2: **DEMO CRITICAL** — Improve rationale format — prompt LLM to output 3 brief bullet points (not sentences/paragraphs) that a non-technical person could understand; e.g. "Header color changed from gray to indigo (matches PR)" not essay-style reasoning; fix markdown bullet rendering in the rationale display
 - [ ] Step 22.3: Auto-close pre-merge runs after submit — once all failures have submissions (baselines committed + issues filed), close the run immediately rather than waiting for the next workflow trigger
-- [ ] Step 22.4: PR run cards should show gate status — indicate when the merge gate has been satisfied (all failures addressed) vs still blocking; visual distinction between "action required" and "ready to merge" states on the runs list
+- [ ] Step 22.4: Known failure PR comment should link to the open GitHub issue — each skipped test name should be a link to its issue, and "(already tracked on main)" text should also link to the issue
+- [ ] Step 22.5: PR run cards should show gate status — indicate when the merge gate has been satisfied (all failures addressed) vs still blocking; visual distinction between "action required" and "ready to merge" states on the runs list
 - [ ] Step 22.4: Real-time run updates — runs list and run detail should update without manual refresh; options: polling (simplest, every 10-15s), SSE (server-sent events), or WebSocket. Polling is probably sufficient given runs take minutes to complete.
 - [ ] Step 22.5: All links open in new tab — PR comment dashboard link, issue links, submission links, "View PR" link on run detail should all use target="_blank"
 - [ ] Step 22.6: Delete stale PR comments when runs are superseded
