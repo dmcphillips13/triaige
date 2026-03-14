@@ -159,9 +159,10 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
       <div className="flex items-center justify-between">
         <Link
           href="/runs"
-          className="text-sm text-zinc-400 transition-colors hover:text-zinc-700"
+          className="group flex items-center gap-1 text-sm font-medium text-zinc-400 transition-colors hover:text-zinc-700"
         >
-          &larr; All Runs
+          <span className="transition-transform group-hover:-translate-x-0.5">&larr;</span>
+          Triage Runs
         </Link>
         <span className="text-xs text-zinc-400">{date}</span>
       </div>

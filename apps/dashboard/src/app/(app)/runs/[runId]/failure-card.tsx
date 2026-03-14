@@ -173,36 +173,44 @@ export function FailureCard({
               <span className="text-[10px] opacity-60">&rarr;</span>
             </a>
           ) : (
-            <>
+            <div className="flex items-center gap-1">
               <button
                 onClick={() =>
                   onVerdict(verdict === "approved" ? null : "approved")
                 }
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
+                  "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-all duration-200",
                   verdict === "approved"
                     ? "border-emerald-300 bg-emerald-100 text-emerald-800"
-                    : "border-emerald-200 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300"
+                    : verdict === "rejected"
+                      ? "max-w-0 overflow-hidden border-transparent px-0 opacity-0"
+                      : "border-emerald-200 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300"
                 )}
               >
-                <Check className="h-3.5 w-3.5" />
-                Approve
+                <Check className="h-3.5 w-3.5 shrink-0" />
+                <span className="whitespace-nowrap">
+                  {verdict === "approved" ? "Approved — click to undo" : "Approve"}
+                </span>
               </button>
               <button
                 onClick={() =>
                   onVerdict(verdict === "rejected" ? null : "rejected")
                 }
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
+                  "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-all duration-200",
                   verdict === "rejected"
                     ? "border-rose-300 bg-rose-100 text-rose-800"
-                    : "border-rose-200 bg-rose-50/50 text-rose-700 hover:bg-rose-100 hover:border-rose-300"
+                    : verdict === "approved"
+                      ? "max-w-0 overflow-hidden border-transparent px-0 opacity-0"
+                      : "border-rose-200 bg-rose-50/50 text-rose-700 hover:bg-rose-100 hover:border-rose-300"
                 )}
               >
-                <X className="h-3.5 w-3.5" />
-                Reject
+                <X className="h-3.5 w-3.5 shrink-0" />
+                <span className="whitespace-nowrap">
+                  {verdict === "rejected" ? "Rejected — click to undo" : "Reject"}
+                </span>
               </button>
-            </>
+            </div>
           )}
         </div>
       )}

@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ReactCompareSlider,
   ReactCompareSliderImage,
@@ -26,6 +26,15 @@ export function ScreenshotViewer({
 }) {
   const [mode, setMode] = useState<Mode>("side-by-side");
   const [fullscreen, setFullscreen] = useState(false);
+
+  useEffect(() => {
+    if (!fullscreen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFullscreen(false);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [fullscreen]);
 
   const baselineSrc = `data:image/png;base64,${baseline}`;
   const actualSrc = `data:image/png;base64,${actual}`;
@@ -88,21 +97,24 @@ export function ScreenshotViewer({
       )}
 
       {mode === "swipe" && (
-        <ReactCompareSlider
-          itemOne={
-            <ReactCompareSliderImage
-              src={baselineSrc}
-              alt="Baseline screenshot"
-            />
-          }
-          itemTwo={
-            <ReactCompareSliderImage
-              src={actualSrc}
-              alt="Actual screenshot"
-            />
-          }
-          className={maxHeight}
-        />
+        <div className="bg-white p-2">
+          <ReactCompareSlider
+            itemOne={
+              <img
+                src={baselineSrc}
+                alt="Baseline screenshot"
+                className={`${maxHeight} w-full object-contain`}
+              />
+            }
+            itemTwo={
+              <img
+                src={actualSrc}
+                alt="Actual screenshot"
+                className={`${maxHeight} w-full object-contain`}
+              />
+            }
+          />
+        </div>
       )}
 
       {mode === "diff" && diffSrc && (
