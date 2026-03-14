@@ -118,7 +118,7 @@ export function FailureCard({
               >
                 {(existingSubmission || knownFailure.open_submission)!
                   .type === "pr"
-                  ? (isPreMerge ? "Baseline committed" : "Baseline PR pending")
+                  ? (isPreMerge ? "Baseline committed" : "Baseline committed")
                   : "Issue open"}
               </a>
             </>
@@ -146,7 +146,7 @@ export function FailureCard({
             >
               {(existingSubmission || knownFailure!.open_submission)!
                 .type === "pr"
-                ? "Baseline PR pending"
+                ? "Baseline committed"
                 : "Issue open"}
             </a>
           </div>
@@ -168,7 +168,7 @@ export function FailureCard({
               )}
             >
               {submitted.type === "pr"
-                ? (isPreMerge ? "Baseline committed" : "Baseline PR opened")
+                ? (isPreMerge ? "Baseline committed" : "Baseline committed")
                 : "Issue created"}
               <span className="text-[10px] opacity-60">&rarr;</span>
             </a>
@@ -310,7 +310,7 @@ function MarkdownContent({ text }: { text: string }) {
   // Fix inline bullets: ensure "- " at bullet boundaries starts on a new line
   const normalized = text.replace(/ - \*\*/g, "\n- **");
   return (
-    <div className="mt-1 text-sm text-zinc-700 prose prose-sm prose-zinc prose-li:my-0.5 prose-ul:list-disc prose-ul:pl-4">
+    <div className="mt-1 text-[15px] leading-relaxed text-zinc-700 prose prose-zinc prose-li:my-0.5 prose-ul:list-disc prose-ul:pl-4">
       <ReactMarkdown>{normalized}</ReactMarkdown>
     </div>
   );

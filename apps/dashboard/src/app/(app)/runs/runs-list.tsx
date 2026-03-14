@@ -95,7 +95,11 @@ export function RunsList({ runs }: { runs: TriageRunSummary[] }) {
       ) : (
         <RunsTab
           runs={tab === "pr" ? prRuns : closedRuns}
-          emptyMessage={tab === "pr" ? "No PR runs." : "No closed runs."}
+          emptyMessage={
+            tab === "pr"
+              ? "No open PR runs. Triage runs appear here when a PR triggers visual regression tests."
+              : "No closed runs yet. Runs move here after being merged or manually closed."
+          }
         />
       )}
     </>
@@ -193,7 +197,7 @@ function RunsTab({
 }) {
   if (runs.length === 0) {
     return (
-      <p className="mt-8 text-center text-zinc-500">{emptyMessage}</p>
+      <p className="mt-8 text-center text-sm text-zinc-400">{emptyMessage}</p>
     );
   }
 
@@ -205,7 +209,7 @@ function RunsTab({
           <li key={run.run_id}>
             <Link
               href={`/runs/${run.run_id}`}
-              className="block rounded-lg border border-zinc-200 bg-white shadow-sm p-4 transition-colors hover:border-zinc-300 hover:bg-zinc-50"
+              className="block rounded-lg border border-zinc-200 bg-white shadow-sm p-4 transition-all hover:border-zinc-300 hover:shadow-md"
             >
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-zinc-900 truncate">
