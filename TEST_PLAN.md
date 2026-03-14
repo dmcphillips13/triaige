@@ -88,17 +88,33 @@ Before running the E2E test, ensure a clean state:
 
 1. **Close all open PRs and issues** on the sample app repo:
    ```
-   gh pr list --state open --repo dmcphillips13/triaige-sample-app --json number -q '.[].number' | xargs -I{} gh pr close {} --repo dmcphillips13/triaige-sample-app
+   gh pr list --state open --repo dmcphillips13/triaige-sample-app --json number -q '.[].number' | xargs -I{} gh pr close {} --delete-branch --repo dmcphillips13/triaige-sample-app
    gh issue list --state open --repo dmcphillips13/triaige-sample-app --json number -q '.[].number' | xargs -I{} gh issue close {} --repo dmcphillips13/triaige-sample-app
    ```
-2. **Clear the Triaige database**: delete all rows from `submissions`,
-   `verdicts`, `failure_results`, `runs`, `known_failures` tables.
-3. **Update baselines on main**: trigger the `update-snapshots.yml` workflow so
-   baselines match the current main branch code. Wait for it to complete.
-4. **Verify GitHub App has Checks permission**: the Triaige GitHub App needs
-   Checks (read/write) for merge gate support.
-5. **Add branch protection rule**: add "Triaige Visual Regression" as a required
-   status check with `strict: true` (require up-to-date branches):
+2. **Clear the Triaige database**: delete each table in a separate statement
+   to avoid transaction rollback if a table doesn't exist yet:
+   ```
+   PGPASSWORD=<password> psql "<connection_string>" \
+     -c "DELETE FROM submissions;" \
+     -c "DELETE FROM verdicts;" \
+     -c "DELETE FROM failure_results;" \
+     -c "DELETE FROM runs;" \
+     -c "DELETE FROM known_failures;"
+   ```
+   **Important**: Do NOT combine into a single `-c` with semicolons — if any
+   table doesn't exist, the entire transaction rolls back and nothing is deleted.
+3. **Temporarily remove branch protection** so the snapshot update can push to main:
+   ```
+   gh api repos/OWNER/REPO/branches/main/protection -X DELETE
+   ```
+4. **Update baselines on main**: trigger the `update-snapshots.yml` workflow so
+   baselines match the current main branch code. Wait for it to complete:
+   ```
+   gh workflow run "Update Snapshots" --repo OWNER/REPO
+   # Wait ~90s, then verify:
+   gh run list --repo OWNER/REPO --workflow "Update Snapshots" --limit 1
+   ```
+5. **Re-enable branch protection** with `strict: true`:
    ```
    gh api repos/OWNER/REPO/branches/main/protection -X PUT --input - <<'EOF'
    {
@@ -109,6 +125,10 @@ Before running the E2E test, ensure a clean state:
    }
    EOF
    ```
+6. **Verify GitHub App has Checks permission**: the Triaige GitHub App needs
+   Checks (read/write) for merge gate support.
+7. **Pull updated baselines locally**: `git pull` on the sample app repo to
+   get the latest baseline screenshots before creating PR branches.
 
 ### Setup: Create two PRs
 
