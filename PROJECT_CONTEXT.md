@@ -50,16 +50,7 @@ Last updated: 2026-03-14
 - [x] Step 21.2: Remove "Ready to merge" PR comments — redundant since the check passing already signals this; remove gate-passed comment entirely
 - [x] Step 21.3: Fix "Baseline committed" label — submission label on pre-merge runs should say "Baseline committed" not "Baseline PR opened"
 - [x] Step 22: **DEMO CRITICAL** — Reorder failure card sections (rationale at top, image diff next, vision analysis collapsed) + improve rationale format (3 brief bullet points, fix markdown bullet rendering)
-- [ ] Step 23: Classification improvements — observed issues and fixes:
-  - **Observed (PR #59, 2026-03-14)**: same accent color change (blue→indigo via `--color-accent` in globals.css) classified as expected (85%), uncertain (70%), AND unexpected (85%) across 3 consecutive runs of the same PR. Root cause: without the git diff, the classifier can't trace the sidebar's visual change back to the `--color-accent` token update — it sees "sidebar changed" and guesses scope from the PR title alone. Combined with non-zero temperature, the result is essentially random. This is the #1 demo blocker for classification quality.
-  - **Core approach — two-signal classification**: the classifier gets three inputs: (1) visual diff screenshots (what it looks like), (2) git diff (what code changed), (3) PR description (what was intended). A change is **expected** only if it traces to a diff change AND that change aligns with the PR description. A change is **unexpected** if it traces to a diff change NOT mentioned in the PR description (unintentional side effect) or if it's a visual defect. **Uncertain** only when the visual change cannot be traced to a specific diff change. This prevents the git diff from making everything "expected" — the PR description is still the scope gate.
-  - **Mixed-scope contamination**: when a page has both expected changes (font sizes) and unexpected changes (sidebar color), the classifier compromises to "uncertain" instead of separating them. Fix: the two-signal approach lets the classifier say "font size change = expected (in diff + mentioned in PR), sidebar color change = unexpected (in diff but NOT mentioned in PR)" on the same page.
-  - **Temperature**: set to 0 for deterministic results. Won't fix the mixed-scope issue but eliminates classification instability across retriggers.
-  - **Git diff context**: the biggest lever. Feed the actual CSS property changes so the classifier can match each visual difference to a specific code change. Without it, the classifier just sees "the page looks different" and guesses scope alignment.
-  - **Prompt structure**: "You have three inputs: (1) the visual diff screenshots, (2) the git diff showing exactly which properties changed, (3) the PR description stating what was intended. A change is expected if it traces to a diff change that aligns with the PR description. A change is unexpected if it traces to a diff change NOT mentioned in the PR description, or if it appears to be a visual defect. A change is uncertain only if you cannot determine which diff change caused the visual difference."
-  - **Few-shot calibration**: retrieve 3-5 similar past decisions from episodic memory as examples in the prompt. Anchors the model's judgment to actual human verdicts.
-  - **Per-component analysis**: long-term — instead of classifying the whole page, identify which UI components changed and classify each separately. A page with expected header changes and unexpected sidebar changes should yield two classifications.
-- [x] Step 23 (temperature + git diff): DONE — temperature=0 on all LLM calls, git diff injected into Pass 1 + Pass 2, code traceability dimension added, conservative bias toward uncertain
+- [x] Step 23: Classification improvements — temperature=0 on all LLM calls, git diff injected into Pass 1 (devil's advocate) + Pass 2 (compose), code traceability dimension added to devil's advocate, conservative bias toward "uncertain" in compose, redundant diff removed from model_dump_json, line-boundary truncation. Determinism verification pending (need 2 more runs of PR #59 — first run returned Uncertain 65%). Future work not yet done: few-shot calibration, per-component analysis, mixed-scope separation.
 - [x] Step 23-UI: Dashboard visual polish — DONE:
   - [x] Font swap: DM Sans (body), Lora baked into PNG logo
   - [x] PNG logo with stylized plus and red "ai" highlight (exported from Figma at 4x, no font dependencies)
@@ -93,7 +84,7 @@ Last updated: 2026-03-14
 - [ ] Step 23.5: Persist active tab across page refreshes via URL hash/query param
 - [ ] Step 23.6: Main tab should work without requiring Settings setup — derive repo from runs
 - [ ] Step 23.7: PR run cards should show gate status (action required vs ready to merge)
-- [ ] Step 23.8: Real-time run updates — superseded by Step 23-SSE
+- [x] Step 23.8: Real-time run updates — superseded by Step 23-SSE (polling approach replaced with SSE plan)
 - [ ] Step 23.9: All links open in new tab (target="_blank")
 - [ ] Step 23.10: Delete stale PR comments when runs are superseded — store comment ID, delete on auto-close
 - [ ] Step 23.11: Hide skipped `close-pr-runs` job on PR checks — split into separate workflows
