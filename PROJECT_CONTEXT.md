@@ -59,7 +59,8 @@ Last updated: 2026-03-09
   - **Per-component analysis**: long-term — instead of classifying the whole page, identify which UI components changed and classify each separately. A page with expected header changes and unexpected sidebar changes should yield two classifications.
 - [ ] Step 22.1: **DEMO CRITICAL** — Reorder failure card sections — rationale at top, image diff next, vision analysis collapsed
 - [ ] Step 22.2: **DEMO CRITICAL** — Improve rationale format — 3 brief bullet points a non-technical person could understand; fix markdown bullet rendering
-- [ ] Step 22.3: Auto-close pre-merge runs after submit — close run immediately once all failures have submissions
+- [ ] Step 22.3: Debug and complete known failure screenshot comparison — the comparison + issue comment logic isn't firing despite screenshots differing; likely a silent exception in the comparison path or screenshot extraction; once fixed, also update the PR comment to distinguish "unchanged known failure (just verify)" from "further modified by this PR (you're adding drift — verify carefully)" with the issue link
+- [ ] Step 22.4: Auto-close pre-merge runs after submit — close run immediately once all failures have submissions
 - [ ] Step 22.4: Known failure PR comment should link to open GitHub issues
 - [ ] Step 22.5: Rename "Main" tab to "Issues", add "Closed Issues" tab for resolved known failures
 - [ ] Step 22.6: Persist active tab across page refreshes via URL hash/query param
