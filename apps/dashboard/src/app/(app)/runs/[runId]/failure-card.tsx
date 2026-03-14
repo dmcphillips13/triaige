@@ -295,9 +295,11 @@ export function FailureCard({
 
 /** Renders text as markdown with prose styling. */
 function MarkdownContent({ text }: { text: string }) {
+  // Fix inline bullets: ensure "- " at bullet boundaries starts on a new line
+  const normalized = text.replace(/ - \*\*/g, "\n- **");
   return (
     <div className="mt-1 text-sm text-zinc-700 prose prose-sm prose-zinc prose-li:my-0.5 prose-ul:list-disc prose-ul:pl-4">
-      <ReactMarkdown>{text}</ReactMarkdown>
+      <ReactMarkdown>{normalized}</ReactMarkdown>
     </div>
   );
 }

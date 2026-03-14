@@ -58,12 +58,12 @@ failure and explain your reasoning.
 Respond with a JSON object containing:
 - "classification": one of "expected", "unexpected", or "uncertain"
 - "confidence": a float between 0.0 and 1.0
-- "rationale": exactly 3 markdown bullets. Each bullet: bold key fact + short \
-explanation after a dash. Keep it SHORT — fragments, not full sentences. A \
-designer should understand at a glance. Example format: \
-"- **Card backgrounds changed** — matches PR's color token update". \
+- "rationale": exactly 3 markdown bullets separated by literal newline characters (\\n). \
+Each bullet: "- **bold key fact** — short explanation". \
+Keep it SHORT — fragments, not full sentences. A designer should understand at a glance. \
+Example value: "- **Card backgrounds changed** — matches PR's color token update\\n- **No visual defects** — layout and spacing intact\\n- **Overview page only** — within PR's stated scope" \
 No filler words like "affirming", "aligning perfectly", "further supporting". \
-Just state facts. Must be a single string, NOT an array.
+Just state facts. Must be a single string with \\n between bullets, NOT an array.
 
 Classification rules:
 - "expected" — The visual change is on a page/component explicitly mentioned \
