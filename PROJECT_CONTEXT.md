@@ -57,22 +57,22 @@ Last updated: 2026-03-09
   - **Prompt structure**: "You have three inputs: (1) the visual diff screenshots, (2) the git diff showing exactly which properties changed, (3) the PR description stating what was intended. A change is expected if it traces to a diff change that aligns with the PR description. A change is unexpected if it traces to a diff change NOT mentioned in the PR description, or if it appears to be a visual defect. A change is uncertain only if you cannot determine which diff change caused the visual difference."
   - **Few-shot calibration**: retrieve 3-5 similar past decisions from episodic memory as examples in the prompt. Anchors the model's judgment to actual human verdicts.
   - **Per-component analysis**: long-term — instead of classifying the whole page, identify which UI components changed and classify each separately. A page with expected header changes and unexpected sidebar changes should yield two classifications.
-- [ ] Step 22.1: **DEMO CRITICAL** — Reorder failure card sections — rationale at top (most important for reviewer), image diff next, vision analysis collapsed; designed for designers/non-technical reviewers who need to quickly scan and decide
-- [ ] Step 22.2: **DEMO CRITICAL** — Improve rationale format — prompt LLM to output 3 brief bullet points (not sentences/paragraphs) that a non-technical person could understand; e.g. "Header color changed from gray to indigo (matches PR)" not essay-style reasoning; fix markdown bullet rendering in the rationale display
-- [ ] Step 22.3: Auto-close pre-merge runs after submit — once all failures have submissions (baselines committed + issues filed), close the run immediately rather than waiting for the next workflow trigger
-- [ ] Step 22.4: Known failure PR comment should link to the open GitHub issue — each skipped test name should be a link to its issue, and "(already tracked on main)" text should also link to the issue
-- [ ] Step 22.5: Rename "Main" tab to "Issues" and add a "Closed Issues" tab for resolved known failures; track history of closed known failures
-- [ ] Step 22.6: Persist active tab across page refreshes — use URL hash or query param so refreshing stays on the current tab; PR tab remains the default on first visit
-- [ ] Step 22.7: Main tab should work without requiring Settings setup — derive repo from existing runs or default to first available; current flow requires user to visit Settings and link a repo before Main tab shows anything
-- [ ] Step 22.6: PR run cards should show gate status — indicate when the merge gate has been satisfied (all failures addressed) vs still blocking; visual distinction between "action required" and "ready to merge" states on the runs list
-- [ ] Step 22.4: Real-time run updates — runs list and run detail should update without manual refresh; options: polling (simplest, every 10-15s), SSE (server-sent events), or WebSocket. Polling is probably sufficient given runs take minutes to complete.
-- [ ] Step 22.5: All links open in new tab — PR comment dashboard link, issue links, submission links, "View PR" link on run detail should all use target="_blank"
-- [ ] Step 22.6: Delete stale PR comments when runs are superseded
-- [ ] Step 22.7: Hide skipped `close-pr-runs` job on PR checks
-- [ ] Step 22.8: Fix swipe screenshot viewer — baseline and actual screenshots are not aligned/sized consistently for swipe comparison; both images need to be the same dimensions and overlaid properly
-- [ ] Step 22.9: Make screenshot diff viewer larger — current size is too small to see meaningful visual differences
-- [ ] Step 22.10: Add fullscreen/modal mode for screenshot comparison — click to expand into a full-viewport overlay for detailed inspection
-- [ ] Step 22.11: Fix GitHub OAuth session duration — token expires too frequently, forcing re-auth during normal usage; investigate token refresh flow and extend session lifetime
+- [ ] Step 22.1: **DEMO CRITICAL** — Reorder failure card sections — rationale at top, image diff next, vision analysis collapsed
+- [ ] Step 22.2: **DEMO CRITICAL** — Improve rationale format — 3 brief bullet points a non-technical person could understand; fix markdown bullet rendering
+- [ ] Step 22.3: Auto-close pre-merge runs after submit — close run immediately once all failures have submissions
+- [ ] Step 22.4: Known failure PR comment should link to open GitHub issues
+- [ ] Step 22.5: Rename "Main" tab to "Issues", add "Closed Issues" tab for resolved known failures
+- [ ] Step 22.6: Persist active tab across page refreshes via URL hash/query param
+- [ ] Step 22.7: Main tab should work without requiring Settings setup — derive repo from runs
+- [ ] Step 22.8: PR run cards should show gate status (action required vs ready to merge)
+- [ ] Step 22.9: Real-time run updates — polling every 10-15s on runs list and run detail
+- [ ] Step 22.10: All links open in new tab (target="_blank")
+- [ ] Step 22.11: Delete stale PR comments when runs are superseded — store comment ID, delete on auto-close
+- [ ] Step 22.12: Hide skipped `close-pr-runs` job on PR checks — split into separate workflows
+- [ ] Step 22.13: Fix swipe screenshot viewer — images not aligned for comparison
+- [ ] Step 22.14: Make screenshot diff viewer larger
+- [ ] Step 22.15: Add fullscreen/modal mode for screenshot comparison
+- [ ] Step 22.16: Fix GitHub OAuth session duration — extend token lifetime or add refresh flow
 - [ ] Step 23: Repos landing page — repo cards with setup checklist, "Connect Repo" via GitHub App, unconfigured repos rejected
 - [ ] Step 24: Settings UI — auto-generated API key + runner URL for copy-paste, triage/merge gate toggles, inline CLI instructions
 - [ ] Step 25: Repo setup CLI (`npx triaige init`) — frictionless guided setup: checks `gh` auth, verifies dashboard connection + GitHub App Checks permission, sets GitHub secrets via `gh secret set`, scaffolds workflow (with correct permissions block + baseline commit skip condition) + script (with executable bit) + .env.example, detects Playwright config and ensures JSON reporter is configured, detects monorepo structure, offers initial baseline generation + commit, branch protection with `strict: true`, and a final validation dry-run
