@@ -625,23 +625,16 @@ async def close_repo_known_failure(repo: str, failure_id: int, request: Request)
     if not row:
         raise HTTPException(status_code=404, detail="Known failure not found or already closed")
 
-    # Close the GitHub issue too
-    github_token = request.headers.get("X-GitHub-Token")
-    if row["issue_number"] and github_token:
+    # Close the GitHub issue too — use App installation token for reliability
+    if row["issue_number"]:
         try:
-            import httpx
-            client = httpx.Client(
-                base_url="https://api.github.com",
-                headers={
-                    "Accept": "application/vnd.github+json",
-                    "Authorization": f"Bearer {github_token}",
-                },
-                timeout=15.0,
-            )
+            from app.tools.github_checks import _get_client
+            client = _get_client(repo)
             client.patch(
                 f"/repos/{repo}/issues/{row['issue_number']}",
                 json={"state": "closed"},
             )
+            logger.info("Closed GitHub issue #%s on %s", row["issue_number"], repo)
         except Exception as e:
             logger.warning("Failed to close GitHub issue #%s: %s", row["issue_number"], e)
 
