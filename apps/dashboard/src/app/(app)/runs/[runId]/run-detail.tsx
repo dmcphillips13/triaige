@@ -161,7 +161,7 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <Link
-          href="/runs"
+          href={`/runs${isClosed ? "#closed-runs" : "#pr"}`}
           className="group flex items-center gap-1 text-sm font-medium text-zinc-400 transition-colors hover:text-zinc-700"
         >
           <span className="transition-transform group-hover:-translate-x-0.5">&larr;</span>

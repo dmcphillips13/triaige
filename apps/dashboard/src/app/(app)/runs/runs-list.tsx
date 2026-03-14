@@ -123,33 +123,46 @@ export function RunsList({ runs }: { runs: TriageRunSummary[] }) {
   };
 
   const tabItems = [
-    { key: "pr" as Tab, label: "PR", count: prRuns.length },
-    { key: "issues" as Tab, label: "Issues", count: knownFailures.length },
-    { key: "closed_runs" as Tab, label: "Closed Runs", count: closedRuns.length },
-    {
-      key: "closed_issues" as Tab,
-      label: "Closed Issues",
-      count: closedKnownFailures.length,
-    },
+    { key: "pr" as Tab, label: "PR", count: prRuns.length, showCount: true },
+    { key: "issues" as Tab, label: "Issues", count: knownFailures.length, showCount: true },
+    { key: "closed_runs" as Tab, label: "Closed Runs", count: 0, showCount: false },
+    { key: "closed_issues" as Tab, label: "Closed Issues", count: 0, showCount: false },
   ];
 
   return (
     <>
-      <div className="mt-6 flex gap-1 border-b border-zinc-200">
-        {tabItems.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => handleTabChange(t.key)}
-            className={`px-3 py-2 text-sm font-medium transition-colors ${
-              tab === t.key
-                ? "border-b-2 border-zinc-900 text-zinc-900"
-                : "text-zinc-500 hover:text-zinc-700"
-            }`}
-          >
-            {t.label}
-            {t.count > 0 && ` (${t.count})`}
-          </button>
-        ))}
+      <div className="mt-6 flex items-center justify-between border-b border-zinc-200">
+        <div className="flex gap-1">
+          {tabItems.slice(0, 2).map((t) => (
+            <button
+              key={t.key}
+              onClick={() => handleTabChange(t.key)}
+              className={`px-3 py-2 text-sm font-medium transition-colors ${
+                tab === t.key
+                  ? "border-b-2 border-zinc-900 text-zinc-900"
+                  : "text-zinc-500 hover:text-zinc-700"
+              }`}
+            >
+              {t.label}
+              {t.showCount && t.count > 0 && ` (${t.count})`}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-1">
+          {tabItems.slice(2).map((t) => (
+            <button
+              key={t.key}
+              onClick={() => handleTabChange(t.key)}
+              className={`px-3 py-2 text-sm font-medium transition-colors ${
+                tab === t.key
+                  ? "border-b-2 border-zinc-900 text-zinc-900"
+                  : "text-zinc-400 hover:text-zinc-600"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {tab === "issues" ? (
@@ -296,9 +309,21 @@ function ClosedIssuesTab({
         return (
           <li key={failure.id}>
             <div className="rounded-lg border border-zinc-200 bg-white shadow-sm overflow-hidden">
+              {/* Issue link bar */}
+              <div className="flex items-center gap-2 bg-zinc-50 px-4 py-2">
+                <a
+                  href={failure.issue_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-medium text-zinc-500 hover:underline"
+                >
+                  Issue #{failure.issue_number} — closed
+                </a>
+              </div>
+
               {/* Screenshot */}
               {failure.screenshot_base64 && (
-                <div className="border-b border-zinc-100 bg-zinc-50 p-3">
+                <div className="border-t border-zinc-100 bg-zinc-50 p-3">
                   <img
                     src={`data:image/png;base64,${failure.screenshot_base64}`}
                     alt={failure.test_name}
@@ -307,7 +332,7 @@ function ClosedIssuesTab({
                 </div>
               )}
 
-              <div className="p-4">
+              <div className="border-t border-zinc-100 p-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-zinc-900">
                     {failure.test_name}
@@ -315,19 +340,6 @@ function ClosedIssuesTab({
                   <span className="shrink-0 text-xs text-zinc-400">
                     Closed {closedDate}
                   </span>
-                </div>
-
-                <div className="mt-2">
-                  <a
-                    href={failure.issue_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:underline"
-                  >
-                    <span className="inline-block h-2 w-2 rounded-full bg-zinc-400" />
-                    Issue #{failure.issue_number}
-                    <span className="text-[10px] opacity-60">&rarr;</span>
-                  </a>
                 </div>
               </div>
             </div>
