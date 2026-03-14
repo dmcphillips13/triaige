@@ -169,7 +169,7 @@ async def triage_run(req: TriageRunRequest, request: Request):
     # --- Net-new filtering: only triage failures not present in known failures ---
     skipped_known: list[dict] = []  # Known failures skipped by filtering
     if repo:
-        existing = await store.get_existing_failure_test_names(repo)
+        existing = await store.get_existing_failures_with_issues(repo)
         if existing:
             skipped_requests = [
                 r for r in ask_requests
@@ -183,7 +183,11 @@ async def triage_run(req: TriageRunRequest, request: Request):
             for r in skipped_requests:
                 test_name = extract_test_name(r)
                 screenshot = r.run_summary.screenshot_actual if r.run_summary else None
-                skipped_known.append({"test_name": test_name, "screenshot": screenshot})
+                skipped_known.append({
+                    "test_name": test_name,
+                    "screenshot": screenshot,
+                    "issue_url": existing.get(test_name),
+                })
 
     # --- Screenshot comparison for skipped known failures ---
     # If a PR modifies an area that's already broken, notify the issue
@@ -450,9 +454,12 @@ async def put_submission(run_id: str, test_name: str, req: SubmissionRequest, re
                         summary="All visual failures have been addressed",
                         github_token=github_token,
                     )
-                    logger.info("Merge gate passed for run %s", run_id)
                 except Exception as e:
                     logger.warning("Failed to update check run: %s", e)
+
+        logger.info("Merge gate passed for run %s", run_id)
+        await store.close_run(run_id)
+        logger.info("Auto-closed run %s after merge gate passed", run_id)
 
     return {"status": "stored"}
 

@@ -170,6 +170,43 @@ async def close_run(run_id: str, force: bool = False) -> bool:
     return result == "UPDATE 1"
 
 
+async def get_gate_statuses(run_ids: list[str]) -> dict[str, str]:
+    """Batch-compute gate status for a set of runs.
+
+    Returns {run_id: "action_required" | "ready_to_merge"} for runs where
+    all failures have submissions.
+    """
+    if not run_ids:
+        return {}
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """SELECT
+                   fr.run_id,
+                   COUNT(DISTINCT fr.test_name) AS total,
+                   COUNT(DISTINCT s.test_name) AS covered
+               FROM failure_results fr
+               LEFT JOIN submissions s
+                   ON s.test_name = fr.test_name
+                   AND s.run_id IN (
+                       SELECT r2.run_id FROM runs r2
+                       WHERE r2.repo = (SELECT repo FROM runs WHERE run_id = fr.run_id)
+                         AND r2.pr_number = (SELECT pr_number FROM runs WHERE run_id = fr.run_id)
+                   )
+               WHERE fr.run_id = ANY($1)
+               GROUP BY fr.run_id""",
+            run_ids,
+        )
+    result: dict[str, str] = {}
+    for row in rows:
+        if row["total"] > 0:
+            if row["covered"] >= row["total"]:
+                result[row["run_id"]] = "ready_to_merge"
+            else:
+                result[row["run_id"]] = "action_required"
+    return result
+
+
 async def list_runs() -> list[TriageRunSummary]:
     """List all runs, newest first."""
     pool = get_pool()
@@ -177,6 +214,14 @@ async def list_runs() -> list[TriageRunSummary]:
         rows = await conn.fetch(
             "SELECT * FROM runs ORDER BY created_at DESC"
         )
+
+    # Compute gate statuses for open pre-merge runs
+    open_pre_merge_ids = [
+        row["run_id"] for row in rows
+        if row["triage_mode"] == "pre_merge" and not row["closed"]
+    ]
+    gate_statuses = await get_gate_statuses(open_pre_merge_ids)
+
     return [
         TriageRunSummary(
             run_id=row["run_id"],
@@ -188,6 +233,7 @@ async def list_runs() -> list[TriageRunSummary]:
             repo=row["repo"],
             triage_mode=row["triage_mode"],
             closed=row["closed"],
+            gate_status=gate_statuses.get(row["run_id"]),
         )
         for row in rows
     ]
@@ -270,6 +316,24 @@ async def get_existing_failure_test_names(repo: str) -> set[str]:
             repo,
         )
     return {row["test_name"] for row in rows}
+
+
+async def get_existing_failures_with_issues(repo: str) -> dict[str, str]:
+    """Get test names with their issue URLs for open known failures.
+
+    Returns {test_name: issue_url} for the most recent known failure per test.
+    """
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """SELECT DISTINCT ON (test_name) test_name, issue_url
+               FROM known_failures
+               WHERE repo = $1
+                 AND closed_at IS NULL
+               ORDER BY test_name, created_at DESC""",
+            repo,
+        )
+    return {row["test_name"]: row["issue_url"] for row in rows}
 
 
 async def auto_close_pre_merge_runs(repo: str, pr_number: int) -> list[str]:

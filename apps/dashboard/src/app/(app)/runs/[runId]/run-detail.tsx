@@ -83,6 +83,23 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
   const isPreMerge = run.triage_mode === "pre_merge";
   const isPostMerge = run.triage_mode !== "pre_merge";
 
+  // Derive gate status from submissions + known failures
+  const allAddressed =
+    actionsLoaded &&
+    isPreMerge &&
+    !isClosed &&
+    run.results.length > 0 &&
+    run.results.every(
+      (r) =>
+        submitted[r.test_name] ||
+        knownFailures[r.test_name]?.open_submission
+    );
+  const gateStatus = !actionsLoaded || isClosed || !isPreMerge
+    ? null
+    : allAddressed
+      ? "ready_to_merge"
+      : "action_required";
+
   // Failures ready to submit: have a verdict, no submission from this run,
   // and no open submission from a previous run
   const pendingApproved = run.results.filter(
@@ -171,9 +188,21 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
       </div>
 
       <div className="mt-4">
-        <h1 className="text-2xl font-bold text-zinc-900">
-          {run.pr_title || `Run ${run.run_id.slice(0, 8)}`}
-        </h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-zinc-900">
+            {run.pr_title || `Run ${run.run_id.slice(0, 8)}`}
+          </h1>
+          {gateStatus === "ready_to_merge" && (
+            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800">
+              Ready to merge
+            </span>
+          )}
+          {gateStatus === "action_required" && (
+            <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+              Action required
+            </span>
+          )}
+        </div>
         <div className="mt-2 flex flex-wrap items-center gap-3">
           {run.pr_url && (
             <a

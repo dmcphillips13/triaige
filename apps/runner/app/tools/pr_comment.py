@@ -116,7 +116,11 @@ def post_triage_comment(
             "",
         ])
         for s in skipped:
-            lines.append(f"- `{s['test_name']}`")
+            issue_url = s.get("issue_url")
+            if issue_url:
+                lines.append(f"- `{s['test_name']}` — [open issue]({issue_url})")
+            else:
+                lines.append(f"- `{s['test_name']}`")
         lines.extend([
             "",
             "> These tests are failing on main with open issues. "

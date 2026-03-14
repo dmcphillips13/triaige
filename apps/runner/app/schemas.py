@@ -173,6 +173,7 @@ class TriageRunSummary(BaseModel):
     repo: str | None = None
     triage_mode: str | None = None
     closed: bool = False
+    gate_status: str | None = None  # "action_required" or "ready_to_merge"
 
 
 class TriageRunResponse(BaseModel):

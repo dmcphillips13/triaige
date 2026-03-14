@@ -72,6 +72,7 @@ export interface TriageRunSummary {
   repo?: string | null;
   triage_mode?: string | null;
   closed?: boolean;
+  gate_status?: string | null;
 }
 
 export interface TriageRunResponse {
