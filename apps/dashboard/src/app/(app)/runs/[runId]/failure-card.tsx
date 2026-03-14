@@ -130,8 +130,8 @@ export function FailureCard({
 
       {/* Submission display — unified for both current and existing submissions */}
       {!actionsLoaded ? (
-        <div className="border-t border-zinc-100 px-4 py-2">
-          <div className="h-8 w-40 animate-pulse rounded-md bg-zinc-200/60" />
+        <div className="border-t border-zinc-100 bg-zinc-50 px-4 py-2">
+          <div className="h-4 w-32 animate-pulse rounded bg-zinc-200/60" />
         </div>
       ) : (() => {
         const sub = submitted || existingSubmission || (!knownFailure?.failing_since && knownFailure?.open_submission) || null;
