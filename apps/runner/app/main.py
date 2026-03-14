@@ -620,6 +620,12 @@ async def list_repo_known_failures(repo: str):
     return await store.list_known_failures(repo)
 
 
+@app.get("/repos/{repo:path}/known-failures/closed")
+async def list_repo_closed_known_failures(repo: str):
+    """List closed known failures for a repo."""
+    return await store.get_closed_known_failures(repo)
+
+
 @app.patch("/repos/{repo:path}/known-failures/{failure_id}/close")
 async def close_repo_known_failure(repo: str, failure_id: int, request: Request):
     """Close a known failure and its GitHub issue."""

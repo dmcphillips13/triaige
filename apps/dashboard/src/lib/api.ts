@@ -140,6 +140,27 @@ export async function fetchRepoKnownFailures(
   return res.json();
 }
 
+/** Fetch closed known failures for a repo. */
+export async function fetchClosedKnownFailures(
+  repo: string
+): Promise<
+  {
+    id: number;
+    test_name: string;
+    issue_url: string;
+    issue_number: number;
+    screenshot_base64: string | null;
+    created_at: string;
+    closed_at: string;
+  }[]
+> {
+  const res = await fetch(
+    `/api/runner/repos/${encodeURIComponent(repo)}/known-failures/closed`
+  );
+  if (!res.ok) return [];
+  return res.json();
+}
+
 /** Close a known failure and its GitHub issue. */
 export async function closeKnownFailure(
   repo: string,

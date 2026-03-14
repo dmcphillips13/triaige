@@ -507,6 +507,21 @@ async def close_known_failure(failure_id: int) -> dict | None:
     return dict(row) if row else None
 
 
+async def get_closed_known_failures(repo: str) -> list[dict]:
+    """List closed known failures for a repo."""
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """SELECT id, test_name, issue_url, issue_number, screenshot_base64, created_at, closed_at
+               FROM known_failures
+               WHERE repo = $1
+                 AND closed_at IS NOT NULL
+               ORDER BY closed_at DESC""",
+            repo,
+        )
+    return [dict(row) for row in rows]
+
+
 async def get_known_failure_screenshot(repo: str, test_name: str) -> str | None:
     """Get the stored screenshot for a known failure (for comparison)."""
     pool = get_pool()

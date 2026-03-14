@@ -1,8 +1,9 @@
-// Runs list with PR / Main / Closed tabs.
+// Runs list with PR / Issues / Closed Runs / Closed Issues tabs.
 //
 // PR (default): pre-merge runs from open PRs — primary workspace for triage
-// Main: known failures health dashboard — open issues on failing tests
-// Closed: auto-closed or manually closed runs
+// Issues: known failures health dashboard — open issues on failing tests
+// Closed Runs: auto-closed or manually closed runs
+// Closed Issues: closed known failures
 
 "use client";
 
@@ -10,10 +11,33 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ClassificationBadge } from "@/components/classification-badge";
 import { RunCardSkeleton } from "@/components/skeleton";
-import { fetchRepoKnownFailures, closeKnownFailure } from "@/lib/api";
+import {
+  fetchRepoKnownFailures,
+  fetchClosedKnownFailures,
+  closeKnownFailure,
+} from "@/lib/api";
 import type { TriageRunSummary } from "@/lib/types";
 
-type Tab = "pr" | "main" | "closed";
+type Tab = "pr" | "issues" | "closed_runs" | "closed_issues";
+
+const HASH_TO_TAB: Record<string, Tab> = {
+  "#pr": "pr",
+  "#issues": "issues",
+  "#closed-runs": "closed_runs",
+  "#closed-issues": "closed_issues",
+};
+
+const TAB_TO_HASH: Record<Tab, string> = {
+  pr: "#pr",
+  issues: "#issues",
+  closed_runs: "#closed-runs",
+  closed_issues: "#closed-issues",
+};
+
+function getInitialTab(): Tab {
+  if (typeof window === "undefined") return "pr";
+  return HASH_TO_TAB[window.location.hash] || "pr";
+}
 
 interface KnownFailure {
   id: number;
@@ -24,10 +48,24 @@ interface KnownFailure {
   created_at: string;
 }
 
+interface ClosedKnownFailure {
+  id: number;
+  test_name: string;
+  issue_url: string;
+  issue_number: number;
+  screenshot_base64: string | null;
+  created_at: string;
+  closed_at: string;
+}
+
 export function RunsList({ runs }: { runs: TriageRunSummary[] }) {
-  const [tab, setTab] = useState<Tab>("pr");
+  const [tab, setTab] = useState<Tab>(getInitialTab);
   const [knownFailures, setKnownFailures] = useState<KnownFailure[]>([]);
+  const [closedKnownFailures, setClosedKnownFailures] = useState<
+    ClosedKnownFailure[]
+  >([]);
   const [loadingKnown, setLoadingKnown] = useState(false);
+  const [loadingClosedKnown, setLoadingClosedKnown] = useState(false);
   const [closingId, setClosingId] = useState<number | null>(null);
 
   const prRuns = runs.filter(
@@ -35,24 +73,47 @@ export function RunsList({ runs }: { runs: TriageRunSummary[] }) {
   );
   const closedRuns = runs.filter((r) => r.closed);
 
-  // Load known failures when Main tab is selected
+  // Derive repo from runs data, fall back to localStorage
+  const derivedRepo =
+    runs.find((r) => r.repo)?.repo ||
+    (typeof window !== "undefined"
+      ? localStorage.getItem("triaige:linked_repo")
+      : null);
+
+  const handleTabChange = (newTab: Tab) => {
+    setTab(newTab);
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", TAB_TO_HASH[newTab]);
+    }
+  };
+
+  // Load known failures when Issues tab is selected
   useEffect(() => {
-    if (tab !== "main") return;
-    const repo = localStorage.getItem("triaige:linked_repo");
-    if (!repo) return;
+    if (tab !== "issues") return;
+    if (!derivedRepo) return;
     setLoadingKnown(true);
-    fetchRepoKnownFailures(repo)
+    fetchRepoKnownFailures(derivedRepo)
       .then(setKnownFailures)
       .catch(() => setKnownFailures([]))
       .finally(() => setLoadingKnown(false));
-  }, [tab]);
+  }, [tab, derivedRepo]);
+
+  // Load closed known failures when Closed Issues tab is selected
+  useEffect(() => {
+    if (tab !== "closed_issues") return;
+    if (!derivedRepo) return;
+    setLoadingClosedKnown(true);
+    fetchClosedKnownFailures(derivedRepo)
+      .then(setClosedKnownFailures)
+      .catch(() => setClosedKnownFailures([]))
+      .finally(() => setLoadingClosedKnown(false));
+  }, [tab, derivedRepo]);
 
   const handleCloseKnownFailure = async (failure: KnownFailure) => {
-    const repo = localStorage.getItem("triaige:linked_repo");
-    if (!repo) return;
+    if (!derivedRepo) return;
     setClosingId(failure.id);
     try {
-      await closeKnownFailure(repo, failure.id);
+      await closeKnownFailure(derivedRepo, failure.id);
       setKnownFailures((prev) => prev.filter((f) => f.id !== failure.id));
     } catch (e) {
       console.error("Failed to close known failure:", e);
@@ -63,8 +124,13 @@ export function RunsList({ runs }: { runs: TriageRunSummary[] }) {
 
   const tabItems = [
     { key: "pr" as Tab, label: "PR", count: prRuns.length },
-    { key: "main" as Tab, label: "Main", count: knownFailures.length },
-    { key: "closed" as Tab, label: "Closed", count: closedRuns.length },
+    { key: "issues" as Tab, label: "Issues", count: knownFailures.length },
+    { key: "closed_runs" as Tab, label: "Closed Runs", count: closedRuns.length },
+    {
+      key: "closed_issues" as Tab,
+      label: "Closed Issues",
+      count: closedKnownFailures.length,
+    },
   ];
 
   return (
@@ -73,7 +139,7 @@ export function RunsList({ runs }: { runs: TriageRunSummary[] }) {
         {tabItems.map((t) => (
           <button
             key={t.key}
-            onClick={() => setTab(t.key)}
+            onClick={() => handleTabChange(t.key)}
             className={`px-3 py-2 text-sm font-medium transition-colors ${
               tab === t.key
                 ? "border-b-2 border-zinc-900 text-zinc-900"
@@ -86,12 +152,17 @@ export function RunsList({ runs }: { runs: TriageRunSummary[] }) {
         ))}
       </div>
 
-      {tab === "main" ? (
-        <MainTab
+      {tab === "issues" ? (
+        <IssuesTab
           knownFailures={knownFailures}
           loading={loadingKnown}
           closingId={closingId}
           onClose={handleCloseKnownFailure}
+        />
+      ) : tab === "closed_issues" ? (
+        <ClosedIssuesTab
+          closedKnownFailures={closedKnownFailures}
+          loading={loadingClosedKnown}
         />
       ) : (
         <RunsTab
@@ -107,7 +178,7 @@ export function RunsList({ runs }: { runs: TriageRunSummary[] }) {
   );
 }
 
-function MainTab({
+function IssuesTab({
   knownFailures,
   loading,
   closingId,
@@ -183,6 +254,80 @@ function MainTab({
                   >
                     {closingId === failure.id ? "Closing..." : "Close"}
                   </button>
+                </div>
+              </div>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function ClosedIssuesTab({
+  closedKnownFailures,
+  loading,
+}: {
+  closedKnownFailures: ClosedKnownFailure[];
+  loading: boolean;
+}) {
+  if (loading) {
+    return (
+      <ul className="mt-4 space-y-3">
+        {[1, 2, 3].map((i) => (
+          <li key={i}><RunCardSkeleton /></li>
+        ))}
+      </ul>
+    );
+  }
+
+  if (closedKnownFailures.length === 0) {
+    return (
+      <p className="mt-8 text-center text-zinc-500">
+        No closed issues yet. Issues move here when resolved.
+      </p>
+    );
+  }
+
+  return (
+    <ul className="mt-4 space-y-3">
+      {closedKnownFailures.map((failure) => {
+        const closedDate = new Date(failure.closed_at).toLocaleString();
+        return (
+          <li key={failure.id}>
+            <div className="rounded-lg border border-zinc-200 bg-white shadow-sm overflow-hidden">
+              {/* Screenshot */}
+              {failure.screenshot_base64 && (
+                <div className="border-b border-zinc-100 bg-zinc-50 p-3">
+                  <img
+                    src={`data:image/png;base64,${failure.screenshot_base64}`}
+                    alt={failure.test_name}
+                    className="mx-auto max-h-48 rounded border border-zinc-200 object-contain"
+                  />
+                </div>
+              )}
+
+              <div className="p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-zinc-900">
+                    {failure.test_name}
+                  </span>
+                  <span className="shrink-0 text-xs text-zinc-400">
+                    Closed {closedDate}
+                  </span>
+                </div>
+
+                <div className="mt-2">
+                  <a
+                    href={failure.issue_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:underline"
+                  >
+                    <span className="inline-block h-2 w-2 rounded-full bg-zinc-400" />
+                    Issue #{failure.issue_number}
+                    <span className="text-[10px] opacity-60">&rarr;</span>
+                  </a>
                 </div>
               </div>
             </div>
