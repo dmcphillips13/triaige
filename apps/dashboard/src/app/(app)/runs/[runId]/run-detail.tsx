@@ -154,7 +154,7 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-12">
+    <div className="mx-auto max-w-5xl px-6 py-12">
       {/* Header */}
       <div className="flex items-center justify-between">
         <Link

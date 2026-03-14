@@ -54,9 +54,9 @@ export function FailureCard({
   return (
     <div
       className={cn(
-        "rounded-lg border bg-white transition-colors",
-        verdict === "approved" && "border-green-300",
-        verdict === "rejected" && "border-red-300",
+        "rounded-lg border bg-white shadow-sm transition-colors",
+        verdict === "approved" && "border-emerald-200",
+        verdict === "rejected" && "border-rose-200",
         !verdict && "border-zinc-200"
       )}
     >
@@ -120,8 +120,8 @@ export function FailureCard({
                   "text-xs font-medium hover:underline",
                   (existingSubmission || knownFailure.open_submission)!
                     .type === "pr"
-                    ? "text-green-700"
-                    : "text-red-700"
+                    ? "text-emerald-700"
+                    : "text-rose-700"
                 )}
               >
                 {(existingSubmission || knownFailure.open_submission)!
@@ -148,8 +148,8 @@ export function FailureCard({
                 "text-xs font-medium hover:underline",
                 (existingSubmission || knownFailure!.open_submission)!
                   .type === "pr"
-                  ? "text-green-700"
-                  : "text-red-700"
+                  ? "text-emerald-700"
+                  : "text-rose-700"
               )}
             >
               {(existingSubmission || knownFailure!.open_submission)!
@@ -171,8 +171,8 @@ export function FailureCard({
               className={cn(
                 "inline-flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium",
                 submitted.type === "pr"
-                  ? "bg-green-50 text-green-700 hover:underline"
-                  : "bg-red-50 text-red-700 hover:underline"
+                  ? "bg-emerald-50 text-emerald-700 hover:underline"
+                  : "bg-rose-50 text-rose-700 hover:underline"
               )}
             >
               {submitted.type === "pr"
@@ -189,7 +189,7 @@ export function FailureCard({
                 className={cn(
                   "inline-flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium transition-colors",
                   verdict === "approved"
-                    ? "bg-green-100 text-green-800"
+                    ? "bg-emerald-100 text-emerald-800"
                     : "text-zinc-500 hover:bg-zinc-100"
                 )}
               >
@@ -203,7 +203,7 @@ export function FailureCard({
                 className={cn(
                   "inline-flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium transition-colors",
                   verdict === "rejected"
-                    ? "bg-red-100 text-red-800"
+                    ? "bg-rose-100 text-rose-800"
                     : "text-zinc-500 hover:bg-zinc-100"
                 )}
               >
@@ -275,12 +275,12 @@ export function FailureCard({
           {/* Debug errors */}
           {res.debug && res.debug.errors.length > 0 && (
             <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-red-400">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-rose-400">
                 Errors
               </h4>
               <ul className="mt-1 space-y-1">
                 {res.debug.errors.map((e, i) => (
-                  <li key={i} className="text-xs text-red-600">
+                  <li key={i} className="text-xs text-rose-600">
                     {e}
                   </li>
                 ))}

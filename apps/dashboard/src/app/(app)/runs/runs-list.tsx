@@ -133,7 +133,7 @@ function MainTab({
         const date = new Date(failure.created_at).toLocaleString();
         return (
           <li key={failure.id}>
-            <div className="rounded-lg border border-zinc-200 bg-white overflow-hidden">
+            <div className="rounded-lg border border-zinc-200 bg-white shadow-sm overflow-hidden">
               {/* Screenshot */}
               {failure.screenshot_base64 && (
                 <div className="border-b border-zinc-100 bg-zinc-50 p-3">
@@ -160,9 +160,9 @@ function MainTab({
                     href={failure.issue_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-sm text-red-700 hover:underline"
+                    className="inline-flex items-center gap-1.5 text-sm text-rose-700 hover:underline"
                   >
-                    <span className="inline-block h-2 w-2 rounded-full bg-red-500" />
+                    <span className="inline-block h-2 w-2 rounded-full bg-rose-500" />
                     Issue #{failure.issue_number}
                     <span className="text-[10px] opacity-60">&rarr;</span>
                   </a>
@@ -205,7 +205,7 @@ function RunsTab({
           <li key={run.run_id}>
             <Link
               href={`/runs/${run.run_id}`}
-              className="block rounded-lg border border-zinc-200 bg-white p-4 transition-colors hover:border-zinc-300 hover:bg-zinc-50"
+              className="block rounded-lg border border-zinc-200 bg-white shadow-sm p-4 transition-colors hover:border-zinc-300 hover:bg-zinc-50"
             >
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-zinc-900 truncate">

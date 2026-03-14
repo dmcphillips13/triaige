@@ -78,10 +78,10 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-12">
+    <div className="mx-auto max-w-5xl px-6 py-12">
       <h1 className="text-2xl font-bold text-zinc-900">Settings</h1>
 
-      <div className="mt-8 rounded-lg border border-zinc-200 bg-white p-6">
+      <div className="mt-8 rounded-lg border border-zinc-200 bg-white shadow-sm p-6">
         <h2 className="text-lg font-semibold text-zinc-900">Linked Repository</h2>
         <p className="mt-1 text-sm text-zinc-500">
           Select the repo whose Playwright test failures will be triaged.
@@ -112,7 +112,7 @@ export default function SettingsPage() {
       </div>
 
       {linkedRepo && (
-        <div className="mt-6 rounded-lg border border-zinc-200 bg-white p-6">
+        <div className="mt-6 rounded-lg border border-zinc-200 bg-white shadow-sm p-6">
           <h2 className="text-lg font-semibold text-zinc-900">Triage Mode</h2>
           <p className="mt-1 text-sm text-zinc-500">
             Choose when Triaige runs visual regression triage for this repo.

@@ -11,7 +11,7 @@ export default async function RunsPage() {
     runs = await fetchRuns();
   } catch {
     return (
-      <div className="mx-auto max-w-3xl px-6 py-12">
+      <div className="mx-auto max-w-5xl px-6 py-12">
         <h1 className="text-2xl font-bold text-zinc-900">Triage Runs</h1>
         <p className="mt-4 text-zinc-500">
           Could not connect to the runner service. Make sure it is running.
@@ -21,7 +21,7 @@ export default async function RunsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-12">
+    <div className="mx-auto max-w-5xl px-6 py-12">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-zinc-900">Triage Runs</h1>
         <Link

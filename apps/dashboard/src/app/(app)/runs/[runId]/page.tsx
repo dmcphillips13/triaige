@@ -19,7 +19,7 @@ export default async function RunDetailPage({
     run = await fetchRun(runId);
   } catch {
     return (
-      <div className="mx-auto max-w-3xl px-6 py-12">
+      <div className="mx-auto max-w-5xl px-6 py-12">
         <h1 className="text-2xl font-bold text-zinc-900">Run not found</h1>
         <p className="mt-4 text-zinc-500">
           Could not load this run. It may not exist or the runner may be
