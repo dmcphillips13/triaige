@@ -628,16 +628,19 @@ async def close_repo_known_failure(repo: str, failure_id: int, request: Request)
         raise HTTPException(status_code=404, detail="Known failure not found or already closed")
 
     # Close the GitHub issue too — use App installation token for reliability
+    issue_error = None
     if row["issue_number"]:
         try:
             from app.tools.github_checks import _get_client
             client = _get_client(repo)
-            client.patch(
+            resp = client.patch(
                 f"/repos/{repo}/issues/{row['issue_number']}",
                 json={"state": "closed"},
             )
+            resp.raise_for_status()
             logger.info("Closed GitHub issue #%s on %s", row["issue_number"], repo)
         except Exception as e:
+            issue_error = str(e)
             logger.warning("Failed to close GitHub issue #%s: %s", row["issue_number"], e)
 
-    return {"status": "closed", "id": failure_id}
+    return {"status": "closed", "id": failure_id, "issue_error": issue_error}
