@@ -61,5 +61,8 @@ pnpm-debug.log*
 .cache/
 tmp/
 
+# Strategy (confidential — not for public repo)
+docs/strategy.md
+
 # Claude
 .claude/
