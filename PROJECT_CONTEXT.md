@@ -65,8 +65,8 @@ Last updated: 2026-03-09
 - [ ] Step 22.6: Fix swipe screenshot viewer — baseline and actual screenshots are not aligned/sized consistently for swipe comparison; both images need to be the same dimensions and overlaid properly
 - [ ] Step 22.7: Make screenshot diff viewer larger — current size is too small to see meaningful visual differences
 - [ ] Step 22.8: Add fullscreen/modal mode for screenshot comparison — click to expand into a full-viewport overlay for detailed inspection
-- [ ] Step 22.9: Reorder failure card sections — rationale at top (most important for reviewer), image diff next, vision analysis collapsed; designed for designers/non-technical reviewers who need to quickly scan and decide
-- [ ] Step 22.10: Improve rationale format — prompt LLM to output 3 brief bullet points (not sentences/paragraphs) that a non-technical person could understand; e.g. "Header color changed from gray to indigo (matches PR)" not essay-style reasoning; fix markdown bullet rendering in the rationale display
+- [ ] Step 22.9: **DEMO CRITICAL** — Reorder failure card sections — rationale at top (most important for reviewer), image diff next, vision analysis collapsed; designed for designers/non-technical reviewers who need to quickly scan and decide
+- [ ] Step 22.10: **DEMO CRITICAL** — Improve rationale format — prompt LLM to output 3 brief bullet points (not sentences/paragraphs) that a non-technical person could understand; e.g. "Header color changed from gray to indigo (matches PR)" not essay-style reasoning; fix markdown bullet rendering in the rationale display
 - [ ] Step 22.11: Fix GitHub OAuth session duration — token expires too frequently, forcing re-auth during normal usage; investigate token refresh flow and extend session lifetime
 - [ ] Step 23: Repos landing page — repo cards with setup checklist, "Connect Repo" via GitHub App, unconfigured repos rejected
 - [ ] Step 24: Settings UI — auto-generated API key + runner URL for copy-paste, triage/merge gate toggles, inline CLI instructions
