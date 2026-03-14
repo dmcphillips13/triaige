@@ -61,22 +61,31 @@ Last updated: 2026-03-14
   - **Per-component analysis**: long-term — instead of classifying the whole page, identify which UI components changed and classify each separately. A page with expected header changes and unexpected sidebar changes should yield two classifications.
 - [x] Step 23 (temperature + git diff): DONE — temperature=0 on all LLM calls, git diff injected into Pass 1 + Pass 2, code traceability dimension added, conservative bias toward uncertain
 - [ ] Step 23-UI: Dashboard visual polish (in progress):
-  - [x] Font swap: DM Sans (body) + Lora (logo wordmark only)
-  - [x] SVG logo with stylized plus and red "ai" highlight
+  - [x] Font swap: DM Sans (body) + Lora (logo wordmark only via PNG)
+  - [x] PNG logo with stylized plus and red "ai" highlight (exported from Figma at 4x)
   - [x] Widen layout from max-w-3xl to max-w-5xl
   - [x] Warm off-white background
   - [x] Muted stoplight colors (emerald/amber/rose)
   - [x] Card shadows (shadow-sm)
-  - [ ] Rationale visible by default, citations/tool calls collapsed
-  - [ ] Summary breakdown at top of run detail (e.g., "3 expected, 1 unexpected")
-  - [ ] PR link restyled as badge ("PR #59 ↗")
-  - [ ] Avatar dropdown for settings/sign-out (consolidate nav)
+  - [x] Rationale visible by default, citations/tool calls collapsed under "Show details"
+  - [x] Classification count summary in run detail header
+  - [x] PR link restyled as badge ("PR #59 ↗")
+  - [x] Avatar dropdown for settings/sign-out (consolidate nav)
+  - [x] Remove "Diagnostic" label and "Home" link
+  - [x] Sign-in page: Logo component with card container
+  - [x] Screenshot viewer: compact in-card with fullscreen modal, Escape to close
+  - [x] Swipe viewer: fixed image alignment
+  - [x] Approve/reject: tinted colors, descriptive labels ("Approve baseline update" / "Reject and open GH issue"), smooth hide animation on selection, equal-width buttons
+  - [x] Fixed submit bar at bottom of viewport
+  - [x] Closed run banner moved above failure cards
+  - [x] Back link: "← Triage Runs" breadcrumb with hover animation
   - [ ] Loading skeletons for tab switching (fix flash)
-  - [ ] Remove or rename "Diagnostic" label
-  - [ ] Sign-in page: use Logo component
   - [ ] Empty state improvements (helpful guidance instead of bare text)
   - [ ] Hover states and transitions on cards
-- [ ] Step 23-POLL: Polling for live run updates (10-15s on runs list and run detail) — big demo impact, simple to add
+  - [ ] Larger rationale text
+  - [ ] Run card status indicator on PR tab ("All addressed" badge when all failures have submissions)
+  - [ ] Verify sign-in page styling
+- [ ] Step 23-SSE: Server-sent events for real-time dashboard updates — runner emits events on run creation, classification completion, and run close; dashboard subscribes and updates runs list + run detail live
 - [ ] Step 23.1: Debug and complete known failure screenshot comparison — the comparison + issue comment logic isn't firing despite screenshots differing; likely a silent exception in the comparison path or screenshot extraction; once fixed: (a) update PR comment to distinguish "unchanged known failure" from "further modified by this PR (adding drift)" with issue link; (b) on merge of a PR with drift, post issue comment with the new screenshot showing the visual progression — but keep the original screenshot in known_failures as the permanent reference so future comparisons always compare against the state when the bug was filed, not the drifted state
 - [ ] Step 23.2: Auto-close pre-merge runs after submit — close run immediately once all failures have submissions
 - [ ] Step 23.3: Known failure PR comment should link to open GitHub issues
