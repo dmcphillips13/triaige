@@ -37,6 +37,7 @@ export function FailureCard({
   actionGated = false,
   existingSubmission = null,
   isPreMerge = false,
+  actionsLoaded = true,
 }: {
   result: TriageFailureResult;
   verdict: HumanVerdict;
@@ -47,6 +48,7 @@ export function FailureCard({
   actionGated?: boolean;
   existingSubmission?: SubmissionResult | null;
   isPreMerge?: boolean;
+  actionsLoaded?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const { ask_response: res } = result;
@@ -127,7 +129,11 @@ export function FailureCard({
       )}
 
       {/* Submission display — unified for both current and existing submissions */}
-      {(() => {
+      {!actionsLoaded ? (
+        <div className="border-t border-zinc-100 px-4 py-2">
+          <div className="h-8 w-40 animate-pulse rounded-md bg-zinc-200/60" />
+        </div>
+      ) : (() => {
         const sub = submitted || existingSubmission || (!knownFailure?.failing_since && knownFailure?.open_submission) || null;
         if (sub) {
           return (

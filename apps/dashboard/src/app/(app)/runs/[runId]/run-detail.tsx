@@ -52,18 +52,21 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
   const [knownFailures, setKnownFailures] = useState<
     Record<string, KnownFailureInfo>
   >({});
+  const [actionsLoaded, setActionsLoaded] = useState(false);
 
   // Load verdicts, submissions, and known failures from the API on mount
   useEffect(() => {
-    fetchVerdicts(run.run_id).then((v) => {
-      const mapped: Record<string, HumanVerdict> = {};
-      for (const r of run.results) {
-        mapped[r.test_name] = (v[r.test_name] as HumanVerdict) ?? null;
-      }
-      setVerdicts(mapped);
-    });
-    fetchSubmissions(run.run_id).then(setSubmitted);
-    fetchKnownFailures(run.run_id).then(setKnownFailures);
+    Promise.all([
+      fetchVerdicts(run.run_id).then((v) => {
+        const mapped: Record<string, HumanVerdict> = {};
+        for (const r of run.results) {
+          mapped[r.test_name] = (v[r.test_name] as HumanVerdict) ?? null;
+        }
+        setVerdicts(mapped);
+      }),
+      fetchSubmissions(run.run_id).then(setSubmitted),
+      fetchKnownFailures(run.run_id).then(setKnownFailures),
+    ]).finally(() => setActionsLoaded(true));
   }, [run]);
 
   const handleVerdict = useCallback(
@@ -228,6 +231,7 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
                 actionGated={existingSubmission !== null}
                 existingSubmission={existingSubmission}
                 isPreMerge={isPreMerge}
+                actionsLoaded={actionsLoaded}
               />
             </li>
           );
