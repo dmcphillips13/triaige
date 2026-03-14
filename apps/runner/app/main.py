@@ -209,13 +209,15 @@ async def triage_run(req: TriageRunRequest, request: Request):
                             f"further modifies this area. The visual appearance has changed "
                             f"since this issue was filed. Please verify manually."
                         )
-                        await asyncio.to_thread(
-                            post_issue_comment,
-                            repo=repo,
-                            issue_number=kf["issue_number"],
-                            body=comment,
-                            github_token=github_token,
-                        )
+                        # Use App installation token for reliability
+                        from app.tools.github_checks import _get_client
+                        def _post_comment():
+                            client = _get_client(repo)
+                            client.post(
+                                f"/repos/{repo}/issues/{kf['issue_number']}/comments",
+                                json={"body": comment},
+                            )
+                        await asyncio.to_thread(_post_comment)
                         logger.info(
                             "Posted modification notice on issue #%d for %s",
                             kf["issue_number"], skipped["test_name"],
