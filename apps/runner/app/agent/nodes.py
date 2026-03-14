@@ -24,6 +24,7 @@ def _get_llm() -> ChatOpenAI:
     return ChatOpenAI(
         model=settings.openai_model,
         api_key=settings.openai_api_key,
+        temperature=0,
         model_kwargs={"response_format": {"type": "json_object"}},
     )
 
@@ -151,6 +152,7 @@ def analyze_screenshots(state: AgentState) -> dict:
             model=settings.openai_vision_model,
             messages=messages,
             max_tokens=300,
+            temperature=0,
         )
         summary = response.choices[0].message.content or ""
         tool_calls.append({
@@ -248,7 +250,12 @@ def compose_answer(state: AgentState) -> dict:
         pr = state.get("enriched_pr_context") or state.get("pr_context")
         user_parts = [f"Question: {state['question']}"]
         if pr:
-            user_parts.append(f"PR context: {pr.model_dump_json()}")
+            user_parts.append(f"PR context: {pr.model_dump_json(exclude={'diff'})}")
+            if pr.diff:
+                diff_text = pr.diff[:5000].rsplit("\n", 1)[0]
+                if len(pr.diff) > 5000:
+                    diff_text += "\n... (truncated)"
+                user_parts.append(f"GIT DIFF (actual code changes in this PR):\n{diff_text}")
 
         run_summary = state.get("run_summary")
         if run_summary:
@@ -273,6 +280,11 @@ def compose_answer(state: AgentState) -> dict:
             devil_parts.append(f"PR description: {pr.description}")
         else:
             devil_parts.append("PR description: (none provided)")
+        if pr and pr.diff:
+            diff_text = pr.diff[:3000].rsplit("\n", 1)[0]
+            if len(pr.diff) > 3000:
+                diff_text += "\n... (truncated)"
+            devil_parts.append(f"GIT DIFF (actual code changes):\n{diff_text}")
         if vision_summary:
             devil_parts.append(f"Vision analysis of screenshots: {vision_summary}")
 

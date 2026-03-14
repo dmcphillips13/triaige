@@ -12,15 +12,17 @@ Tracks scenarios for validating Triaige classification behavior end-to-end.
 
 ## Classification logic
 
-The classifier uses the **PR description** as the primary scope reference:
+The classifier uses **two signals** — the PR description (scope gate) and the git diff (code traceability):
 
-| Visual change location | PR mentions it? | Defects? | Expected classification |
-|---|---|---|---|
-| In-scope page | Yes | No | Expected |
-| In-scope page | Yes | Yes | Unexpected |
-| Out-of-scope page | No | No | Unexpected |
-| Out-of-scope page | No | Yes | Unexpected |
-| Ambiguous / tangential | Partially | No | Uncertain |
+| Visual change location | PR mentions it? | Traces to diff? | Defects? | Expected classification |
+|---|---|---|---|---|
+| In-scope page | Yes | Yes | No | Expected |
+| In-scope page | Yes | Yes | Yes | Unexpected |
+| In-scope page | Yes | No | No | Uncertain |
+| Out-of-scope page | No | Yes | No | Unexpected |
+| Out-of-scope page | No | No | No | Unexpected |
+| Any page | Any | Any | Yes | Unexpected |
+| Ambiguous / tangential | Partially | Yes | No | Uncertain |
 
 ## Test scenarios
 
@@ -72,6 +74,34 @@ The classifier uses the **PR description** as the primary scope reference:
 **Goal**: PR touches many pages. Some changes match description, some don't.
 
 **Approach**: PR description mentions 2 of 4 changed pages. Expect expected on the 2 mentioned, unexpected on the others.
+
+---
+
+### Scenario 6: Classification stability — temperature + git diff (Step 23) — NOT YET TESTED
+
+**Goal**: Verify deterministic classifications and that git diff context improves accuracy.
+
+**Setup**: Use existing PR #59 on sample app (accent color change, blue→indigo via `--color-accent` in globals.css).
+
+**Determinism test** (run 3 times):
+1. Close and reopen PR #59 (or push a trivial commit) to trigger a new triage run
+2. Wait for the run to complete in the dashboard
+3. Record the classification and confidence for each failure
+4. Repeat steps 1-2 two more times
+5. All 3 runs should produce **identical** classifications and confidence scores
+
+**Accuracy test**:
+- The accent color change on the sidebar should classify as **expected** since:
+  - The git diff shows `--color-accent` changed in `globals.css`
+  - The PR description says "Update accent color from blue to indigo"
+- Expand the failure card and verify the rationale references the code change (e.g., "Accent color token updated")
+
+**Verify**:
+- [ ] 3 consecutive runs produce identical classifications (determinism)
+- [ ] Sidebar accent color change classified as **expected** (accuracy)
+- [ ] Rationale mentions the code change, not just the PR description
+- [ ] Devil's advocate review includes `code_traceable` field
+- [ ] No diff sent twice in the compose pass (check LangSmith trace)
 
 ---
 
