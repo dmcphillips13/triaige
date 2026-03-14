@@ -159,11 +159,11 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
       <div className="flex items-center justify-between">
         <Link
           href="/runs"
-          className="text-sm text-zinc-500 hover:text-zinc-700"
+          className="text-sm text-zinc-400 transition-colors hover:text-zinc-700"
         >
           &larr; All Runs
         </Link>
-        <span className="text-sm text-zinc-400">{date}</span>
+        <span className="text-xs text-zinc-400">{date}</span>
       </div>
 
       <div className="mt-4">
@@ -171,9 +171,6 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
           {run.pr_title || `Run ${run.run_id.slice(0, 8)}`}
         </h1>
         <div className="mt-2 flex flex-wrap items-center gap-3">
-          <span className="text-sm text-zinc-600">
-            {run.total_failures} failure{run.total_failures !== 1 && "s"}
-          </span>
           {run.pr_url && (
             <a
               href={run.pr_url}

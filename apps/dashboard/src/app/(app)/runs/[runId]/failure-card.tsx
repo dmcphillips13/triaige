@@ -61,15 +61,7 @@ export function FailureCard({
       )}
     >
       {/* Collapsed row */}
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center gap-3 p-4 text-left"
-      >
-        {expanded ? (
-          <ChevronDown className="h-4 w-4 shrink-0 text-zinc-400" />
-        ) : (
-          <ChevronRight className="h-4 w-4 shrink-0 text-zinc-400" />
-        )}
+      <div className="flex w-full items-center gap-3 p-4">
         <ClassificationBadge classification={res.classification} />
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-zinc-900">
           {result.test_name}
@@ -82,7 +74,7 @@ export function FailureCard({
             {res.recommended_action.type.replace(/_/g, " ")}
           </span>
         )}
-      </button>
+      </div>
 
       {/* Known failure annotation */}
       {knownFailure?.failing_since && (
@@ -187,10 +179,10 @@ export function FailureCard({
                   onVerdict(verdict === "approved" ? null : "approved")
                 }
                 className={cn(
-                  "inline-flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium transition-colors",
+                  "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
                   verdict === "approved"
-                    ? "bg-emerald-100 text-emerald-800"
-                    : "text-zinc-500 hover:bg-zinc-100"
+                    ? "border-emerald-300 bg-emerald-100 text-emerald-800"
+                    : "border-emerald-200 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300"
                 )}
               >
                 <Check className="h-3.5 w-3.5" />
@@ -201,10 +193,10 @@ export function FailureCard({
                   onVerdict(verdict === "rejected" ? null : "rejected")
                 }
                 className={cn(
-                  "inline-flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium transition-colors",
+                  "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
                   verdict === "rejected"
-                    ? "bg-rose-100 text-rose-800"
-                    : "text-zinc-500 hover:bg-zinc-100"
+                    ? "border-rose-300 bg-rose-100 text-rose-800"
+                    : "border-rose-200 bg-rose-50/50 text-rose-700 hover:bg-rose-100 hover:border-rose-300"
                 )}
               >
                 <X className="h-3.5 w-3.5" />
@@ -221,6 +213,27 @@ export function FailureCard({
           Rationale
         </h4>
         <MarkdownContent text={res.rationale} />
+      </div>
+
+      {/* Screenshots — always visible */}
+      {result.screenshot_baseline && result.screenshot_actual && (
+        <div className="border-t border-zinc-100 px-4 py-4">
+          <ScreenshotViewer
+            baseline={result.screenshot_baseline}
+            actual={result.screenshot_actual}
+            diffOverlay={res.image_diff?.diff_overlay_base64}
+          />
+        </div>
+      )}
+
+      {/* Show/hide details toggle */}
+      <div className="border-t border-zinc-100 px-4 py-2">
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="text-xs text-zinc-400 hover:text-zinc-600 transition-colors"
+        >
+          {expanded ? "Hide details" : "Show details"}
+        </button>
       </div>
 
       {/* Expanded detail */}
@@ -246,15 +259,6 @@ export function FailureCard({
                 )}
               </div>
             </div>
-          )}
-
-          {/* Screenshots */}
-          {result.screenshot_baseline && result.screenshot_actual && (
-            <ScreenshotViewer
-              baseline={result.screenshot_baseline}
-              actual={result.screenshot_actual}
-              diffOverlay={res.image_diff?.diff_overlay_base64}
-            />
           )}
 
           {/* Vision analysis — collapsed by default */}
