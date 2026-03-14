@@ -218,16 +218,6 @@ export function FailureCard({
       {/* Expanded detail */}
       {expanded && (
         <div className="space-y-4 border-t border-zinc-100 px-4 py-4">
-          {/* Vision analysis */}
-          {res.vision_summary && (
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                Vision Analysis
-              </h4>
-              <MarkdownContent text={res.vision_summary} />
-            </div>
-          )}
-
           {/* Rationale */}
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
@@ -267,6 +257,11 @@ export function FailureCard({
             />
           )}
 
+          {/* Vision analysis — collapsed by default */}
+          {res.vision_summary && (
+            <VisionAnalysisSection text={res.vision_summary} />
+          )}
+
           {/* Citations — collapsed by default */}
           {res.citations.length > 0 && (
             <CitationsSection citations={res.citations} />
@@ -301,8 +296,30 @@ export function FailureCard({
 /** Renders text as markdown with prose styling. */
 function MarkdownContent({ text }: { text: string }) {
   return (
-    <div className="mt-1 text-sm text-zinc-700 prose-sm prose-zinc prose-li:my-0.5">
+    <div className="mt-1 text-sm text-zinc-700 prose prose-sm prose-zinc prose-li:my-0.5 prose-ul:list-disc prose-ul:pl-4">
       <ReactMarkdown>{text}</ReactMarkdown>
+    </div>
+  );
+}
+
+/** Collapsible vision analysis — collapsed by default. */
+function VisionAnalysisSection({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-zinc-400 hover:text-zinc-600"
+      >
+        {open ? (
+          <ChevronDown className="h-3 w-3" />
+        ) : (
+          <ChevronRight className="h-3 w-3" />
+        )}
+        Vision Analysis
+      </button>
+      {open && <MarkdownContent text={text} />}
     </div>
   );
 }
