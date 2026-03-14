@@ -432,18 +432,21 @@ List of `{doc_id, snippet, source}` from Qdrant retrieval + GitHub context + vis
 
 ## 10) UI theme
 
-### Colors
-- **Light theme** — white/light background.
-- **Stoplight classification colors**: red (`unexpected`), yellow (`uncertain`), green (`expected`).
-- **Black text** — primary text and headings.
-- Logo: red cross + "riaige" in dark navy with "ai" highlighted in red (on local machine, will be added to `apps/dashboard/public/`).
+### Colors & typography
+- **Light theme** — warm off-white background (`oklch(0.985 0.003 80)`), white cards with subtle shadows.
+- **Stoplight classification colors**: muted emerald (`expected`), amber (`uncertain`), rose (`unexpected`).
+- **Font**: DM Sans for all UI text. Lora serif baked into the PNG logo only.
+- **Logo**: PNG wordmark (`public/logo.png`) — red plus sign + "riaige" in dark with "ai" in red. Exported from Figma at 4x, no font dependencies.
 
 ### Dashboard views
+- **Nav**: logo left, avatar dropdown right (settings + sign out inside dropdown).
 - **PR tab** (primary): pre-merge runs from open PRs; developers approve/reject failures; merge gate blocks until all addressed.
 - **Main tab** (health dashboard): known failures on main, each linked to an open GitHub issue; should be empty if merge gate is working.
 - **Closed tab**: archived runs (auto-closed on merge/supersede, or manually closed).
-- **Failure card expanded**: rationale (3 bullets) → image diff stats → screenshots (side-by-side, swipe, diff overlay) → vision analysis (collapsed) → citations (collapsed) → tool calls (collapsed).
-- **Actions**: approve → baseline committed to PR branch; reject → GitHub issue filed. Both satisfy the merge gate.
+- **Run detail**: back breadcrumb ("← Triage Runs"), PR badge, classification count summary. Fixed submit bar at bottom of viewport when actions are pending.
+- **Failure card layout**: collapsed row (badge, test name, confidence) → approve/reject buttons (tinted, descriptive labels) → rationale (always visible, 15px) → screenshots (compact with fullscreen modal) → "Show details" expands to image diff stats, vision analysis, citations, tool calls.
+- **Actions**: "Approve baseline update" → baseline committed to PR branch; "Reject and open GH issue" → GitHub issue filed. Both satisfy the merge gate.
+- **Loading**: skeleton cards for page transitions; deferred action area prevents button flash.
 
 ---
 
