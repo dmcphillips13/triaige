@@ -6,7 +6,7 @@ Last updated: 2026-03-14
 
 ## Current status
 
-**Phase:** Core pipeline complete through Step 22.2. Polish and demo prep — classification improvements, UX fixes, then CLI + landing page.
+**Phase:** Classification pipeline improved (Step 23), dashboard visual polish complete (Step 23-UI). Next: SSE real-time updates, then remaining demo prep (Steps 24-27).
 
 ### Completed
 - [x] Project planning and scoping
@@ -60,31 +60,31 @@ Last updated: 2026-03-14
   - **Few-shot calibration**: retrieve 3-5 similar past decisions from episodic memory as examples in the prompt. Anchors the model's judgment to actual human verdicts.
   - **Per-component analysis**: long-term — instead of classifying the whole page, identify which UI components changed and classify each separately. A page with expected header changes and unexpected sidebar changes should yield two classifications.
 - [x] Step 23 (temperature + git diff): DONE — temperature=0 on all LLM calls, git diff injected into Pass 1 + Pass 2, code traceability dimension added, conservative bias toward uncertain
-- [ ] Step 23-UI: Dashboard visual polish (in progress):
-  - [x] Font swap: DM Sans (body) + Lora (logo wordmark only via PNG)
-  - [x] PNG logo with stylized plus and red "ai" highlight (exported from Figma at 4x)
+- [x] Step 23-UI: Dashboard visual polish — DONE:
+  - [x] Font swap: DM Sans (body), Lora baked into PNG logo
+  - [x] PNG logo with stylized plus and red "ai" highlight (exported from Figma at 4x, no font dependencies)
   - [x] Widen layout from max-w-3xl to max-w-5xl
   - [x] Warm off-white background
   - [x] Muted stoplight colors (emerald/amber/rose)
-  - [x] Card shadows (shadow-sm)
-  - [x] Rationale visible by default, citations/tool calls collapsed under "Show details"
+  - [x] Card shadows (shadow-sm) + hover lift (shadow-md) on run cards
+  - [x] Rationale visible by default, larger text (15px), citations/tool calls collapsed under "Show details"
+  - [x] Screenshots visible by default, compact (250px) with fullscreen modal (Escape to close)
+  - [x] Swipe viewer: fixed image alignment using regular img tags
   - [x] Classification count summary in run detail header
   - [x] PR link restyled as badge ("PR #59 ↗")
   - [x] Avatar dropdown for settings/sign-out (consolidate nav)
   - [x] Remove "Diagnostic" label and "Home" link
-  - [x] Sign-in page: Logo component with card container
-  - [x] Screenshot viewer: compact in-card with fullscreen modal, Escape to close
-  - [x] Swipe viewer: fixed image alignment
+  - [x] Sign-in page: Logo component with card container, middleware fix for logo.png
   - [x] Approve/reject: tinted colors, descriptive labels ("Approve baseline update" / "Reject and open GH issue"), smooth hide animation on selection, equal-width buttons
-  - [x] Fixed submit bar at bottom of viewport
+  - [x] Fixed submit bar at bottom of viewport (frosted glass effect)
   - [x] Closed run banner moved above failure cards
-  - [x] Back link: "← Triage Runs" breadcrumb with hover animation
-  - [ ] Loading skeletons for tab switching (fix flash)
-  - [ ] Empty state improvements (helpful guidance instead of bare text)
-  - [ ] Hover states and transitions on cards
-  - [ ] Larger rationale text
+  - [x] Back link: "← Triage Runs" breadcrumb with hover arrow animation
+  - [x] Loading skeletons for page transitions (runs list, run detail, Main tab, action area)
+  - [x] Deferred action area rendering (prevents approve button flash before submissions load)
+  - [x] Empty state improvements (helpful guidance text for PR and Closed tabs)
+  - [x] Unified submission labels: all say "Baseline committed" (removed "Baseline PR pending/opened" duplicates)
+  - [x] Local dev .env pointed to prod runner for realistic testing
   - [ ] Run card status indicator on PR tab ("All addressed" badge when all failures have submissions)
-  - [ ] Verify sign-in page styling
 - [ ] Step 23-SSE: Server-sent events for real-time dashboard updates — runner emits events on run creation, classification completion, and run close; dashboard subscribes and updates runs list + run detail live
 - [ ] Step 23.1: Debug and complete known failure screenshot comparison — the comparison + issue comment logic isn't firing despite screenshots differing; likely a silent exception in the comparison path or screenshot extraction; once fixed: (a) update PR comment to distinguish "unchanged known failure" from "further modified by this PR (adding drift)" with issue link; (b) on merge of a PR with drift, post issue comment with the new screenshot showing the visual progression — but keep the original screenshot in known_failures as the permanent reference so future comparisons always compare against the state when the bug was filed, not the drifted state
 - [ ] Step 23.2: Auto-close pre-merge runs after submit — close run immediately once all failures have submissions
@@ -93,13 +93,13 @@ Last updated: 2026-03-14
 - [ ] Step 23.5: Persist active tab across page refreshes via URL hash/query param
 - [ ] Step 23.6: Main tab should work without requiring Settings setup — derive repo from runs
 - [ ] Step 23.7: PR run cards should show gate status (action required vs ready to merge)
-- [ ] Step 23.8: Real-time run updates — polling every 10-15s on runs list and run detail
+- [ ] Step 23.8: Real-time run updates — superseded by Step 23-SSE
 - [ ] Step 23.9: All links open in new tab (target="_blank")
 - [ ] Step 23.10: Delete stale PR comments when runs are superseded — store comment ID, delete on auto-close
 - [ ] Step 23.11: Hide skipped `close-pr-runs` job on PR checks — split into separate workflows
-- [ ] Step 23.12: Fix swipe screenshot viewer — images not aligned for comparison
-- [ ] Step 23.13: Make screenshot diff viewer larger
-- [ ] Step 23.14: Add fullscreen/modal mode for screenshot comparison
+- [x] Step 23.12: Fix swipe screenshot viewer — DONE (fixed alignment, compact + fullscreen modal)
+- [x] Step 23.13: Make screenshot diff viewer larger — DONE (fullscreen modal with Escape to close)
+- [x] Step 23.14: Add fullscreen/modal mode for screenshot comparison — DONE
 - [ ] Step 23.15: Fix GitHub OAuth session duration — extend token lifetime or add refresh flow
 - [ ] Step 24: Repos landing page — repo cards with setup checklist, "Connect Repo" via GitHub App, unconfigured repos rejected
 - [ ] Step 25: Settings UI — auto-generated API key + runner URL for copy-paste, triage/merge gate toggles, inline CLI instructions
