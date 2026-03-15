@@ -287,7 +287,10 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
                 {pendingApproved.length > 0 &&
                   pendingRejected.length > 0 &&
                   " · "}
-                {pendingRejected.length > 0 && "Rejected → GitHub issues"}
+                {pendingRejected.length > 0 &&
+                  (isPreMerge
+                    ? "Rejected → issues on merge"
+                    : "Rejected → GitHub issues")}
               </p>
             </div>
             <button

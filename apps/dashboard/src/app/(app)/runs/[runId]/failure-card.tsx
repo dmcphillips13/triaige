@@ -136,19 +136,26 @@ export function FailureCard({
       ) : (() => {
         const sub = submitted || existingSubmission || (!knownFailure?.failing_since && knownFailure?.open_submission) || null;
         if (sub) {
+          const isDeferred = sub.url.startsWith("deferred:");
           return (
             <div className="flex items-center gap-2 border-t border-zinc-100 bg-zinc-50 px-4 py-2">
-              <a
-                href={sub.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={cn(
-                  "text-xs font-medium hover:underline",
-                  sub.type === "pr" ? "text-emerald-700" : "text-rose-700"
-                )}
-              >
-                {sub.type === "pr" ? "Baseline committed" : "Issue open"}
-              </a>
+              {isDeferred ? (
+                <span className="text-xs font-medium text-amber-600">
+                  Issue will be filed on merge
+                </span>
+              ) : (
+                <a
+                  href={sub.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    "text-xs font-medium hover:underline",
+                    sub.type === "pr" ? "text-emerald-700" : "text-rose-700"
+                  )}
+                >
+                  {sub.type === "pr" ? "Baseline committed" : "Issue open"}
+                </a>
+              )}
             </div>
           );
         }

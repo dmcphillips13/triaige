@@ -111,6 +111,35 @@ async def report_clean(request: Request):
         if closed_ids:
             logger.info("Auto-closed %d pre-merge run(s) on clean merge of PR #%s", len(closed_ids), pr_number)
 
+        # Materialize deferred issues — create GitHub issues + known_failures
+        pending = await store.get_pending_issues_for_pr(repo, int(pr_number))
+        for pi in pending:
+            try:
+                issue_url = await asyncio.to_thread(
+                    create_bug_issue,
+                    repo=pi["repo"],
+                    run_id=pi["run_id"],
+                    test_name=pi["test_name"],
+                    classification=pi["classification"],
+                    confidence=pi["confidence"],
+                    rationale=pi["rationale"],
+                    github_token=None,
+                )
+                issue_number = int(issue_url.rstrip("/").split("/")[-1])
+                await store.add_known_failure(
+                    repo=pi["repo"],
+                    test_name=pi["test_name"],
+                    issue_url=issue_url,
+                    issue_number=issue_number,
+                    screenshot_base64=pi["screenshot_base64"],
+                    filed_from_run_id=pi["run_id"],
+                )
+                await store.mark_pending_issue_materialized(pi["id"], issue_url)
+                await store.update_submission_url(pi["run_id"], pi["test_name"], issue_url)
+                logger.info("Materialized deferred issue for %s → %s", pi["test_name"], issue_url)
+            except Exception as e:
+                logger.warning("Failed to materialize pending issue for %s: %s", pi["test_name"], e)
+
     rs = await repo_settings.get_settings(repo)
     if not rs.merge_gate:
         return {"status": "ok", "reason": "merge_gate disabled, runs closed"}
@@ -580,41 +609,63 @@ async def create_issues(req: CreateIssuesRequest, request: Request):
     github_token = request.headers.get("X-GitHub-Token")
     issues: list[dict] = []
 
+    # Defer issue creation for pre-merge runs — record intent now,
+    # materialize when the PR merges to main via /report-clean
+    is_pre_merge = run.triage_mode == "pre_merge"
+
     for name in req.test_names:
         result = await store.get_result(req.run_id, name)
         if not result:
             raise HTTPException(status_code=404, detail=f"Result not found: {name}")
-        try:
-            issue_url = await asyncio.to_thread(
-                create_bug_issue,
-                repo=req.repo,
+
+        if is_pre_merge:
+            pr_number = await store.get_run_pr_number(req.run_id)
+            if not pr_number:
+                raise HTTPException(status_code=400, detail="No PR number for pre-merge run")
+            await store.add_pending_issue(
                 run_id=req.run_id,
-                test_name=result.test_name,
+                repo=req.repo,
+                pr_number=pr_number,
+                test_name=name,
                 classification=result.ask_response.classification,
                 confidence=result.ask_response.confidence,
                 rationale=result.ask_response.rationale,
-                github_token=github_token,
+                screenshot_base64=result.screenshot_actual,
             )
-            issues.append({"test_name": name, "issue_url": issue_url})
-
-            # Record as known failure for Main tab health dashboard
+            issues.append({"test_name": name, "issue_url": "deferred:merge"})
+            logger.info("Deferred issue for %s until PR #%d merges", name, pr_number)
+        else:
             try:
-                issue_number = int(issue_url.rstrip("/").split("/")[-1])
-                screenshot = result.screenshot_actual
-                await store.add_known_failure(
+                issue_url = await asyncio.to_thread(
+                    create_bug_issue,
                     repo=req.repo,
-                    test_name=name,
-                    issue_url=issue_url,
-                    issue_number=issue_number,
-                    screenshot_base64=screenshot,
-                    filed_from_run_id=req.run_id,
+                    run_id=req.run_id,
+                    test_name=result.test_name,
+                    classification=result.ask_response.classification,
+                    confidence=result.ask_response.confidence,
+                    rationale=result.ask_response.rationale,
+                    github_token=github_token,
                 )
-            except Exception as e:
-                logger.warning("Failed to record known failure for %s: %s", name, e)
+                issues.append({"test_name": name, "issue_url": issue_url})
 
-        except Exception as e:
-            logger.warning("Failed to create issue for %s: %s", name, e)
-            raise HTTPException(status_code=502, detail=f"GitHub API error for {name}: {e}")
+                # Record as known failure for Main tab health dashboard
+                try:
+                    issue_number = int(issue_url.rstrip("/").split("/")[-1])
+                    screenshot = result.screenshot_actual
+                    await store.add_known_failure(
+                        repo=req.repo,
+                        test_name=name,
+                        issue_url=issue_url,
+                        issue_number=issue_number,
+                        screenshot_base64=screenshot,
+                        filed_from_run_id=req.run_id,
+                    )
+                except Exception as e:
+                    logger.warning("Failed to record known failure for %s: %s", name, e)
+
+            except Exception as e:
+                logger.warning("Failed to create issue for %s: %s", name, e)
+                raise HTTPException(status_code=502, detail=f"GitHub API error for {name}: {e}")
 
     return CreateIssuesResponse(issues=issues)
 

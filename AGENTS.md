@@ -468,6 +468,8 @@ pnpm run start:dev
 ```
 Starts both runner (uvicorn, port 8000) and dashboard (next dev, port 3000).
 
+**Important:** The local dashboard and sample app CI both use the **production Render deployment** of the runner — not a local runner instance. Runner code changes must be deployed to Render before they can be tested end-to-end. Push runner changes to `main` and wait for the Render deploy to complete before triggering CI on the sample app.
+
 ---
 
 ## 12) Repo hygiene

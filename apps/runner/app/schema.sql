@@ -89,6 +89,25 @@ CREATE TABLE IF NOT EXISTS known_failures (
     UNIQUE(repo, test_name, issue_number)
 );
 
+-- Pending issues: deferred issue creation for pre-merge runs.
+-- Issues are recorded at submit time but only materialized (GitHub issue created,
+-- known_failures populated) when the PR merges to main via /report-clean.
+CREATE TABLE IF NOT EXISTS pending_issues (
+    id                SERIAL PRIMARY KEY,
+    run_id            TEXT NOT NULL,
+    repo              TEXT NOT NULL,
+    pr_number         INTEGER NOT NULL,
+    test_name         TEXT NOT NULL,
+    classification    TEXT,
+    confidence        REAL,
+    rationale         TEXT,
+    screenshot_base64 TEXT,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    materialized_at   TIMESTAMPTZ,
+    issue_url         TEXT,
+    UNIQUE(run_id, test_name)
+);
+
 -- Migration: add merge_gate column to repo_settings if missing (safe to re-run)
 DO $$
 BEGIN

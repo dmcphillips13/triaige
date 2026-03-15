@@ -587,6 +587,68 @@ async def get_closed_known_failures(repo: str) -> list[dict]:
     return [dict(row) for row in rows]
 
 
+async def add_pending_issue(
+    run_id: str,
+    repo: str,
+    pr_number: int,
+    test_name: str,
+    classification: str | None = None,
+    confidence: float | None = None,
+    rationale: str | None = None,
+    screenshot_base64: str | None = None,
+) -> int:
+    """Record intent to file a GitHub issue on merge."""
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """INSERT INTO pending_issues
+                   (run_id, repo, pr_number, test_name, classification, confidence, rationale, screenshot_base64)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+               ON CONFLICT (run_id, test_name)
+               DO UPDATE SET classification = $5, confidence = $6, rationale = $7, screenshot_base64 = $8
+               RETURNING id""",
+            run_id, repo, pr_number, test_name, classification, confidence, rationale, screenshot_base64,
+        )
+    return row["id"]
+
+
+async def get_pending_issues_for_pr(repo: str, pr_number: int) -> list[dict]:
+    """Get unmaterialized pending issues for a repo/PR."""
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """SELECT id, run_id, repo, pr_number, test_name, classification, confidence, rationale, screenshot_base64
+               FROM pending_issues
+               WHERE repo = $1
+                 AND pr_number = $2
+                 AND materialized_at IS NULL""",
+            repo, pr_number,
+        )
+    return [dict(row) for row in rows]
+
+
+async def mark_pending_issue_materialized(pending_id: int, issue_url: str) -> None:
+    """Mark a pending issue as materialized with the real issue URL."""
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """UPDATE pending_issues
+               SET materialized_at = NOW(), issue_url = $2
+               WHERE id = $1""",
+            pending_id, issue_url,
+        )
+
+
+async def update_submission_url(run_id: str, test_name: str, url: str) -> None:
+    """Update a submission's URL (e.g. replace deferred placeholder with real issue URL)."""
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """UPDATE submissions SET url = $3 WHERE run_id = $1 AND test_name = $2""",
+            run_id, test_name, url,
+        )
+
+
 async def get_known_failure_screenshot(repo: str, test_name: str) -> str | None:
     """Get the stored screenshot for a known failure (for comparison)."""
     pool = get_pool()
