@@ -8,8 +8,6 @@ note, and a link to the dashboard run detail page.
 
 import logging
 
-import httpx
-
 from app.schemas import TriageRunResponse
 from app.settings import settings
 
@@ -39,10 +37,6 @@ def post_triage_comment(
     Returns:
         URL of the created comment.
     """
-    effective_token = github_token or settings.github_token
-    if not effective_token:
-        raise RuntimeError("GitHub token is required for PR comments")
-
     known = known_failures or {}
     skipped = skipped_known or []
     pending = skipped_pending or []
@@ -150,14 +144,26 @@ def post_triage_comment(
 
     body = "\n".join(lines)
 
-    client = httpx.Client(
-        base_url="https://api.github.com",
-        headers={
-            "Accept": "application/vnd.github+json",
-            "Authorization": f"Bearer {effective_token}",
-        },
-        timeout=15.0,
-    )
+    from app.tools.github_checks import _get_client
+    client = _get_client(repo)
+
+    # Delete previous Triaige comments on this PR to avoid clutter
+    try:
+        comments_resp = client.get(f"/repos/{repo}/issues/{pr_number}/comments")
+        comments_resp.raise_for_status()
+        for comment in comments_resp.json():
+            comment_body = comment.get("body", "")
+            is_triaige_comment = (
+                "## Triaige Visual Regression Report" in comment_body
+                or "with issues pending merge:" in comment_body
+                or "known failure" in comment_body.lower()
+            )
+            if is_triaige_comment:
+                client.delete(f"/repos/{repo}/issues/comments/{comment['id']}")
+                logger.info("Deleted stale triage comment %d on %s#%d", comment["id"], repo, pr_number)
+    except Exception as e:
+        logger.warning("Failed to clean up old triage comments on %s#%d: %s", repo, pr_number, e)
+
     resp = client.post(
         f"/repos/{repo}/issues/{pr_number}/comments",
         json={"body": body},

@@ -78,8 +78,8 @@ Last updated: 2026-03-15
 - [x] Step 23.21: Disable approve/reject buttons during submit — pass `readOnly` when `submitStatus === "loading"` to lock verdict buttons mid-flight
 
 **Block C — CI/GitHub cleanup:**
-- [ ] Step 23.10: Delete stale PR comments when runs are superseded — store comment_id on run creation, delete via GitHub API on auto-close
-- [ ] Step 23.11: Hide skipped `close-pr-runs` job on PR checks — split into separate workflows so skipped jobs don't show
+- [x] Step 23.10: Delete stale PR comments when runs are superseded — delete previous Triaige comments before posting new one (pattern-matched by content)
+- [x] Step 23.11: Hide skipped `close-pr-runs` job on PR checks — split into separate `close-pr-runs.yml` workflow triggered only on push to main
 - [ ] Step 23.15: Fix GitHub OAuth session duration — extend token lifetime or add refresh flow
 
 **Block D — Complex (split to own step):**
