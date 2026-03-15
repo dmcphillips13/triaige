@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ClassificationBadge } from "@/components/classification-badge";
+import { ScreenshotViewer } from "@/components/screenshot-viewer";
 import { RunCardSkeleton } from "@/components/skeleton";
 import {
   fetchRuns,
@@ -47,6 +48,7 @@ interface KnownFailure {
   issue_url: string;
   issue_number: number;
   screenshot_base64: string | null;
+  screenshot_baseline: string | null;
   created_at: string;
 }
 
@@ -56,6 +58,7 @@ interface ClosedKnownFailure {
   issue_url: string;
   issue_number: number;
   screenshot_base64: string | null;
+  screenshot_baseline: string | null;
   created_at: string;
   closed_at: string;
 }
@@ -159,38 +162,21 @@ export function RunsList({
 
   return (
     <>
-      <div className="mt-6 flex items-center justify-between border-b border-zinc-200">
-        <div className="flex gap-1">
-          {tabItems.slice(0, 2).map((t) => (
-            <button
-              key={t.key}
-              onClick={() => handleTabChange(t.key)}
-              className={`px-3 py-2 text-sm font-medium transition-colors ${
-                tab === t.key
-                  ? "border-b-2 border-zinc-900 text-zinc-900"
-                  : "text-zinc-500 hover:text-zinc-700"
-              }`}
-            >
-              {t.label}
-              {t.showCount && t.count > 0 && ` (${t.count})`}
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-1">
-          {tabItems.slice(2).map((t) => (
-            <button
-              key={t.key}
-              onClick={() => handleTabChange(t.key)}
-              className={`px-3 py-2 text-sm font-medium transition-colors ${
-                tab === t.key
-                  ? "border-b-2 border-zinc-900 text-zinc-900"
-                  : "text-zinc-400 hover:text-zinc-600"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+      <div className="mt-6 flex border-b border-zinc-200">
+        {tabItems.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => handleTabChange(t.key)}
+            className={`flex-1 px-3 py-2 text-center text-sm font-medium transition-colors ${
+              tab === t.key
+                ? "border-b-2 border-zinc-900 text-zinc-900"
+                : "text-zinc-500 hover:text-zinc-700"
+            }`}
+          >
+            {t.label}
+            {t.showCount && t.count > 0 && ` (${t.count})`}
+          </button>
+        ))}
       </div>
 
       {tab === "issues" ? (
@@ -255,8 +241,15 @@ function IssuesTab({
         return (
           <li key={failure.id}>
             <div className="rounded-lg border border-zinc-200 bg-white shadow-sm overflow-hidden">
-              {/* Screenshot */}
-              {failure.screenshot_base64 && (
+              {/* Screenshot comparison or single screenshot fallback */}
+              {failure.screenshot_baseline && failure.screenshot_base64 ? (
+                <div className="border-b border-zinc-100 px-4 py-4">
+                  <ScreenshotViewer
+                    baseline={failure.screenshot_baseline}
+                    actual={failure.screenshot_base64}
+                  />
+                </div>
+              ) : failure.screenshot_base64 ? (
                 <div className="border-b border-zinc-100 bg-zinc-50 p-3">
                   <img
                     src={`data:image/png;base64,${failure.screenshot_base64}`}
@@ -264,7 +257,7 @@ function IssuesTab({
                     className="mx-auto max-h-48 rounded border border-zinc-200 object-contain"
                   />
                 </div>
-              )}
+              ) : null}
 
               <div className="p-4">
                 <div className="flex items-center justify-between">

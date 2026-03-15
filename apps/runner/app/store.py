@@ -528,17 +528,18 @@ async def add_known_failure(
     issue_number: int,
     screenshot_base64: str | None = None,
     filed_from_run_id: str | None = None,
+    screenshot_baseline: str | None = None,
 ) -> int:
     """Record a known failure when an issue is filed."""
     pool = get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
-            """INSERT INTO known_failures (repo, test_name, issue_url, issue_number, screenshot_base64, filed_from_run_id)
-               VALUES ($1, $2, $3, $4, $5, $6)
+            """INSERT INTO known_failures (repo, test_name, issue_url, issue_number, screenshot_base64, filed_from_run_id, screenshot_baseline)
+               VALUES ($1, $2, $3, $4, $5, $6, $7)
                ON CONFLICT (repo, test_name, issue_number)
-               DO UPDATE SET screenshot_base64 = $5, closed_at = NULL
+               DO UPDATE SET screenshot_base64 = $5, screenshot_baseline = $7, closed_at = NULL
                RETURNING id""",
-            repo, test_name, issue_url, issue_number, screenshot_base64, filed_from_run_id,
+            repo, test_name, issue_url, issue_number, screenshot_base64, filed_from_run_id, screenshot_baseline,
         )
     return row["id"]
 
@@ -548,7 +549,7 @@ async def list_known_failures(repo: str) -> list[dict]:
     pool = get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            """SELECT id, test_name, issue_url, issue_number, screenshot_base64, created_at
+            """SELECT id, test_name, issue_url, issue_number, screenshot_base64, screenshot_baseline, created_at
                FROM known_failures
                WHERE repo = $1
                  AND closed_at IS NULL
@@ -577,7 +578,7 @@ async def get_closed_known_failures(repo: str) -> list[dict]:
     pool = get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            """SELECT id, test_name, issue_url, issue_number, screenshot_base64, created_at, closed_at
+            """SELECT id, test_name, issue_url, issue_number, screenshot_base64, screenshot_baseline, created_at, closed_at
                FROM known_failures
                WHERE repo = $1
                  AND closed_at IS NOT NULL

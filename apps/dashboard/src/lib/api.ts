@@ -149,6 +149,7 @@ export async function fetchRepoKnownFailures(
     issue_url: string;
     issue_number: number;
     screenshot_base64: string | null;
+    screenshot_baseline: string | null;
     created_at: string;
   }[]
 > {
@@ -169,6 +170,7 @@ export async function fetchClosedKnownFailures(
     issue_url: string;
     issue_number: number;
     screenshot_base64: string | null;
+    screenshot_baseline: string | null;
     created_at: string;
     closed_at: string;
   }[]

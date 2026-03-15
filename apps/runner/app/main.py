@@ -157,6 +157,9 @@ async def report_clean(request: Request):
                     pr_number=pi.get("pr_number"),
                 )
                 issue_number = int(issue_url.rstrip("/").split("/")[-1])
+                # Fetch baseline screenshot from the original run's failure results
+                pi_result = await store.get_result(pi["run_id"], pi["test_name"])
+                pi_baseline = pi_result.screenshot_baseline if pi_result else None
                 await store.add_known_failure(
                     repo=pi["repo"],
                     test_name=pi["test_name"],
@@ -164,6 +167,7 @@ async def report_clean(request: Request):
                     issue_number=issue_number,
                     screenshot_base64=pi["screenshot_base64"],
                     filed_from_run_id=pi["run_id"],
+                    screenshot_baseline=pi_baseline,
                 )
                 await store.mark_pending_issue_materialized(pi["id"], issue_url)
                 await store.update_submission_url(pi["run_id"], pi["test_name"], issue_url)
@@ -733,14 +737,14 @@ async def create_issues(req: CreateIssuesRequest, request: Request):
                 # Record as known failure for Main tab health dashboard
                 try:
                     issue_number = int(issue_url.rstrip("/").split("/")[-1])
-                    screenshot = result.screenshot_actual
                     await store.add_known_failure(
                         repo=req.repo,
                         test_name=name,
                         issue_url=issue_url,
                         issue_number=issue_number,
-                        screenshot_base64=screenshot,
+                        screenshot_base64=result.screenshot_actual,
                         filed_from_run_id=req.run_id,
+                        screenshot_baseline=result.screenshot_baseline,
                     )
                 except Exception as e:
                     logger.warning("Failed to record known failure for %s: %s", name, e)

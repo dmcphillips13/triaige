@@ -108,6 +108,17 @@ CREATE TABLE IF NOT EXISTS pending_issues (
     UNIQUE(run_id, test_name)
 );
 
+-- Migration: add screenshot_baseline to known_failures if missing (safe to re-run)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'known_failures' AND column_name = 'screenshot_baseline'
+    ) THEN
+        ALTER TABLE known_failures ADD COLUMN screenshot_baseline TEXT;
+    END IF;
+END $$;
+
 -- Migration: add merge_gate column to repo_settings if missing (safe to re-run)
 DO $$
 BEGIN
