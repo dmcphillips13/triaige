@@ -245,6 +245,7 @@ async def triage_run(req: TriageRunRequest, request: Request):
                 )
                 if stored and skipped["screenshot"] and stored != skipped["screenshot"]:
                     # Screenshots differ — this PR further modifies the broken area
+                    skipped["has_drift"] = True
                     kf_rows = await store.list_known_failures(repo)
                     matching = [
                         kf for kf in kf_rows

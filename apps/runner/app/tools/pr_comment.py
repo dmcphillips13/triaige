@@ -114,10 +114,12 @@ def post_triage_comment(
         ])
         for s in skipped:
             issue_url = s.get("issue_url")
+            has_drift = s.get("has_drift", False)
+            drift_label = " ⚠️ visual drift detected" if has_drift else ""
             if issue_url:
-                lines.append(f"- `{s['test_name']}` — [open issue]({issue_url})")
+                lines.append(f"- `{s['test_name']}` — [open issue]({issue_url}){drift_label}")
             else:
-                lines.append(f"- `{s['test_name']}`")
+                lines.append(f"- `{s['test_name']}`{drift_label}")
         lines.extend([
             "",
             "> These tests are failing on main with open issues. "
