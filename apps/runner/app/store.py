@@ -336,11 +336,12 @@ async def get_existing_failures_with_issues(repo: str) -> dict[str, str]:
     return {row["test_name"]: row["issue_url"] for row in rows}
 
 
-async def get_already_submitted_test_names(repo: str) -> dict[str, str]:
-    """Get test names that already have submissions on open pre-merge runs.
+async def get_already_submitted_test_names(repo: str, pr_number: int) -> dict[str, str]:
+    """Get test names that already have submissions on runs for this PR.
 
     Returns {test_name: submission_url} so they can be skipped and linked
-    in the PR comment.
+    in the PR comment. Scoped to the same PR number so that submissions on
+    other PRs don't suppress new failures.
     """
     pool = get_pool()
     async with pool.acquire() as conn:
@@ -349,10 +350,10 @@ async def get_already_submitted_test_names(repo: str) -> dict[str, str]:
                FROM submissions s
                JOIN runs r ON r.run_id = s.run_id
                WHERE r.repo = $1
+                 AND r.pr_number = $2
                  AND r.triage_mode = 'pre_merge'
-                 AND r.closed = FALSE
                ORDER BY s.test_name, s.created_at DESC""",
-            repo,
+            repo, pr_number,
         )
     return {row["test_name"]: row["url"] for row in rows}
 

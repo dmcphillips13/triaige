@@ -170,7 +170,8 @@ async def triage_run(req: TriageRunRequest, request: Request):
     skipped_known: list[dict] = []  # Known/submitted failures skipped by filtering
     if repo:
         existing = await store.get_existing_failures_with_issues(repo)
-        already_submitted = await store.get_already_submitted_test_names(repo)
+        pr_num = req.pr_context.pr_number if req.pr_context else None
+        already_submitted = await store.get_already_submitted_test_names(repo, pr_num) if pr_num else {}
         # Merge both: known failures (with issue URLs) + already-submitted tests
         all_existing = {**{k: None for k in already_submitted}, **existing}
         if all_existing:
