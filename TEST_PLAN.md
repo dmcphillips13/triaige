@@ -187,7 +187,7 @@ Before running the E2E test, ensure a clean state:
    > tokens in globals.css were changed."
 4. Push and open the PR. Wait for the `pull_request` workflow to complete.
 
-### Step 0 — Verify repos landing page and navigation
+### Step 0 — Verify repos landing page, navigation, and SSE connection
 
 **Action**: Sign out and sign back in to the Triaige dashboard.
 
@@ -207,11 +207,15 @@ Before running the E2E test, ensure a clean state:
 - [ ] "All repositories" back link visible, navigates to `/repos`
 - [ ] Only runs for that repo are shown
 - [ ] Visiting `/runs` without `?repo=` redirects to `/repos`
+- [ ] SSE connection established (check DevTools Network tab for EventSource)
 
 **Action**: Click into a run detail, then click the back link.
 
 **Verify**:
 - [ ] Back link returns to `/runs?repo=owner/repo` (preserves repo context)
+
+**Note**: Keep the dashboard open on the runs page for the remaining steps to
+verify real-time SSE updates alongside each action.
 
 ### Step 1 — Check PR comments and merge gate
 
@@ -226,6 +230,10 @@ Before running the E2E test, ensure a clean state:
 
 **Verify** (PR A specifically):
 - [ ] Mix of expected/unexpected classifications
+
+**Verify** (SSE — on the dashboard runs page, kept open from Step 0):
+- [ ] Run cards for PR A and PR B appeared **without manual refresh**
+- [ ] Repo card on `/repos` updated with run count and last activity
 
 ### Step 2 — Triage PR A on dashboard
 
@@ -313,6 +321,9 @@ materializes any pending issues.
 - [ ] Submission URL updated from `deferred:merge` to the real issue URL
 - [ ] No post-merge triage run created
 
+**Verify** (SSE):
+- [ ] PR A's run moved from PR tab to Closed Runs tab **without manual refresh**
+
 ### Step 6 — Check Main tab (known failures health dashboard)
 
 **Action**: Open the Triaige dashboard. Click the **Main** tab.
@@ -341,6 +352,9 @@ failures (e.g., revert a change that was causing an unwanted visual diff).
 - [ ] New "Triaige Visual Regression" check on PR B (`action_required`)
 - [ ] **Previous triage comment deleted** — only the new comment remains
 - [ ] Dashboard PR tab shows only the new run
+
+**Verify** (SSE):
+- [ ] Old run disappeared from PR tab and new run appeared **without refresh**
 
 ### Step 8 — Rebase PR B onto main (known failure now active)
 
@@ -497,6 +511,7 @@ gh pr create --title "Minor styling tweak" --body "Small token change"
   token before 8-hour expiry; validated by signing out and back in before test
 - **Repos landing page**: post-login redirect, repo cards with stats, navigation to repo-scoped runs
 - **Repo-scoped runs**: `/runs?repo=` filtering, back link preservation, redirect without repo param
+- **SSE real-time updates**: run creation, classification completion, and run close events update the dashboard without manual refresh; connection recovery after backgrounding
 - PR comment with classification table and dashboard links
 - Submission link display and action gating
 - Run lifecycle across PR / Issues / Closed Runs / Closed Issues tabs
