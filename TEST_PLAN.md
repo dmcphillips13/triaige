@@ -112,6 +112,14 @@ pre-merge workflow, merge gate, iterative PR fixes, known failures health
 dashboard, net-new filtering, known failure passthrough with screenshot
 comparison, and run lifecycle.
 
+**Expected duration:** ~45-60 minutes. Most time is spent waiting for CI runs
+(~3 min each) and Render cold starts. There are 6-7 wait points across the test.
+
+**Key setup constraint:** PR A, PR B, and PR C all need to trigger the same
+failing test (the one PR A rejects as unexpected). Plan the exact CSS changes
+for all three PRs before writing any code — Steps 4, 8, and 12 all depend on
+this overlap.
+
 ### Prerequisites
 
 Before running the E2E test, ensure a clean state:
