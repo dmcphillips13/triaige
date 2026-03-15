@@ -74,7 +74,8 @@ Last updated: 2026-03-15
 
 - [x] Step 23.17: Collapse failure card on verdict — after approve/reject, collapse rationale + screenshots to reduce visual noise
 - [x] Step 23.18: Fix submit bar overlap — add bottom padding so the fixed "Submit Changes" bar doesn't block the last card's "Show details" link
-- [ ] Step 23.19: "View full results" link in PR comment should open in new tab — runner-generated link missing target="_blank"
+- [x] Step 23.19: "View full results" link in PR comment should open in new tab — use raw HTML `<a target="_blank">` since GitHub markdown doesn't support target
+- [x] Step 23.21: Disable approve/reject buttons during submit — pass `readOnly` when `submitStatus === "loading"` to lock verdict buttons mid-flight
 
 **Block C — CI/GitHub cleanup:**
 - [ ] Step 23.10: Delete stale PR comments when runs are superseded — store comment_id on run creation, delete via GitHub API on auto-close

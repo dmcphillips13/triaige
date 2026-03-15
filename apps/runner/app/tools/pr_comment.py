@@ -102,7 +102,7 @@ def post_triage_comment(
 
         lines.extend([
             "",
-            f"[View full results]({dashboard_link})",
+            f'<a href="{dashboard_link}" target="_blank">View full results</a>',
             "",
             "> **Action required**: address all failures before merging.",
         ])

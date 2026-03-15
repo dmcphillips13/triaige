@@ -252,7 +252,7 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
                 result={result}
                 verdict={verdicts[result.test_name] ?? null}
                 onVerdict={(v) => handleVerdict(result.test_name, v)}
-                readOnly={isClosed || isPostMerge || isPreExisting}
+                readOnly={isClosed || isPostMerge || isPreExisting || submitStatus === "loading"}
                 submitted={submitted[result.test_name] ?? null}
                 knownFailure={kf ?? null}
                 actionGated={existingSubmission !== null}
