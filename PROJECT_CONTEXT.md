@@ -93,15 +93,13 @@ Last updated: 2026-03-15
 - [x] Step 26: Server-sent events for real-time dashboard updates — in-memory event bus on runner emits `run_created`/`run_closed` at all mutation points; SSE endpoint with 30s keepalive; dashboard proxy streams SSE directly; React hook with EventSource + tab-refocus reconnection; runs list and run detail pages update live
 
 ### Up next
-- [ ] Step 27: Bug fixes — address known issues before E2E testing
-  - **Group A — Quick runner fixes:**
-    - [ ] 27.2: Diff overlay should use grayscale — convert actual to grayscale in `_build_overlay()` so the red diff highlights stand out
-    - [ ] 27.4: Add PR number + link to GitHub issues — add `pr_number` param to `create_bug_issue()`, pass from both `/create-issues` and `/report-clean`
-  - **Group B — Drift comment rework:**
-    - [ ] 27.1: Issue drift comment should only fire on merge — move drift detection from `/triage-run` to `/report-clean`; add deduplication by checking existing issue comments
-  - **Group C — Dashboard UI:**
-    - [ ] 27.3: Issues tab should show full diff views — known failure cards need both baseline + actual screenshots; reuse `ScreenshotViewer` component
-    - [ ] 27.5: Tabs should all be the same size — add `flex-1` or `min-w` to tab buttons in `runs-list.tsx`
+- [x] Step 27: Bug fixes — address known issues before E2E testing
+  - [x] 27.1: Issue drift comment only fires on merge with deduplication
+  - [x] 27.2: Diff overlay uses grayscale background
+  - [x] 27.3: Issues tab shows full screenshot comparison viewer
+  - [x] 27.4: GitHub issues include PR number with clickable link
+  - [x] 27.5: Equal-width tabs
+  - [x] 27.6: Tab counts populate on initial page load (not just on tab click)
 - [ ] Step 28: Rigorous E2E test — full pipeline verification including SSE (trigger PR → watch run appear live → approve/reject → submit → verify merge gate + auto-close via SSE → verify closed run moves tabs without refresh)
 - [ ] Step 29: Demo presentation — see `docs/slides.md` for full demo plan
   - [ ] 29.1: Pre-stage demo data — create two sample app PRs (one with completed triage run, one ready to trigger live for SSE moment)
