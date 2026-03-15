@@ -612,6 +612,25 @@ async def add_pending_issue(
     return row["id"]
 
 
+async def get_pending_issue_test_names(repo: str, pr_number: int) -> set[str]:
+    """Get test names with unmaterialized pending issues for a repo/PR.
+
+    Used during net-new filtering to skip failures that already have a
+    deferred issue on the same PR.
+    """
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """SELECT DISTINCT test_name
+               FROM pending_issues
+               WHERE repo = $1
+                 AND pr_number = $2
+                 AND materialized_at IS NULL""",
+            repo, pr_number,
+        )
+    return {row["test_name"] for row in rows}
+
+
 async def get_pending_issues_for_pr(repo: str, pr_number: int) -> list[dict]:
     """Get unmaterialized pending issues for a repo/PR."""
     pool = get_pool()

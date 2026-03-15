@@ -217,6 +217,23 @@ async def triage_run(req: TriageRunRequest, request: Request):
                     "issue_url": existing.get(test_name),
                 })
 
+    # --- Skip failures with pending (deferred) issues on the same PR ---
+    skipped_pending: list[dict] = []
+    pr_number_val = req.pr_context.pr_number if req.pr_context else None
+    if repo and pr_number_val and mode == "pre_merge":
+        pending_names = await store.get_pending_issue_test_names(repo, pr_number_val)
+        if pending_names:
+            for r in ask_requests:
+                test_name = extract_test_name(r)
+                if test_name in pending_names:
+                    skipped_pending.append({"test_name": test_name})
+            ask_requests = [
+                r for r in ask_requests
+                if extract_test_name(r) not in pending_names
+            ]
+            if skipped_pending:
+                logger.info("Skipped %d failure(s) with pending issues on PR #%d", len(skipped_pending), pr_number_val)
+
     # --- Screenshot comparison for skipped known failures ---
     # If a PR modifies an area that's already broken, notify the issue
     if skipped_known and repo and mode == "pre_merge" and req.pr_context:
@@ -282,9 +299,9 @@ async def triage_run(req: TriageRunRequest, request: Request):
                 except Exception as e:
                     logger.warning("Failed to create passing check run: %s", e)
 
-        # Post PR comment noting skipped known failures
+        # Post PR comment noting skipped known/pending failures
         if (
-            skipped_known
+            (skipped_known or skipped_pending)
             and mode == "pre_merge"
             and req.pr_context
             and req.pr_context.pr_number
@@ -299,6 +316,7 @@ async def triage_run(req: TriageRunRequest, request: Request):
                     github_token=github_token,
                     known_failures={},
                     skipped_known=skipped_known,
+                    skipped_pending=skipped_pending,
                 )
             except Exception as e:
                 logger.warning("Failed to post known failures PR comment: %s", e)
@@ -393,6 +411,7 @@ async def triage_run(req: TriageRunRequest, request: Request):
                 github_token=github_token,
                 known_failures=known,
                 skipped_known=skipped_known,
+                skipped_pending=skipped_pending,
             )
         except Exception as e:
             logger.warning("Failed to post PR comment: %s", e)

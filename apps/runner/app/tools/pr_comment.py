@@ -23,6 +23,7 @@ def post_triage_comment(
     github_token: str | None = None,
     known_failures: dict[str, dict] | None = None,
     skipped_known: list[dict] | None = None,
+    skipped_pending: list[dict] | None = None,
 ) -> str:
     """Post a triage summary comment on a PR.
 
@@ -33,6 +34,7 @@ def post_triage_comment(
         github_token: Per-request token. Falls back to env var.
         known_failures: Known failure context from store.get_known_failures().
         skipped_known: Known failures that were filtered out by net-new filtering.
+        skipped_pending: Failures skipped because they have a deferred issue on this PR.
 
     Returns:
         URL of the created comment.
@@ -43,6 +45,7 @@ def post_triage_comment(
 
     known = known_failures or {}
     skipped = skipped_known or []
+    pending = skipped_pending or []
 
     lines: list[str] = []
 
@@ -127,6 +130,20 @@ def post_triage_comment(
             "Please verify these areas manually as visual tests cannot detect "
             "regressions while the baseline is broken.",
         ])
+
+    # Add pending (deferred) issues section
+    if pending:
+        if lines:
+            lines.append("")
+            lines.append("---")
+            lines.append("")
+
+        lines.extend([
+            f"**{len(pending)} failure{'s' if len(pending) != 1 else ''}** with issues pending merge:",
+            "",
+        ])
+        for p in pending:
+            lines.append(f"- `{p['test_name']}` — issue will be filed on merge")
 
     if not lines:
         return ""
