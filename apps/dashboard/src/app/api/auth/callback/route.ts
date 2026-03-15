@@ -46,6 +46,8 @@ export async function GET(request: NextRequest) {
   }
 
   const accessToken = tokenData.access_token as string;
+  const refreshToken = (tokenData.refresh_token as string) || "";
+  const expiresIn = (tokenData.expires_in as number) || 28800; // default 8 hours
 
   // Fetch user profile
   const userRes = await fetch("https://api.github.com/user", {
@@ -57,6 +59,8 @@ export async function GET(request: NextRequest) {
     github_token: accessToken,
     user_login: user.login,
     user_avatar: user.avatar_url,
+    refresh_token: refreshToken,
+    token_expires_at: Date.now() + expiresIn * 1000,
   });
 
   return NextResponse.redirect(new URL("/runs", request.url));
