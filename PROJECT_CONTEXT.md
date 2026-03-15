@@ -69,7 +69,7 @@ Last updated: 2026-03-15
 - [x] Step 23.2: Auto-close pre-merge runs after submit — after all failures have submissions, call close endpoint from dashboard; or have runner auto-close when gate passes
 - [x] Step 23.7: PR run cards should show gate status (action required vs ready to merge) — runner returns gate status, dashboard shows badge on run card
 - [x] Step 23.16: Run card status indicator on PR tab ("All addressed" badge when all failures have submissions)
-- [ ] Step 23.3: Known failure PR comment should link to open GitHub issues — update PR comment template in runner to include issue URLs (testing in progress — need to reject a failure to create an issue, then re-trigger)
+- [x] Step 23.3: Known failure PR comment should link to open GitHub issues — PR comment shows skipped known failures with "open issue" links to GitHub issues; verified on PR #66 with issue #67
 - [x] Step 23.20: Defer GitHub issue creation until PR merges — pre-merge rejected failures record intent in `pending_issues` table; issues materialized via `/report-clean` on merge; dashboard shows "Issue will be filed on merge" in amber; pending issues filtered on re-trigger; scoped per-PR (doesn't affect other PRs). Verified end-to-end with PRs #65 and #66.
 
 - [x] Step 23.17: Collapse failure card on verdict — after approve/reject, collapse rationale + screenshots to reduce visual noise
