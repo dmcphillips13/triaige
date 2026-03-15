@@ -6,7 +6,7 @@ Last updated: 2026-03-15
 
 ## Current status
 
-**Phase:** Classification pipeline and dashboard visual polish complete. Next: 23.x follow-ups, then Steps 24-25 (repos page + settings UI), then SSE.
+**Phase:** Repos landing page and settings cleanup complete. Next: SSE for real-time dashboard updates, then Polish + Loom.
 
 ### Completed
 - [x] Project planning and scoping
@@ -85,22 +85,22 @@ Last updated: 2026-03-15
 **Block D — Complex (split to own step):**
 - [x] Step 23.1: Known failure screenshot comparison — comparison + issue comment firing correctly; PR comment now distinguishes drift ("⚠️ visual drift detected") from unchanged known failures; issue gets "further modifies this area" comment when screenshot differs; original screenshot in known_failures preserved as permanent reference
 
-### After follow-ups — Steps 24-25
+### Steps 24-25 — Repos page + settings cleanup
 - [x] Step 24: Repos landing page — `/repos` as post-login landing page with repo cards showing run stats; `/runs?repo=owner/repo` for repo-scoped runs; back links and logo point to `/repos`; skeleton loading; "Add or remove repositories" links to GitHub App installation settings
-- [ ] Step 25: Settings UI — remove localStorage repo selection (now URL-scoped), triage mode config per repo, inline CLI instructions
+- [x] Step 25: Settings page removed — localStorage repo selection obsolete (now URL-scoped via repos page); settings page and nav link deleted
 
-### After 24-25 — SSE + remaining
-- [ ] Step 23-SSE: Server-sent events for real-time dashboard updates — runner emits events on run creation, classification completion, and run close; dashboard subscribes and updates runs list + run detail live
-- [ ] Step 26: Repo setup CLI (`npx triaige init`) — frictionless guided setup: checks `gh` auth, verifies dashboard connection + GitHub App Checks permission, sets GitHub secrets via `gh secret set`, scaffolds workflow (with correct permissions block + baseline commit skip condition) + script (with executable bit) + .env.example, detects Playwright config and ensures JSON reporter is configured, detects monorepo structure, offers initial baseline generation + commit, branch protection with `strict: true`, and a final validation dry-run
+### Up next — SSE + Polish
+- [ ] Step 26: Server-sent events for real-time dashboard updates — runner emits events on run creation, classification completion, and run close; dashboard subscribes and updates runs list + run detail live
 - [ ] Step 27: Polish + Loom
-- [ ] Step 28 (stretch): Issue attribution agent — async agent scans merge history, adds attribution comments to issues
-- [ ] Step 29 (stretch): Baseline knowledge doc — LLM auto-generates semantic descriptions of each page from baseline screenshots and app code; classifier references during triage for richer context
-- [ ] Step 30 (stretch): Separate test repo support — link a dedicated Playwright/baselines repo separate from the UI repo
-- [ ] Step 31 (stretch): Auto-approve baselines above confidence threshold
-- [ ] Step 32 (stretch): Procedural memory — self-improving triage instructions via reflection
-- [ ] Step 33 (stretch): Component ownership lookup
-- [ ] Step 34 (stretch): Auto-close main dashboard failures when linked issue closes (webhook)
-- [ ] Step 35 (stretch): RAGAS evaluation
+- [ ] Step 28 (stretch): Repo setup CLI (`npx triaige init`) — guided setup: checks `gh` auth, verifies dashboard connection + GitHub App Checks permission, sets GitHub secrets, scaffolds workflow + script, detects Playwright config, offers initial baseline generation + commit, branch protection setup
+- [ ] Step 29 (stretch): Issue attribution agent — async agent scans merge history, adds attribution comments to issues
+- [ ] Step 30 (stretch): Baseline knowledge doc — LLM auto-generates semantic descriptions of each page from baseline screenshots and app code; classifier references during triage for richer context
+- [ ] Step 31 (stretch): Separate test repo support — link a dedicated Playwright/baselines repo separate from the UI repo
+- [ ] Step 32 (stretch): Auto-approve baselines above confidence threshold
+- [ ] Step 33 (stretch): Procedural memory — self-improving triage instructions via reflection
+- [ ] Step 34 (stretch): Component ownership lookup
+- [ ] Step 35 (stretch): Auto-close main dashboard failures when linked issue closes (webhook)
+- [ ] Step 36 (stretch): RAGAS evaluation
 
 ---
 
