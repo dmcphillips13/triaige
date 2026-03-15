@@ -225,8 +225,9 @@ Before running the E2E test, ensure a clean state:
 - [ ] SSE connection established (check DevTools Network tab for EventSource)
 - [ ] **(27.5)** All four tabs (PR, Issues, Closed Runs, Closed Issues) are **equal width**
       regardless of count badges
-- [ ] **(27.6)** Tab counts populate **immediately on page load** (all 0 at this
-      point since DB was cleared — the real count test is after Step 1 when runs exist)
+- [ ] **(27.6)** PR and Issues tab counts populate **immediately on page load**
+      (all 0 at this point — the real count test is after Step 1 when runs exist)
+- [ ] Closed Runs and Closed Issues tabs show labels only (no counts)
 
 **Action**: Click into a run detail, then click the back link.
 
@@ -362,7 +363,6 @@ materializes any pending issues.
 **Verify**:
 - [ ] **(27.6)** Issues tab count updated to "Issues (1)" reflecting the newly
       created known failure — without needing to click the Issues tab first
-- [ ] Closed Runs tab count updated to reflect PR A's closed run
 
 **Action**: Click the **Issues** tab.
 
@@ -508,9 +508,9 @@ gh pr create --title "Minor styling tweak" --body "Small token change"
 - [ ] **Repos page**: sample app card shows updated run count and last activity
 - [ ] **PR tab**: shows only open PR runs (PR C if not yet merged, otherwise empty)
 - [ ] **Issues tab**: empty (known failure was closed)
-- [ ] **Closed Runs tab**: shows closed runs from all merged PRs
-- [ ] **Closed Issues tab**: shows the closed known failure
-- [ ] Run counts in tab labels are accurate
+- [ ] **Closed Runs tab**: shows closed runs from all merged PRs (no count in tab label)
+- [ ] **Closed Issues tab**: shows the closed known failure (no count in tab label)
+- [ ] PR and Issues tab counts are accurate
 
 ### What this validates
 

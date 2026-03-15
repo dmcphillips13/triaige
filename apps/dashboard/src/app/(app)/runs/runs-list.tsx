@@ -161,8 +161,8 @@ export function RunsList({
   const tabItems = [
     { key: "pr" as Tab, label: "PR", count: prRuns.length, showCount: true },
     { key: "issues" as Tab, label: "Issues", count: knownFailures.length, showCount: true },
-    { key: "closed_runs" as Tab, label: "Closed Runs", count: closedRuns.length, showCount: true },
-    { key: "closed_issues" as Tab, label: "Closed Issues", count: closedKnownFailures.length, showCount: true },
+    { key: "closed_runs" as Tab, label: "Closed Runs", count: 0, showCount: false },
+    { key: "closed_issues" as Tab, label: "Closed Issues", count: 0, showCount: false },
   ];
 
   return (
