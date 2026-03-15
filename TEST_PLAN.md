@@ -210,6 +210,8 @@ Before running the E2E test, ensure a clean state:
 - [ ] SSE connection established (check DevTools Network tab for EventSource)
 - [ ] **(27.5)** All four tabs (PR, Issues, Closed Runs, Closed Issues) are **equal width**
       regardless of count badges
+- [ ] **(27.6)** Tab counts populate **immediately on page load** — PR and Issues
+      tabs show counts in parentheses without needing to click each tab first
 
 **Action**: Click into a run detail, then click the back link.
 
@@ -521,6 +523,8 @@ gh pr create --title "Minor styling tweak" --body "Small token change"
   with a clickable link to the originating PR
 - **(27.5) Equal-width tabs**: all four tabs are the same width regardless of
   label length or count badges
+- **(27.6) Tab counts on load**: all tab counts populate immediately on page
+  load, not just when the tab is clicked
 - **Auto-close pre-merge runs**: superseded by newer run, or on merge via
   `/report-clean`
 - **Baseline commit skip**: workflow skips when commit message contains
