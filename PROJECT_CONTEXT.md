@@ -100,12 +100,11 @@ Last updated: 2026-03-15
   - [ ] 27.4: Add PR number to baseline failure for issue — when filing a GitHub issue for a rejected failure, include the PR number for context
   - [ ] 27.5: Tabs should all be the same size — PR/Issues/Closed Runs/Closed Issues tabs have inconsistent widths
 - [ ] Step 28: Rigorous E2E test — full pipeline verification including SSE (trigger PR → watch run appear live → approve/reject → submit → verify merge gate + auto-close via SSE → verify closed run moves tabs without refresh)
-- [ ] Step 29: Demo presentation
-  - [ ] 29.1: Demo flow script — define the exact live demo sequence (what to click, what to show, what to narrate at each step); this is the most important deliverable
-  - [ ] 29.2: Google Slides — build prompting docs for Gemini (or Claude desktop etc.) to generate slides; Google Slides are being used
-  - **Story:** frame around productivity gains
-    - Single dashboard accessible to people of all technical levels — designers, QA, developers, etc.
-    - Unlocks developer time by catching bugs before they happen and providing clear understanding of expected vs unexpected changes
+- [ ] Step 29: Demo presentation — see `docs/slides.md` for full demo plan
+  - [ ] 29.1: Pre-stage demo data — create two sample app PRs (one with completed triage run, one ready to trigger live for SSE moment)
+  - [ ] 29.2: Demo flow script — define exact live sequence with slide/demo transitions and timing marks; see `docs/slides.md`
+  - [ ] 29.3: Google Slides — build prompting docs for Gemini (or Claude desktop etc.) to generate slides; Google Slides are being used
+  - [ ] 29.4: Dry run — practice the full 10-minute presentation end to end, verify timing and pre-staged data
 
 ### Post-Demo Day
 - [ ] Repo setup CLI (`npx triaige init`) — guided setup: checks `gh` auth, verifies dashboard connection + GitHub App Checks permission, sets GitHub secrets, scaffolds workflow + script, detects Playwright config, offers initial baseline generation + commit, branch protection setup

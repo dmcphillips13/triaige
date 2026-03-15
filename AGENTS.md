@@ -9,6 +9,7 @@ All agents (Claude Code, Codex, Cursor, etc.) should follow this document to avo
 
 - `AGENTS.md`: canonical product + engineering contract.
 - `PROJECT_CONTEXT.md`: current status/handoff between sessions.
+- `docs/`: contains additional planning docs. **Always review gitignored strategy docs in `docs/` before writing or updating any public-facing content** (slides, READMEs, PR descriptions, public docs, etc.).
 
 ---
 
