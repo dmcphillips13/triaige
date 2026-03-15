@@ -89,10 +89,8 @@ Last updated: 2026-03-15
 - [x] Step 24: Repos landing page — `/repos` as post-login landing page with repo cards showing run stats; `/runs?repo=owner/repo` for repo-scoped runs; back links and logo point to `/repos`; skeleton loading; "Add or remove repositories" links to GitHub App installation settings
 - [x] Step 25: Settings page removed — localStorage repo selection obsolete (now URL-scoped via repos page); settings page and nav link deleted
 
-### Up next — SSE + Polish
+### Up next — SSE
 - [ ] Step 26: Server-sent events for real-time dashboard updates — runner emits events on run creation, classification completion, and run close; dashboard subscribes and updates runs list + run detail live
-- [ ] Step 27 (stretch): Baseline knowledge doc — LLM auto-generates semantic descriptions of each page from baseline screenshots and app code; classifier references during triage for richer context
-- [ ] Step 28 (stretch): Procedural memory — self-improving triage instructions via reflection
 
 ### Post-Demo Day
 - [ ] Repo setup CLI (`npx triaige init`) — guided setup: checks `gh` auth, verifies dashboard connection + GitHub App Checks permission, sets GitHub secrets, scaffolds workflow + script, detects Playwright config, offers initial baseline generation + commit, branch protection setup
