@@ -115,6 +115,7 @@ Last updated: 2026-03-15
   - [ ] 29.4: Dry run — practice the full 10-minute presentation end to end, verify timing and pre-staged data
 
 ### Post-Demo Day
+- [ ] `update-snapshots.yml` should NOT be included in the setup CLI or repo template — it's a dev convenience for the sample app only; if included, add a confirmation input to prevent accidental runs
 - [ ] Repo setup CLI (`npx triaige init`) — guided setup: checks `gh` auth, verifies dashboard connection + GitHub App Checks permission, sets GitHub secrets, scaffolds workflow + script, detects Playwright config, offers initial baseline generation + commit, branch protection setup
 - [ ] Component ownership lookup
 - [ ] RAGAS evaluation
