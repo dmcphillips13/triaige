@@ -118,26 +118,31 @@ export function RunsList({
     }
   };
 
-  // Load known failures when Issues tab is selected
+  // Load known failures eagerly on mount (for tab counts) and refetch when tab is active
   useEffect(() => {
-    if (tab !== "issues") return;
     if (!derivedRepo) return;
-    setLoadingKnown(true);
-    fetchRepoKnownFailures(derivedRepo)
-      .then(setKnownFailures)
-      .catch(() => setKnownFailures([]))
-      .finally(() => setLoadingKnown(false));
+    // Always fetch on mount; refetch when switching to the Issues tab
+    if (knownFailures.length === 0 || tab === "issues") {
+      setLoadingKnown(true);
+      fetchRepoKnownFailures(derivedRepo)
+        .then(setKnownFailures)
+        .catch(() => setKnownFailures([]))
+        .finally(() => setLoadingKnown(false));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, derivedRepo]);
 
-  // Load closed known failures when Closed Issues tab is selected
+  // Load closed known failures eagerly on mount and refetch when tab is active
   useEffect(() => {
-    if (tab !== "closed_issues") return;
     if (!derivedRepo) return;
-    setLoadingClosedKnown(true);
-    fetchClosedKnownFailures(derivedRepo)
-      .then(setClosedKnownFailures)
-      .catch(() => setClosedKnownFailures([]))
-      .finally(() => setLoadingClosedKnown(false));
+    if (closedKnownFailures.length === 0 || tab === "closed_issues") {
+      setLoadingClosedKnown(true);
+      fetchClosedKnownFailures(derivedRepo)
+        .then(setClosedKnownFailures)
+        .catch(() => setClosedKnownFailures([]))
+        .finally(() => setLoadingClosedKnown(false));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, derivedRepo]);
 
   const handleCloseKnownFailure = async (failure: KnownFailure) => {
@@ -156,8 +161,8 @@ export function RunsList({
   const tabItems = [
     { key: "pr" as Tab, label: "PR", count: prRuns.length, showCount: true },
     { key: "issues" as Tab, label: "Issues", count: knownFailures.length, showCount: true },
-    { key: "closed_runs" as Tab, label: "Closed Runs", count: 0, showCount: false },
-    { key: "closed_issues" as Tab, label: "Closed Issues", count: 0, showCount: false },
+    { key: "closed_runs" as Tab, label: "Closed Runs", count: closedRuns.length, showCount: true },
+    { key: "closed_issues" as Tab, label: "Closed Issues", count: closedKnownFailures.length, showCount: true },
   ];
 
   return (
