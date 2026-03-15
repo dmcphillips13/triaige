@@ -197,23 +197,26 @@ export function FailureCard({
         return null;
       })()}
 
-      {/* Rationale — always visible */}
-      <div className="border-t border-zinc-100 px-4 py-3">
-        <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-          Rationale
-        </h4>
-        <MarkdownContent text={res.rationale} />
-      </div>
+      {/* Rationale + screenshots — collapse when verdict is selected */}
+      {!verdict && (
+        <>
+          <div className="border-t border-zinc-100 px-4 py-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+              Rationale
+            </h4>
+            <MarkdownContent text={res.rationale} />
+          </div>
 
-      {/* Screenshots — always visible */}
-      {result.screenshot_baseline && result.screenshot_actual && (
-        <div className="border-t border-zinc-100 px-4 py-4">
-          <ScreenshotViewer
-            baseline={result.screenshot_baseline}
-            actual={result.screenshot_actual}
-            diffOverlay={res.image_diff?.diff_overlay_base64}
-          />
-        </div>
+          {result.screenshot_baseline && result.screenshot_actual && (
+            <div className="border-t border-zinc-100 px-4 py-4">
+              <ScreenshotViewer
+                baseline={result.screenshot_baseline}
+                actual={result.screenshot_actual}
+                diffOverlay={res.image_diff?.diff_overlay_base64}
+              />
+            </div>
+          )}
+        </>
       )}
 
       {/* Show/hide details toggle */}

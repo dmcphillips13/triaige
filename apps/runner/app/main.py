@@ -540,6 +540,8 @@ async def update_baselines(req: UpdateBaselinesRequest, request: Request):
     if not baselines:
         raise HTTPException(status_code=400, detail="No baselines to update")
 
+    logger.info("Updating %d baseline(s) for run %s: %s", len(baselines), req.run_id[:8], [b["test_name"] for b in baselines])
+
     github_token = request.headers.get("X-GitHub-Token")
 
     try:

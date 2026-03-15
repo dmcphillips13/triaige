@@ -225,5 +225,5 @@ def commit_baselines_to_branch(
     )
     ref_resp.raise_for_status()
 
-    logger.info("Committed %d baseline(s) to %s @ %s", test_count, branch, commit_sha[:8])
+    logger.info("Committed %d baseline(s) to %s @ %s: %s", test_count, branch, commit_sha[:8], [bl["path"] for bl in baselines])
     return commit_sha

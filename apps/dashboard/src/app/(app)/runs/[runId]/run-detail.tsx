@@ -147,8 +147,10 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
         }
       }
 
+      // Store submissions sequentially — each putSubmission triggers a gate
+      // check on the server, so all must be stored before any can auto-close
       for (const [testName, sub] of Object.entries(newSubmitted)) {
-        putSubmission(run.run_id, testName, sub.url, sub.type).catch(() => {});
+        await putSubmission(run.run_id, testName, sub.url, sub.type);
       }
 
       setSubmitted((prev) => ({ ...prev, ...newSubmitted }));
@@ -228,8 +230,8 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
         </div>
       )}
 
-      {/* Failure list */}
-      <ul className="mt-6 space-y-3">
+      {/* Failure list — pb-24 reserves space for the fixed submit bar */}
+      <ul className="mt-6 space-y-3 pb-24">
         {run.results.map((result) => {
           const kf = knownFailures[result.test_name];
           // If an open submission exists from a previous run,
