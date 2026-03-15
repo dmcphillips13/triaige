@@ -7,15 +7,17 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ClassificationBadge } from "@/components/classification-badge";
 import { RunCardSkeleton } from "@/components/skeleton";
 import {
+  fetchRuns,
   fetchRepoKnownFailures,
   fetchClosedKnownFailures,
   closeKnownFailure,
 } from "@/lib/api";
+import { useTriaigeEvents } from "@/hooks/use-triaige-events";
 import type { TriageRunSummary } from "@/lib/types";
 
 type Tab = "pr" | "issues" | "closed_runs" | "closed_issues";
@@ -66,6 +68,7 @@ export function RunsList({
   repo?: string;
 }) {
   const [tab, setTab] = useState<Tab>(getInitialTab);
+  const [liveRuns, setLiveRuns] = useState(runs);
   const [knownFailures, setKnownFailures] = useState<KnownFailure[]>([]);
   const [closedKnownFailures, setClosedKnownFailures] = useState<
     ClosedKnownFailure[]
@@ -74,10 +77,28 @@ export function RunsList({
   const [loadingClosedKnown, setLoadingClosedKnown] = useState(false);
   const [closingId, setClosingId] = useState<number | null>(null);
 
+  // Refetch runs from API on SSE events
+  const refetchRuns = useCallback(() => {
+    fetchRuns().then((fresh) => {
+      if (fresh.length > 0) setLiveRuns(fresh);
+    });
+  }, []);
+
+  useTriaigeEvents(
+    useCallback(
+      (event) => {
+        if (!repo || event.repo === repo) {
+          refetchRuns();
+        }
+      },
+      [repo, refetchRuns]
+    )
+  );
+
   // Filter runs by repo when scoped
   const scopedRuns = repo
-    ? runs.filter((r) => r.repo === repo)
-    : runs;
+    ? liveRuns.filter((r) => r.repo === repo)
+    : liveRuns;
 
   const prRuns = scopedRuns.filter(
     (r) => r.triage_mode === "pre_merge" && !r.closed

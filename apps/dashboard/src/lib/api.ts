@@ -5,6 +5,25 @@
 
 import type { SubmissionResult } from "./types";
 
+/** Fetch all triage runs (client-side, for live updates). */
+export async function fetchRuns(): Promise<
+  {
+    run_id: string;
+    repo: string;
+    total_failures: number;
+    classifications: Record<string, number>;
+    created_at: string;
+    closed: boolean;
+    triage_mode: string;
+    pr_title: string | null;
+    gate_status: string | null;
+  }[]
+> {
+  const res = await fetch("/api/runner/runs");
+  if (!res.ok) return [];
+  return res.json();
+}
+
 /** Submit human feedback to the runner for episodic memory storage. */
 export async function submitFeedback(
   runId: string,

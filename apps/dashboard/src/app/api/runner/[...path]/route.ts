@@ -30,12 +30,27 @@ async function proxyRequest(request: NextRequest, path: string) {
 
   try {
     const response = await fetch(url, init);
+    const contentType = response.headers.get('Content-Type') || '';
+
+    // Stream SSE responses directly instead of buffering
+    if (contentType.includes('text/event-stream') && response.body) {
+      return new NextResponse(response.body as ReadableStream, {
+        status: response.status,
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+          'X-Accel-Buffering': 'no',
+        },
+      });
+    }
+
     const data = await response.text();
 
     return new NextResponse(data, {
       status: response.status,
       headers: {
-        'Content-Type': response.headers.get('Content-Type') || 'application/json',
+        'Content-Type': contentType || 'application/json',
       },
     });
   } catch (error) {

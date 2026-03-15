@@ -37,6 +37,7 @@ import {
   updateBaselines,
   createIssues,
 } from "@/lib/api";
+import { useTriaigeEvents } from "@/hooks/use-triaige-events";
 import { FailureCard } from "./failure-card";
 
 export function RunDetail({ run }: { run: TriageRunResponse }) {
@@ -53,6 +54,18 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
     Record<string, KnownFailureInfo>
   >({});
   const [actionsLoaded, setActionsLoaded] = useState(false);
+
+  // Detect when this run is closed by another action (merge gate, manual close)
+  useTriaigeEvents(
+    useCallback(
+      (event) => {
+        if (event.type === "run_closed" && event.run_id === run.run_id) {
+          setIsClosed(true);
+        }
+      },
+      [run.run_id]
+    )
+  );
 
   // Load verdicts, submissions, and known failures from the API on mount
   useEffect(() => {

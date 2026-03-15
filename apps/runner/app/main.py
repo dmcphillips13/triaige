@@ -12,9 +12,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, StreamingResponse
 
-from app import repo_settings, store
+from app import events, repo_settings, store
 from app.agent.graph import run_graph
 from app.db import close_db, init_db
 from app.episodic import store_episode
@@ -90,6 +90,34 @@ async def health():
     return {"status": "ok"}
 
 
+@app.get("/events")
+async def sse_events():
+    """SSE endpoint — streams run_created/run_closed events to dashboard."""
+
+    async def stream():
+        q = events.subscribe()
+        try:
+            while True:
+                try:
+                    msg = await asyncio.wait_for(q.get(), timeout=30)
+                    yield events.format_sse(msg["event"], msg["data"])
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"
+        except asyncio.CancelledError:
+            pass
+        finally:
+            events.unsubscribe(q)
+
+    return StreamingResponse(
+        stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
 @app.post("/report-clean")
 async def report_clean(request: Request):
     """Report that all visual tests passed — creates a passing check run.
@@ -110,6 +138,8 @@ async def report_clean(request: Request):
         closed_ids = await store.auto_close_pre_merge_runs(repo, int(pr_number))
         if closed_ids:
             logger.info("Auto-closed %d pre-merge run(s) on clean merge of PR #%s", len(closed_ids), pr_number)
+            for cid in closed_ids:
+                events.emit("run_closed", {"run_id": cid, "repo": repo})
 
         # Materialize deferred issues — create GitHub issues + known_failures
         pending = await store.get_pending_issues_for_pr(repo, int(pr_number))
@@ -180,7 +210,9 @@ async def triage_run(req: TriageRunRequest, request: Request):
     if repo:
         rs = await repo_settings.get_settings(repo)
         if mode == "pre_merge" and not rs.pre_merge:
-            return await store.create_run([], pr_context=req.pr_context, triage_mode=mode)
+            run_resp = await store.create_run([], pr_context=req.pr_context, triage_mode=mode)
+            events.emit("run_created", {"run_id": run_resp.run_id, "repo": repo})
+            return run_resp
 
     if req.report_json:
         report = parse_report(req.report_json)
@@ -356,8 +388,11 @@ async def triage_run(req: TriageRunRequest, request: Request):
         closed_ids = await store.auto_close_pre_merge_runs(repo, pr_number)
         if closed_ids:
             logger.info("Auto-closed %d superseded pre-merge run(s) for PR #%d", len(closed_ids), pr_number)
+            for cid in closed_ids:
+                events.emit("run_closed", {"run_id": cid, "repo": repo})
 
     run_response = await store.create_run(results, pr_context=req.pr_context, triage_mode=mode)
+    events.emit("run_created", {"run_id": run_response.run_id, "repo": repo})
 
     # Create merge gate check run for pre-merge runs
     if (
@@ -456,6 +491,7 @@ async def close_run(run_id: str):
     """Mark a triage run as closed."""
     if not await store.close_run(run_id, force=True):
         raise HTTPException(status_code=404, detail="Run not found")
+    events.emit("run_closed", {"run_id": run_id})
     return {"status": "closed"}
 
 
@@ -507,6 +543,7 @@ async def put_submission(run_id: str, test_name: str, req: SubmissionRequest, re
 
         logger.info("Merge gate passed for run %s", run_id)
         await store.close_run(run_id)
+        events.emit("run_closed", {"run_id": run_id})
         logger.info("Auto-closed run %s after merge gate passed", run_id)
 
     return {"status": "stored"}
