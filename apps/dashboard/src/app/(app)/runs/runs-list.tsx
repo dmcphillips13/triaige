@@ -58,7 +58,13 @@ interface ClosedKnownFailure {
   closed_at: string;
 }
 
-export function RunsList({ runs }: { runs: TriageRunSummary[] }) {
+export function RunsList({
+  runs,
+  repo,
+}: {
+  runs: TriageRunSummary[];
+  repo?: string;
+}) {
   const [tab, setTab] = useState<Tab>(getInitialTab);
   const [knownFailures, setKnownFailures] = useState<KnownFailure[]>([]);
   const [closedKnownFailures, setClosedKnownFailures] = useState<
@@ -68,17 +74,18 @@ export function RunsList({ runs }: { runs: TriageRunSummary[] }) {
   const [loadingClosedKnown, setLoadingClosedKnown] = useState(false);
   const [closingId, setClosingId] = useState<number | null>(null);
 
-  const prRuns = runs.filter(
+  // Filter runs by repo when scoped
+  const scopedRuns = repo
+    ? runs.filter((r) => r.repo === repo)
+    : runs;
+
+  const prRuns = scopedRuns.filter(
     (r) => r.triage_mode === "pre_merge" && !r.closed
   );
-  const closedRuns = runs.filter((r) => r.closed);
+  const closedRuns = scopedRuns.filter((r) => r.closed);
 
-  // Derive repo from runs data, fall back to localStorage
-  const derivedRepo =
-    runs.find((r) => r.repo)?.repo ||
-    (typeof window !== "undefined"
-      ? localStorage.getItem("triaige:linked_repo")
-      : null);
+  // Repo is always provided via ?repo= query param (page redirects without it)
+  const derivedRepo = repo || null;
 
   const handleTabChange = (newTab: Tab) => {
     setTab(newTab);

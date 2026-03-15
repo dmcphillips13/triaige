@@ -63,5 +63,5 @@ export async function GET(request: NextRequest) {
     token_expires_at: Date.now() + expiresIn * 1000,
   });
 
-  return NextResponse.redirect(new URL("/runs", request.url));
+  return NextResponse.redirect(new URL("/repos", request.url));
 }
