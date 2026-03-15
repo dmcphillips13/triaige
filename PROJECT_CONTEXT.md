@@ -1,6 +1,6 @@
 # PROJECT_CONTEXT.md — Triaige (Session Handoff)
 
-Last updated: 2026-03-14
+Last updated: 2026-03-15
 
 ---
 
@@ -60,16 +60,21 @@ Last updated: 2026-03-14
 ### Up next — 23.x follow-ups (ordered by priority)
 
 **Block A — Quick wins (dashboard polish, can do in one pass):**
-- [ ] Step 23.9: All links open in new tab (target="_blank") — grep for `<a href` and `<Link`, add target="_blank" + rel="noopener noreferrer" to all external links
-- [ ] Step 23.5: Persist active tab across page refreshes via URL hash/query param — read hash on mount, update hash on tab change
-- [ ] Step 23.4: Rename "Main" tab to "Issues", add "Closed Issues" tab for resolved known failures — tab label + optional 4th tab or filter within Closed
-- [ ] Step 23.6: Main tab should work without requiring Settings setup — derive repo from runs data instead of reading from localStorage/Settings
+- [x] Step 23.9: All links open in new tab (target="_blank") — all external links have target="_blank" + rel="noopener noreferrer"
+- [x] Step 23.5: Persist active tab across page refreshes via URL hash/query param — hash-based tab persistence
+- [x] Step 23.4: Rename "Main" tab to "Issues", add "Closed Issues" tab for resolved known failures — 4-tab layout implemented
+- [x] Step 23.6: Main tab should work without requiring Settings setup — derives repo from runs data, falls back to localStorage
 
 **Block B — Workflow improvements (runner + dashboard changes):**
-- [ ] Step 23.2: Auto-close pre-merge runs after submit — after all failures have submissions, call close endpoint from dashboard; or have runner auto-close when gate passes
-- [ ] Step 23.7: PR run cards should show gate status (action required vs ready to merge) — runner returns gate status, dashboard shows badge on run card
-- [ ] Step 23.16: Run card status indicator on PR tab ("All addressed" badge when all failures have submissions)
-- [ ] Step 23.3: Known failure PR comment should link to open GitHub issues — update PR comment template in runner to include issue URLs
+- [x] Step 23.2: Auto-close pre-merge runs after submit — after all failures have submissions, call close endpoint from dashboard; or have runner auto-close when gate passes
+- [x] Step 23.7: PR run cards should show gate status (action required vs ready to merge) — runner returns gate status, dashboard shows badge on run card
+- [x] Step 23.16: Run card status indicator on PR tab ("All addressed" badge when all failures have submissions)
+- [ ] Step 23.3: Known failure PR comment should link to open GitHub issues — update PR comment template in runner to include issue URLs (testing in progress — need to reject a failure to create an issue, then re-trigger)
+- [x] Step 23.20: Defer GitHub issue creation until PR merges — pre-merge rejected failures record intent in `pending_issues` table; issues materialized via `/report-clean` on merge; dashboard shows "Issue will be filed on merge" in amber; pending issues filtered on re-trigger; scoped per-PR (doesn't affect other PRs). Verified end-to-end with PRs #65 and #66.
+
+- [x] Step 23.17: Collapse failure card on verdict — after approve/reject, collapse rationale + screenshots to reduce visual noise
+- [x] Step 23.18: Fix submit bar overlap — add bottom padding so the fixed "Submit Changes" bar doesn't block the last card's "Show details" link
+- [ ] Step 23.19: "View full results" link in PR comment should open in new tab — runner-generated link missing target="_blank"
 
 **Block C — CI/GitHub cleanup:**
 - [ ] Step 23.10: Delete stale PR comments when runs are superseded — store comment_id on run creation, delete via GitHub API on auto-close

@@ -129,7 +129,8 @@ Before running the E2E test, ensure a clean state:
      -c "DELETE FROM verdicts;" \
      -c "DELETE FROM failure_results;" \
      -c "DELETE FROM runs;" \
-     -c "DELETE FROM known_failures;"
+     -c "DELETE FROM known_failures;" \
+     -c "DELETE FROM pending_issues;"
    ```
    **Important**: Do NOT combine into a single `-c` with semicolons — if any
    table doesn't exist, the entire transaction rolls back and nothing is deleted.
@@ -220,11 +221,13 @@ Before running the E2E test, ensure a clean state:
 **Action**: Click **Submit Changes** on PR A's run.
 
 **Verify**:
+- [ ] Submit bar shows **"Rejected → issues on merge"** (not "Rejected → GitHub issues")
 - [ ] Approved failures → baselines committed directly to PR A's branch
       (check commit list for "triaige/update-baselines: update N baseline(s)")
-- [ ] Approved failure cards show **"Baseline committed"** label (not "Baseline PR opened")
-- [ ] Rejected failure → GitHub issue created
-- [ ] Each failure card shows its submission link
+- [ ] Approved failure cards show **"Baseline committed"** label
+- [ ] Rejected failure shows **"Issue will be filed on merge"** in amber text (not a link)
+- [ ] **No GitHub issue created yet** — check the sample app repo's issues list
+- [ ] Each failure card shows its submission link or deferred label
 - [ ] Approve/reject buttons hidden on submitted failures (action gating)
 
 **Action**: Go to PR A on GitHub.
@@ -233,30 +236,47 @@ Before running the E2E test, ensure a clean state:
 - [ ] "Triaige Visual Regression" check updated to `success`
 - [ ] New baseline commit visible in PR's commit list
 - [ ] PR is now mergeable (green merge button)
-- [ ] No "Ready to merge" comment posted (removed — check status is sufficient)
 
-### Step 4 — Verify baseline re-run on PR A
+### Step 3.5 — Verify pending issue filtering on re-trigger
 
-The baseline commit triggers a new `pull_request` workflow run.
+The baseline commit triggers a new `pull_request` workflow run on PR A.
 
 **Verify**:
 - [ ] Workflow runs and completes
-- [ ] If the rejected failure still exists: new triage run with 1 failure,
-      but merge gate recognizes it already has a submission → check created
-      as `success` immediately (gate-already-passed logic)
-- [ ] If all tests pass: `/report-clean` creates a passing check
+- [ ] The rejected failure is **not** included in the new triage run (pending
+      issue filtering skips it)
+- [ ] PR comment notes "1 failure with issue pending merge" with the test name
+- [ ] Passing check created — no actionable failures remain
 - [ ] PR remains mergeable (no hanging check)
+- [ ] Still **no GitHub issue** on the sample app repo
 
-### Step 5 — Merge PR A
+### Step 4 — Verify PR B does NOT skip the pending failure
 
-**Action**: Merge PR A on GitHub.
+Before merging PR A, verify that PR B still sees the rejected failure as a
+normal actionable failure — the pending issue is scoped to PR A only and must
+not pollute other PRs.
+
+**Prerequisite**: PR B must also fail the same test as the rejected failure in
+PR A (e.g., if PR A rejected a sidebar bug, PR B should also break the sidebar).
+
+**Verify**:
+- [ ] PR B's triage run includes the sidebar failure as **actionable** (not skipped)
+- [ ] PR B's triage comment does NOT mention "pending merge" for that test
+- [ ] The failure has approve/reject buttons — it's a normal net-new failure
+
+### Step 5 — Merge PR A (deferred issue materialization)
+
+**Action**: Merge PR A via rebase workflow (rebase onto main, push to main).
 
 **Wait**: ~3 minutes for the `push: branches: [main]` workflow to complete.
-Push-to-main no longer creates post-merge triage runs — it just calls
-`/report-clean` to auto-close pre-merge runs.
+Push-to-main calls `/report-clean` which auto-closes pre-merge runs AND
+materializes any pending issues.
 
 **Verify**:
 - [ ] PR A's pre-merge run auto-closed (moved from PR tab to Closed tab)
+- [ ] **GitHub issue now created** on the sample app repo for the rejected failure
+- [ ] `known_failures` table has an entry for the rejected test
+- [ ] Submission URL updated from `deferred:merge` to the real issue URL
 - [ ] No post-merge triage run created
 
 ### Step 6 — Check Main tab (known failures health dashboard)
@@ -287,10 +307,12 @@ failures (e.g., revert a change that was causing an unwanted visual diff).
 - [ ] New "Triaige Visual Regression" check on PR B (`action_required`)
 - [ ] Dashboard PR tab shows only the new run
 
-### Step 8 — Rebase PR B onto main
+### Step 8 — Rebase PR B onto main (known failure now active)
 
 Since PR A was merged, PR B needs to be rebased to pick up the new baselines
-(branch protection requires up-to-date branches).
+(branch protection requires up-to-date branches). The deferred issue from
+PR A is now materialized — the rejected failure should be skipped as a known
+failure with a link to the open issue.
 
 **Action**: Rebase PR B onto main and force push:
 ```
@@ -302,8 +324,11 @@ git checkout <pr-b-branch> && git rebase main && git push --force-with-lease
 **Verify**:
 - [ ] Old run auto-closed, new run created
 - [ ] New run only shows net-new failures (failures already on main are filtered)
-- [ ] If the sidebar bug from PR A is failing on main, it does NOT appear in
-      PR B's run (net-new filtering)
+- [ ] The rejected failure from PR A is **skipped as a known failure** (not actionable)
+- [ ] PR comment lists it under "known failures skipped" with **"open issue"** link
+      pointing to the GitHub issue created at merge time
+- [ ] Contrast with Step 4: before PR A merged, this same failure was actionable
+      on PR B; now it's correctly tracked as a known failure
 
 ### Step 9 — Triage and submit PR B
 
@@ -388,9 +413,18 @@ gh pr create --title "Minor styling tweak" --body "Small token change"
 - **Actionable pre-merge runs**: approve/reject + submit on PR tab
 - **Baseline commits to PR branch**: approved baselines go directly into the PR
 - **"Baseline committed" label**: correct submission label on pre-merge runs
-- **Merge gate**: check blocks merge until all failures addressed, updates to
-  `success` when gate passes
-- **No "Ready to merge" comments**: check status is sufficient
+- **Deferred issue creation**: rejected failures on pre-merge runs record intent
+  but do not create GitHub issues or `known_failures` entries until the PR merges
+- **"Issue will be filed on merge" label**: deferred submissions show amber text,
+  not a clickable link
+- **Pending issue filtering**: re-triggered CI on the same PR skips failures with
+  existing pending issues, preventing duplicate actionable runs
+- **Pending issue scoping**: pending issues on PR A do not affect PR B — other PRs
+  still see the failure as actionable until it lands on main
+- **Issue materialization on merge**: `/report-clean` creates the GitHub issue,
+  populates `known_failures`, and updates the submission URL when the PR merges
+- **Merge gate**: check blocks merge until all failures addressed (deferred
+  submissions count), updates to `success` when gate passes
 - **Gate-already-passed**: re-triggered runs with already-submitted failures
   get a passing check immediately
 - **Iterative PR workflow**: push fixes → new run with fewer failures
@@ -413,7 +447,6 @@ gh pr create --title "Minor styling tweak" --body "Small token change"
 - **Baseline commit skip**: workflow skips when commit message contains
   "triaige/update-baselines"
 - PR comment with classification table and dashboard links
-- Issue filing for rejected failures → populates `known_failures` table
 - Submission link display and action gating
 - Run lifecycle across PR / Main / Closed tabs
 - `strict: true` branch protection (require up-to-date before merging)
