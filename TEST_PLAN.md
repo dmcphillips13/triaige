@@ -116,6 +116,9 @@ comparison, and run lifecycle.
 
 Before running the E2E test, ensure a clean state:
 
+0. **Verify Render deploy is current**: all runner changes (bug fixes, schema
+   migrations) must be deployed to Render before testing. Push to main and
+   wait for the Render deploy to complete (~2-3 min). Check `/health` endpoint.
 1. **Close all open PRs and issues** on the sample app repo:
    ```
    gh pr list --state open --repo dmcphillips13/triaige-sample-app --json number -q '.[].number' | xargs -I{} gh pr close {} --delete-branch --repo dmcphillips13/triaige-sample-app
@@ -182,10 +185,14 @@ Before running the E2E test, ensure a clean state:
 1. Branch from main (not from PR A): `git checkout main && git checkout -b accent-update`
 2. Make clean changes to different tokens (e.g., accent color, border radius)
    that affect different pages than PR A.
-3. Write a narrowly scoped PR description. Example:
+3. **Important for Step 4**: PR B must also trigger the same test that PR A's
+   unexpected bug breaks (e.g., if PR A breaks the sidebar, PR B's changes
+   should also affect the sidebar page). This is needed to verify pending issue
+   scoping — PR B should see that failure as actionable, not skipped.
+4. Write a narrowly scoped PR description. Example:
    > "Change accent color and update border radius. Only color and radius
    > tokens in globals.css were changed."
-4. Push and open the PR. Wait for the `pull_request` workflow to complete.
+5. Push and open the PR. Wait for the `pull_request` workflow to complete.
 
 ### Step 0 — Verify repos landing page, navigation, and SSE connection
 
@@ -210,8 +217,8 @@ Before running the E2E test, ensure a clean state:
 - [ ] SSE connection established (check DevTools Network tab for EventSource)
 - [ ] **(27.5)** All four tabs (PR, Issues, Closed Runs, Closed Issues) are **equal width**
       regardless of count badges
-- [ ] **(27.6)** Tab counts populate **immediately on page load** — PR and Issues
-      tabs show counts in parentheses without needing to click each tab first
+- [ ] **(27.6)** Tab counts populate **immediately on page load** (all 0 at this
+      point since DB was cleared — the real count test is after Step 1 when runs exist)
 
 **Action**: Click into a run detail, then click the back link.
 
@@ -237,7 +244,13 @@ verify real-time SSE updates alongside each action.
 
 **Verify** (SSE — on the dashboard runs page, kept open from Step 0):
 - [ ] Run cards for PR A and PR B appeared **without manual refresh**
+- [ ] **(27.6)** PR tab count updated to show run count (e.g., "PR (2)") after
+      runs arrived — confirms counts work with actual data, not just 0s
 - [ ] Repo card on `/repos` updated with run count and last activity
+
+**Verify** (links — spot-check):
+- [ ] All external links (PR links, issue links, GitHub links) open in new
+      tabs (`target="_blank"`)
 
 ### Step 2 — Triage PR A on dashboard
 
@@ -258,6 +271,8 @@ verify real-time SSE updates alongside each action.
 **Verify**:
 - [ ] Approved failures show green checkmark
 - [ ] Rejected failures show red X
+- [ ] After each verdict, failure card **collapses** rationale + screenshots
+      (reduces visual noise — Step 23.17)
 - [ ] "Submit Changes" button appears
 
 ### Step 3 — Submit changes on PR A
@@ -334,7 +349,14 @@ materializes any pending issues.
 
 ### Step 6 — Check Main tab (known failures health dashboard)
 
-**Action**: Open the Triaige dashboard. Click the **Main** tab.
+**Action**: Navigate back to the runs page (or refresh).
+
+**Verify**:
+- [ ] **(27.6)** Issues tab count updated to "Issues (1)" reflecting the newly
+      created known failure — without needing to click the Issues tab first
+- [ ] Closed Runs tab count updated to reflect PR A's closed run
+
+**Action**: Click the **Issues** tab.
 
 **Verify**:
 - [ ] Known failure card appears for the rejected failure (e.g., sidebar)
@@ -426,11 +448,15 @@ The baseline commit triggers a new workflow run.
 This tests that known failures on main don't block unrelated PRs, and that
 developers are notified about skipped known failures.
 
-**Action**: Create PR C with a small change that also triggers the known failure
-(e.g., change a color token that affects the same page as the broken test):
+**Action**: Create PR C with a change that affects the same page as the known
+failure. This is important — the change should modify the known-broken area so
+that drift detection fires (the known failure's screenshot will differ from
+the stored one).
+
 ```
 git checkout -b minor-tweak main
-# make a small CSS change
+# Make a CSS change that affects the same page as the known failure
+# (e.g., change a color/spacing token on the sidebar page if that's the broken test)
 git push -u origin minor-tweak
 gh pr create --title "Minor styling tweak" --body "Small token change"
 ```
@@ -525,6 +551,9 @@ gh pr create --title "Minor styling tweak" --body "Small token change"
   label length or count badges
 - **(27.6) Tab counts on load**: all tab counts populate immediately on page
   load, not just when the tab is clicked
+- **Collapse on verdict**: failure cards collapse rationale + screenshots after
+  approve/reject to reduce noise
+- **External links in new tab**: all GitHub links open in a new tab
 - **Auto-close pre-merge runs**: superseded by newer run, or on merge via
   `/report-clean`
 - **Baseline commit skip**: workflow skips when commit message contains

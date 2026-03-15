@@ -100,7 +100,14 @@ Last updated: 2026-03-15
   - [x] 27.4: GitHub issues include PR number with clickable link
   - [x] 27.5: Equal-width tabs
   - [x] 27.6: Tab counts populate on initial page load (not just on tab click)
-- [ ] Step 28: Rigorous E2E test — full pipeline verification including SSE (trigger PR → watch run appear live → approve/reject → submit → verify merge gate + auto-close via SSE → verify closed run moves tabs without refresh)
+- [ ] Step 28: Rigorous E2E test — full pipeline verification (see TEST_PLAN.md)
+  - [ ] 28.1: Prerequisites (deploy to Render, clean state, update baselines)
+  - [ ] 28.2: Create PRs A and B on sample app
+  - [ ] 28.3: Execute test steps 0-14
+  - **Findings — fix after E2E (minor):**
+    - _(none yet — add issues found during testing here)_
+  - **Findings — fix during E2E (blocking):**
+    - _(none yet — major bugs that require restarting the test)_
 - [ ] Step 29: Demo presentation — see `docs/slides.md` for full demo plan
   - [ ] 29.1: Pre-stage demo data — create two sample app PRs (one with completed triage run, one ready to trigger live for SSE moment)
   - [ ] 29.2: Demo flow script — define exact live sequence with slide/demo transitions and timing marks; see `docs/slides.md`
