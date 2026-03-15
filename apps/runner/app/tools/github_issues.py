@@ -22,6 +22,7 @@ def create_bug_issue(
     rationale: str,
     dashboard_url: str | None = None,
     github_token: str | None = None,
+    pr_number: int | None = None,
 ) -> str:
     """Create a GitHub issue for a rejected visual regression failure.
 
@@ -34,6 +35,7 @@ def create_bug_issue(
         rationale: Explanation of the classification.
         dashboard_url: Base URL of the Triaige dashboard.
         github_token: Per-request token. Falls back to env var.
+        pr_number: Originating PR number for context.
 
     Returns:
         URL of the created issue.
@@ -45,11 +47,22 @@ def create_bug_issue(
     base_url = dashboard_url or settings.dashboard_url
     run_link = f"{base_url}/runs/{run_id}"
 
+    # Build source line with PR link when available
+    if pr_number:
+        pr_url = f"https://github.com/{repo}/pull/{pr_number}"
+        source_line = f"**Source:** [PR #{pr_number}]({pr_url})"
+    else:
+        source_line = None
+
     body_lines = [
         "## Visual Regression Bug Report",
         "",
         f"**Test:** `{test_name}`",
         f"**Classification:** {classification} ({round(confidence * 100)}% confidence)",
+    ]
+    if source_line:
+        body_lines.append(source_line)
+    body_lines.extend([
         "",
         "### Analysis",
         "",
@@ -61,7 +74,7 @@ def create_bug_issue(
         "",
         "---",
         "*Created by [Triaige](https://triaige-dashboard.vercel.app) visual regression triage*",
-    ]
+    ])
 
     client = httpx.Client(
         base_url="https://api.github.com",

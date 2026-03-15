@@ -100,12 +100,18 @@ def _detect_regions(mask: Image.Image) -> list[str]:
 
 
 def _build_overlay(actual: Image.Image, mask: Image.Image) -> str:
-    """Composite red-highlighted changed pixels onto the actual screenshot."""
+    """Composite red-highlighted changed pixels onto a grayscale background.
+
+    Converts the actual screenshot to grayscale so the red diff highlights
+    stand out clearly against a neutral background.
+    """
+    # Convert actual to grayscale, then back to RGBA for compositing
+    gray_bg = actual.convert("L").convert("RGBA")
     # Create a solid red layer the same size as the actual image
     red = Image.new("RGBA", actual.size, (255, 0, 0, 128))
     # Mask is already "L" mode (0 or 255), use directly as alpha
-    # Composite: where mask is 255, blend red onto actual
-    overlay = Image.composite(red, actual, mask)
+    # Composite: where mask is 255, blend red onto grayscale background
+    overlay = Image.composite(red, gray_bg, mask)
 
     buf = io.BytesIO()
     overlay.save(buf, format="PNG")

@@ -154,6 +154,7 @@ async def report_clean(request: Request):
                     confidence=pi["confidence"],
                     rationale=pi["rationale"],
                     github_token=None,
+                    pr_number=pi.get("pr_number"),
                 )
                 issue_number = int(issue_url.rstrip("/").split("/")[-1])
                 await store.add_known_failure(
@@ -693,6 +694,7 @@ async def create_issues(req: CreateIssuesRequest, request: Request):
             logger.info("Deferred issue for %s until PR #%d merges", name, pr_number)
         else:
             try:
+                run_pr = await store.get_run_pr_number(req.run_id)
                 issue_url = await asyncio.to_thread(
                     create_bug_issue,
                     repo=req.repo,
@@ -702,6 +704,7 @@ async def create_issues(req: CreateIssuesRequest, request: Request):
                     confidence=result.ask_response.confidence,
                     rationale=result.ask_response.rationale,
                     github_token=github_token,
+                    pr_number=run_pr,
                 )
                 issues.append({"test_name": name, "issue_url": issue_url})
 
