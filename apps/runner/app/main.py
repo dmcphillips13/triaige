@@ -171,6 +171,55 @@ async def report_clean(request: Request):
             except Exception as e:
                 logger.warning("Failed to materialize pending issue for %s: %s", pi["test_name"], e)
 
+        # --- Drift detection on merge ---
+        # For existing known failures, compare stored screenshot against the
+        # actual screenshot from the pre-merge run that just merged. If the
+        # merged PR changed a known-broken area, post a notice on the issue.
+        if closed_ids:
+            known_failures = await store.list_known_failures(repo)
+            for kf in known_failures:
+                try:
+                    # Find the actual screenshot from the closed run
+                    for cid in closed_ids:
+                        result = await store.get_result(cid, kf["test_name"])
+                        if result and result.screenshot_actual:
+                            stored = kf.get("screenshot_base64")
+                            if stored and stored != result.screenshot_actual:
+                                # Deduplicate: check if we already posted for this PR
+                                from app.tools.github_checks import _get_client
+                                def _check_and_post(kf_issue=kf["issue_number"], kf_test=kf["test_name"]):
+                                    client = _get_client(repo)
+                                    existing = client.get(
+                                        f"/repos/{repo}/issues/{kf_issue}/comments",
+                                        params={"per_page": 100},
+                                    )
+                                    existing.raise_for_status()
+                                    marker = f"PR #{pr_number}"
+                                    if any(marker in c.get("body", "") for c in existing.json()):
+                                        return False  # Already posted for this PR
+                                    pr_url = f"https://github.com/{repo}/pull/{pr_number}"
+                                    comment = (
+                                        f"**Note:** PR #{pr_number} ([view]({pr_url})) "
+                                        f"further modifies this area. The visual appearance has changed "
+                                        f"since this issue was filed. Please verify manually."
+                                    )
+                                    client.post(
+                                        f"/repos/{repo}/issues/{kf_issue}/comments",
+                                        json={"body": comment},
+                                    )
+                                    return True
+                                posted = await asyncio.to_thread(_check_and_post)
+                                if posted:
+                                    logger.info(
+                                        "Posted merge drift notice on issue #%d for %s (PR #%s)",
+                                        kf["issue_number"], kf["test_name"], pr_number,
+                                    )
+                            break  # Only need one run's screenshot per test
+                except Exception as e:
+                    logger.warning(
+                        "Failed drift check for %s on merge: %s", kf["test_name"], e,
+                    )
+
     rs = await repo_settings.get_settings(repo)
     if not rs.merge_gate:
         return {"status": "ok", "reason": "merge_gate disabled, runs closed"}
@@ -268,43 +317,16 @@ async def triage_run(req: TriageRunRequest, request: Request):
                 logger.info("Skipped %d failure(s) with pending issues on PR #%d", len(skipped_pending), pr_number_val)
 
     # --- Screenshot comparison for skipped known failures ---
-    # If a PR modifies an area that's already broken, notify the issue
+    # Detect drift so PR comment can show "visual drift detected", but don't
+    # post to the GitHub issue yet — that happens in /report-clean on merge.
     if skipped_known and repo and mode == "pre_merge" and req.pr_context:
-        github_token = request.headers.get("X-GitHub-Token")
         for skipped in skipped_known:
             try:
                 stored = await store.get_known_failure_screenshot(
                     repo, skipped["test_name"]
                 )
                 if stored and skipped["screenshot"] and stored != skipped["screenshot"]:
-                    # Screenshots differ — this PR further modifies the broken area
                     skipped["has_drift"] = True
-                    kf_rows = await store.list_known_failures(repo)
-                    matching = [
-                        kf for kf in kf_rows
-                        if kf["test_name"] == skipped["test_name"]
-                    ]
-                    for kf in matching:
-                        pr_number = req.pr_context.pr_number
-                        pr_url = f"https://github.com/{repo}/pull/{pr_number}" if pr_number else ""
-                        comment = (
-                            f"**Note:** PR #{pr_number} ([view]({pr_url})) "
-                            f"further modifies this area. The visual appearance has changed "
-                            f"since this issue was filed. Please verify manually."
-                        )
-                        # Use App installation token for reliability
-                        from app.tools.github_checks import _get_client
-                        def _post_comment():
-                            client = _get_client(repo)
-                            client.post(
-                                f"/repos/{repo}/issues/{kf['issue_number']}/comments",
-                                json={"body": comment},
-                            )
-                        await asyncio.to_thread(_post_comment)
-                        logger.info(
-                            "Posted modification notice on issue #%d for %s",
-                            kf["issue_number"], skipped["test_name"],
-                        )
             except Exception as e:
                 logger.warning(
                     "Failed screenshot comparison for %s: %s",
