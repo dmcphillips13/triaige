@@ -86,8 +86,8 @@ Last updated: 2026-03-15
 - [x] Step 23.1: Known failure screenshot comparison — comparison + issue comment firing correctly; PR comment now distinguishes drift ("⚠️ visual drift detected") from unchanged known failures; issue gets "further modifies this area" comment when screenshot differs; original screenshot in known_failures preserved as permanent reference
 
 ### After follow-ups — Steps 24-25
-- [ ] Step 24: Repos landing page — repo cards with setup checklist, "Connect Repo" via GitHub App, unconfigured repos rejected
-- [ ] Step 25: Settings UI — auto-generated API key + runner URL for copy-paste, triage/merge gate toggles, inline CLI instructions
+- [x] Step 24: Repos landing page — `/repos` as post-login landing page with repo cards showing run stats; `/runs?repo=owner/repo` for repo-scoped runs; back links and logo point to `/repos`; skeleton loading; "Add or remove repositories" links to GitHub App installation settings
+- [ ] Step 25: Settings UI — remove localStorage repo selection (now URL-scoped), triage mode config per repo, inline CLI instructions
 
 ### After 24-25 — SSE + remaining
 - [ ] Step 23-SSE: Server-sent events for real-time dashboard updates — runner emits events on run creation, classification completion, and run close; dashboard subscribes and updates runs list + run detail live

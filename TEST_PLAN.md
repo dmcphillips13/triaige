@@ -187,6 +187,32 @@ Before running the E2E test, ensure a clean state:
    > tokens in globals.css were changed."
 4. Push and open the PR. Wait for the `pull_request` workflow to complete.
 
+### Step 0 — Verify repos landing page and navigation
+
+**Action**: Sign out and sign back in to the Triaige dashboard.
+
+**Verify**:
+- [ ] After login, redirected to `/repos` (not `/runs`)
+- [ ] Repos page shows connected repos as cards with stats
+- [ ] Each card shows owner, repo name, open run count, and last activity
+- [ ] Skeleton loading state shows while page loads
+- [ ] "Add or remove repositories" link opens GitHub App installation settings
+- [ ] Logo click navigates to `/repos`
+
+**Action**: Click a repo card.
+
+**Verify**:
+- [ ] Navigates to `/runs?repo=owner/repo`
+- [ ] Runs page shows repo name as header with owner below
+- [ ] "All repositories" back link visible, navigates to `/repos`
+- [ ] Only runs for that repo are shown
+- [ ] Visiting `/runs` without `?repo=` redirects to `/repos`
+
+**Action**: Click into a run detail, then click the back link.
+
+**Verify**:
+- [ ] Back link returns to `/runs?repo=owner/repo` (preserves repo context)
+
 ### Step 1 — Check PR comments and merge gate
 
 **Action**: Go to PR A and PR B on GitHub.
@@ -203,7 +229,7 @@ Before running the E2E test, ensure a clean state:
 
 ### Step 2 — Triage PR A on dashboard
 
-**Action**: Open the Triaige dashboard. PR tab should be the default.
+**Action**: From `/repos`, click the sample app repo card. PR tab should be the default.
 
 **Verify**:
 - [ ] Both PR A and PR B runs appear in the PR tab
@@ -414,12 +440,14 @@ gh pr create --title "Minor styling tweak" --body "Small token change"
 
 ### Step 14 — Final dashboard state
 
-**Action**: Check all three tabs.
+**Action**: Navigate to `/repos`, then click the sample app repo card.
 
 **Verify**:
+- [ ] **Repos page**: sample app card shows updated run count and last activity
 - [ ] **PR tab**: shows only open PR runs (PR C if not yet merged, otherwise empty)
-- [ ] **Main tab**: empty (known failure was closed)
-- [ ] **Closed tab**: shows closed runs from all merged PRs
+- [ ] **Issues tab**: empty (known failure was closed)
+- [ ] **Closed Runs tab**: shows closed runs from all merged PRs
+- [ ] **Closed Issues tab**: shows the closed known failure
 - [ ] Run counts in tab labels are accurate
 
 ### What this validates
@@ -467,9 +495,11 @@ gh pr create --title "Minor styling tweak" --body "Small token change"
   don't clutter PR checks
 - **OAuth token refresh**: session stores refresh token, auto-refreshes access
   token before 8-hour expiry; validated by signing out and back in before test
+- **Repos landing page**: post-login redirect, repo cards with stats, navigation to repo-scoped runs
+- **Repo-scoped runs**: `/runs?repo=` filtering, back link preservation, redirect without repo param
 - PR comment with classification table and dashboard links
 - Submission link display and action gating
-- Run lifecycle across PR / Main / Closed tabs
+- Run lifecycle across PR / Issues / Closed Runs / Closed Issues tabs
 - `strict: true` branch protection (require up-to-date before merging)
 
 ---

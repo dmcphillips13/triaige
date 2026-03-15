@@ -63,13 +63,6 @@ export function UserNav() {
               <div className="border-b border-zinc-100 px-4 py-2">
                 <p className="text-sm font-medium text-zinc-900">{user.login}</p>
               </div>
-              <Link
-                href="/settings"
-                onClick={() => setMenuOpen(false)}
-                className="block px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50"
-              >
-                Settings
-              </Link>
               <a
                 href="/api/auth/logout"
                 className="block px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50"
