@@ -94,11 +94,14 @@ Last updated: 2026-03-15
 
 ### Up next
 - [ ] Step 27: Bug fixes — address known issues before E2E testing
-  - [ ] 27.1: Issue drift comment should only fire on merge — currently posts "further modifies this area" during pre-merge triage, but it's only relevant if changes actually merge; also producing duplicates
-  - [ ] 27.2: Diff overlay should use grayscale — convert baseline/actual to grayscale so the red diff overlay stands out more clearly
-  - [ ] 27.3: Issues tab should show full diff views like run cards — known failure cards only show a single screenshot, should show baseline vs actual comparison
-  - [ ] 27.4: Add PR number to baseline failure for issue — when filing a GitHub issue for a rejected failure, include the PR number for context
-  - [ ] 27.5: Tabs should all be the same size — PR/Issues/Closed Runs/Closed Issues tabs have inconsistent widths
+  - **Group A — Quick runner fixes:**
+    - [ ] 27.2: Diff overlay should use grayscale — convert actual to grayscale in `_build_overlay()` so the red diff highlights stand out
+    - [ ] 27.4: Add PR number + link to GitHub issues — add `pr_number` param to `create_bug_issue()`, pass from both `/create-issues` and `/report-clean`
+  - **Group B — Drift comment rework:**
+    - [ ] 27.1: Issue drift comment should only fire on merge — move drift detection from `/triage-run` to `/report-clean`; add deduplication by checking existing issue comments
+  - **Group C — Dashboard UI:**
+    - [ ] 27.3: Issues tab should show full diff views — known failure cards need both baseline + actual screenshots; reuse `ScreenshotViewer` component
+    - [ ] 27.5: Tabs should all be the same size — add `flex-1` or `min-w` to tab buttons in `runs-list.tsx`
 - [ ] Step 28: Rigorous E2E test — full pipeline verification including SSE (trigger PR → watch run appear live → approve/reject → submit → verify merge gate + auto-close via SSE → verify closed run moves tabs without refresh)
 - [ ] Step 29: Demo presentation — see `docs/slides.md` for full demo plan
   - [ ] 29.1: Pre-stage demo data — create two sample app PRs (one with completed triage run, one ready to trigger live for SSE moment)

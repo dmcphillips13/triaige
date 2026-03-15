@@ -208,6 +208,8 @@ Before running the E2E test, ensure a clean state:
 - [ ] Only runs for that repo are shown
 - [ ] Visiting `/runs` without `?repo=` redirects to `/repos`
 - [ ] SSE connection established (check DevTools Network tab for EventSource)
+- [ ] **(27.5)** All four tabs (PR, Issues, Closed Runs, Closed Issues) are **equal width**
+      regardless of count badges
 
 **Action**: Click into a run detail, then click the back link.
 
@@ -243,6 +245,9 @@ verify real-time SSE updates alongside each action.
 - [ ] Both PR A and PR B runs appear in the PR tab
 - [ ] Clicking PR A's run shows failure cards with **approve/reject buttons**
 - [ ] No known failure annotations (no main-branch history yet)
+- [ ] **(27.2)** Open a failure card, switch to **Diff Overlay** view — background image
+      is grayscale (not full color), red diff highlights are clearly visible
+- [ ] **(27.2)** Side-by-side and swipe views still show full-color screenshots
 
 **Action**: For each failure in PR A's run:
 - **Approve** failures that match the PR description (expected design changes)
@@ -317,6 +322,7 @@ materializes any pending issues.
 **Verify**:
 - [ ] PR A's pre-merge run auto-closed (moved from PR tab to Closed tab)
 - [ ] **GitHub issue now created** on the sample app repo for the rejected failure
+- [ ] **(27.4)** Issue body includes **"Source: PR #N"** with a **clickable link** to PR A
 - [ ] `known_failures` table has an entry for the rejected test
 - [ ] Submission URL updated from `deferred:merge` to the real issue URL
 - [ ] No post-merge triage run created
@@ -330,7 +336,9 @@ materializes any pending issues.
 
 **Verify**:
 - [ ] Known failure card appears for the rejected failure (e.g., sidebar)
-- [ ] Card shows the failing baseline screenshot prominently
+- [ ] **(27.3)** Card shows a **screenshot comparison viewer** (not just a single image)
+      with side-by-side, swipe, and diff overlay modes — baseline from when the
+      issue was filed vs actual from the latest failing run
 - [ ] Card shows issue number with link to the GitHub issue
 - [ ] Card has a "Close" button
 - [ ] No run cards or "Diagnostic" badges — Main tab shows individual known
@@ -438,10 +446,14 @@ gh pr create --title "Minor styling tweak" --body "Small token change"
 - [ ] If the known failure's screenshot changed (PR C modified the area):
       - [ ] PR comment shows **"⚠️ visual drift detected"** next to that test (not
             just "open issue")
-      - [ ] **Comment posted on the GitHub issue** noting the PR that modified it
-            further: "PR #N further modifies this area"
+      - [ ] **(27.1)** During this pre-merge triage, **no** "further modifies this area"
+            comment is posted on the GitHub issue — drift comment is deferred
+      - [ ] **(27.1)** Re-triggering triage on the same PR does **not** produce
+            duplicate drift comments
 - [ ] If the known failure's screenshot is **unchanged**: PR comment shows just
       "open issue" link with no drift warning
+- [ ] **(27.1)** Only after PR C **merges** (if it does): drift comment posted on
+      the GitHub issue **once** — "PR #N further modifies this area"
 
 ### Step 13 — Close known failure from Main tab
 
@@ -497,8 +509,18 @@ gh pr create --title "Minor styling tweak" --body "Small token change"
 - **Known failure PR comment**: skipped known failures listed with manual
   verification note
 - **Screenshot comparison with drift detection**: if a PR changes a known-broken
-  area, comment posted on the GitHub issue AND PR comment shows "⚠️ visual drift
-  detected"; unchanged known failures show just the issue link
+  area, PR comment shows "⚠️ visual drift detected"; drift comment on the GitHub
+  issue is deferred until merge (27.1)
+- **(27.1) Drift comment deferred to merge**: "further modifies this area" only
+  fires on merge, not during pre-merge triage; no duplicates on re-trigger
+- **(27.2) Grayscale diff overlay**: diff overlay view uses grayscale background
+  so red highlights stand out; side-by-side and swipe remain full color
+- **(27.3) Issues tab full diff views**: known failure cards show screenshot
+  comparison viewer (baseline vs actual) instead of a single image
+- **(27.4) PR number in GitHub issues**: filed issues include "Source: PR #N"
+  with a clickable link to the originating PR
+- **(27.5) Equal-width tabs**: all four tabs are the same width regardless of
+  label length or count badges
 - **Auto-close pre-merge runs**: superseded by newer run, or on merge via
   `/report-clean`
 - **Baseline commit skip**: workflow skips when commit message contains
