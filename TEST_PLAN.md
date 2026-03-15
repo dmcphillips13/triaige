@@ -191,7 +191,7 @@ Before running the E2E test, ensure a clean state:
 
 **Verify** (both PRs):
 - [ ] Triaige comment exists with classification table
-- [ ] "View full results" link points to dashboard
+- [ ] "View full results" link points to dashboard and **opens in a new tab**
 - [ ] "Triaige Visual Regression" check shows `action_required` (blocking merge)
 - [ ] "Action required: address all failures before merging." in comment
 
@@ -220,7 +220,10 @@ Before running the E2E test, ensure a clean state:
 
 **Action**: Click **Submit Changes** on PR A's run.
 
-**Verify**:
+**Verify** (while submitting):
+- [ ] Approve/reject buttons are **disabled** during submission (no "click to undo")
+
+**Verify** (after submit completes):
 - [ ] Submit bar shows **"Rejected → issues on merge"** (not "Rejected → GitHub issues")
 - [ ] Approved failures → baselines committed directly to PR A's branch
       (check commit list for "triaige/update-baselines: update N baseline(s)")
