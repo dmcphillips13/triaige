@@ -106,8 +106,8 @@ Last updated: 2026-03-15
   - [ ] 28.3: Execute test steps 0-14
   - **Findings — fix after E2E (minor):**
     - _(none yet — add issues found during testing here)_
-  - **Findings — fix during E2E (blocking):**
-    - _(none yet — major bugs that require restarting the test)_
+  - **Findings — fixed during E2E:**
+    - Tabs not visible when zero runs exist (page showed "No triage runs found" instead of rendering RunsList with tabs)
 - [ ] Step 29: Demo presentation — see `docs/slides.md` for full demo plan
   - [ ] 29.1: Pre-stage demo data — create two sample app PRs (one with completed triage run, one ready to trigger live for SSE moment)
   - [ ] 29.2: Demo flow script — define exact live sequence with slide/demo transitions and timing marks; see `docs/slides.md`

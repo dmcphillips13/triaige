@@ -47,11 +47,7 @@ export default async function RunsPage({
       </h1>
       <p className="text-sm text-zinc-400">{repo}</p>
 
-      {runs.length === 0 ? (
-        <p className="mt-8 text-center text-zinc-500">No triage runs found.</p>
-      ) : (
-        <RunsList runs={runs} repo={repo} />
-      )}
+      <RunsList runs={runs} repo={repo} />
     </div>
   );
 }
