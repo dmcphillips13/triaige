@@ -396,7 +396,12 @@ gh pr create --title "Minor styling tweak" --body "Small token change"
       verification note: "These tests are failing on main with open issues.
       Please verify these areas manually..."
 - [ ] If the known failure's screenshot changed (PR C modified the area):
-      **comment posted on the GitHub issue** noting the PR that modified it further
+      - [ ] PR comment shows **"⚠️ visual drift detected"** next to that test (not
+            just "open issue")
+      - [ ] **Comment posted on the GitHub issue** noting the PR that modified it
+            further: "PR #N further modifies this area"
+- [ ] If the known failure's screenshot is **unchanged**: PR comment shows just
+      "open issue" link with no drift warning
 
 ### Step 13 — Close known failure from Main tab
 
@@ -449,8 +454,9 @@ gh pr create --title "Minor styling tweak" --body "Small token change"
 - **Known failure passthrough**: known failures on main don't block unrelated PRs
 - **Known failure PR comment**: skipped known failures listed with manual
   verification note
-- **Screenshot comparison**: if a PR changes a known-broken area, comment posted
-  on the GitHub issue
+- **Screenshot comparison with drift detection**: if a PR changes a known-broken
+  area, comment posted on the GitHub issue AND PR comment shows "⚠️ visual drift
+  detected"; unchanged known failures show just the issue link
 - **Auto-close pre-merge runs**: superseded by newer run, or on merge via
   `/report-clean`
 - **Baseline commit skip**: workflow skips when commit message contains
