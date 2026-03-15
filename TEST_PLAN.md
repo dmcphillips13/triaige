@@ -160,6 +160,8 @@ Before running the E2E test, ensure a clean state:
    Checks (read/write) for merge gate support.
 7. **Pull updated baselines locally**: `git pull` on the sample app repo to
    get the latest baseline screenshots before creating PR branches.
+8. **Sign out and sign back in** to the Triaige dashboard to get a fresh
+   session with a refresh token. This validates the OAuth token refresh flow.
 
 ### Setup: Create two PRs
 
@@ -194,6 +196,7 @@ Before running the E2E test, ensure a clean state:
 - [ ] "View full results" link points to dashboard and **opens in a new tab**
 - [ ] "Triaige Visual Regression" check shows `action_required` (blocking merge)
 - [ ] "Action required: address all failures before merging." in comment
+- [ ] PR checks show only `visual-tests` job — **no skipped `close-pr-runs` job**
 
 **Verify** (PR A specifically):
 - [ ] Mix of expected/unexpected classifications
@@ -240,7 +243,7 @@ Before running the E2E test, ensure a clean state:
 - [ ] New baseline commit visible in PR's commit list
 - [ ] PR is now mergeable (green merge button)
 
-### Step 3.5 — Verify pending issue filtering on re-trigger
+### Step 3.5 — Verify pending issue filtering and stale comment cleanup
 
 The baseline commit triggers a new `pull_request` workflow run on PR A.
 
@@ -249,6 +252,8 @@ The baseline commit triggers a new `pull_request` workflow run on PR A.
 - [ ] The rejected failure is **not** included in the new triage run (pending
       issue filtering skips it)
 - [ ] PR comment notes "1 failure with issue pending merge" with the test name
+- [ ] **Previous triage comment deleted** — only the latest comment remains on
+      the PR (no stale comments from the prior run)
 - [ ] Passing check created — no actionable failures remain
 - [ ] PR remains mergeable (no hanging check)
 - [ ] Still **no GitHub issue** on the sample app repo
@@ -308,6 +313,7 @@ failures (e.g., revert a change that was causing an unwanted visual diff).
 - [ ] Old pre-merge run auto-closed (superseded by new run)
 - [ ] New triage run created with fewer failures (the fixed ones pass now)
 - [ ] New "Triaige Visual Regression" check on PR B (`action_required`)
+- [ ] **Previous triage comment deleted** — only the new comment remains
 - [ ] Dashboard PR tab shows only the new run
 
 ### Step 8 — Rebase PR B onto main (known failure now active)
@@ -449,6 +455,12 @@ gh pr create --title "Minor styling tweak" --body "Small token change"
   `/report-clean`
 - **Baseline commit skip**: workflow skips when commit message contains
   "triaige/update-baselines"
+- **Stale comment cleanup**: previous Triaige comments deleted when a new one
+  is posted (no comment buildup from superseded runs)
+- **Separate CI workflows**: `close-pr-runs` in its own workflow so skipped jobs
+  don't clutter PR checks
+- **OAuth token refresh**: session stores refresh token, auto-refreshes access
+  token before 8-hour expiry; validated by signing out and back in before test
 - PR comment with classification table and dashboard links
 - Submission link display and action gating
 - Run lifecycle across PR / Main / Closed tabs
