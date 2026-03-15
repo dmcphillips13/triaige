@@ -91,16 +91,15 @@ Last updated: 2026-03-15
 
 ### Up next — SSE + Polish
 - [ ] Step 26: Server-sent events for real-time dashboard updates — runner emits events on run creation, classification completion, and run close; dashboard subscribes and updates runs list + run detail live
-- [ ] Step 27: Polish + Loom
-- [ ] Step 28 (stretch): Repo setup CLI (`npx triaige init`) — guided setup: checks `gh` auth, verifies dashboard connection + GitHub App Checks permission, sets GitHub secrets, scaffolds workflow + script, detects Playwright config, offers initial baseline generation + commit, branch protection setup
-- [ ] Step 29 (stretch): Issue attribution agent — async agent scans merge history, adds attribution comments to issues
-- [ ] Step 30 (stretch): Baseline knowledge doc — LLM auto-generates semantic descriptions of each page from baseline screenshots and app code; classifier references during triage for richer context
-- [ ] Step 31 (stretch): Separate test repo support — link a dedicated Playwright/baselines repo separate from the UI repo
-- [ ] Step 32 (stretch): Auto-approve baselines above confidence threshold
-- [ ] Step 33 (stretch): Procedural memory — self-improving triage instructions via reflection
-- [ ] Step 34 (stretch): Component ownership lookup
-- [ ] Step 35 (stretch): Auto-close main dashboard failures when linked issue closes (webhook)
-- [ ] Step 36 (stretch): RAGAS evaluation
+- [ ] Step 27 (stretch): Baseline knowledge doc — LLM auto-generates semantic descriptions of each page from baseline screenshots and app code; classifier references during triage for richer context
+- [ ] Step 28 (stretch): Procedural memory — self-improving triage instructions via reflection
+
+### Post-Demo Day
+- [ ] Repo setup CLI (`npx triaige init`) — guided setup: checks `gh` auth, verifies dashboard connection + GitHub App Checks permission, sets GitHub secrets, scaffolds workflow + script, detects Playwright config, offers initial baseline generation + commit, branch protection setup
+- [ ] Component ownership lookup
+- [ ] RAGAS evaluation
+- [ ] Separate test repo support — link a dedicated Playwright/baselines repo separate from the UI repo
+- [ ] Auto-approve baselines above confidence threshold
 
 ---
 
