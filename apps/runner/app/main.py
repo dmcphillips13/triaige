@@ -166,24 +166,19 @@ async def triage_run(req: TriageRunRequest, request: Request):
                 if r.pr_context is None:
                     r.pr_context = req.pr_context
 
-    # --- Net-new filtering: skip failures already tracked or submitted ---
-    skipped_known: list[dict] = []  # Known/submitted failures skipped by filtering
+    # --- Net-new filtering: skip failures tracked as known failures (open issues) ---
+    skipped_known: list[dict] = []
     if repo:
         existing = await store.get_existing_failures_with_issues(repo)
-        pr_num = req.pr_context.pr_number if req.pr_context else None
-        already_submitted = await store.get_already_submitted_test_names(repo, pr_num) if pr_num else {}
-        # Merge both: known failures (with issue URLs) + already-submitted tests
-        all_existing = {**{k: None for k in already_submitted}, **existing}
-        if all_existing:
+        if existing:
             skipped_requests = [
                 r for r in ask_requests
-                if extract_test_name(r) in all_existing
+                if extract_test_name(r) in existing
             ]
             ask_requests = [
                 r for r in ask_requests
-                if extract_test_name(r) not in all_existing
+                if extract_test_name(r) not in existing
             ]
-            # Collect skipped failure info for PR comment + screenshot comparison
             for r in skipped_requests:
                 test_name = extract_test_name(r)
                 screenshot = r.run_summary.screenshot_actual if r.run_summary else None
@@ -191,7 +186,6 @@ async def triage_run(req: TriageRunRequest, request: Request):
                     "test_name": test_name,
                     "screenshot": screenshot,
                     "issue_url": existing.get(test_name),
-                    "submission_url": already_submitted.get(test_name),
                 })
 
     # --- Screenshot comparison for skipped known failures ---
