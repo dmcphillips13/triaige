@@ -336,6 +336,27 @@ async def get_existing_failures_with_issues(repo: str) -> dict[str, str]:
     return {row["test_name"]: row["issue_url"] for row in rows}
 
 
+async def get_already_submitted_test_names(repo: str) -> dict[str, str]:
+    """Get test names that already have submissions on open pre-merge runs.
+
+    Returns {test_name: submission_url} so they can be skipped and linked
+    in the PR comment.
+    """
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """SELECT DISTINCT ON (s.test_name) s.test_name, s.url
+               FROM submissions s
+               JOIN runs r ON r.run_id = s.run_id
+               WHERE r.repo = $1
+                 AND r.triage_mode = 'pre_merge'
+                 AND r.closed = FALSE
+               ORDER BY s.test_name, s.created_at DESC""",
+            repo,
+        )
+    return {row["test_name"]: row["url"] for row in rows}
+
+
 async def auto_close_pre_merge_runs(repo: str, pr_number: int) -> list[str]:
     """Close all open pre-merge runs for a repo/PR combo.
 

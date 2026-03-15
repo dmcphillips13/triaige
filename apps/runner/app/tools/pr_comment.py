@@ -117,8 +117,11 @@ def post_triage_comment(
         ])
         for s in skipped:
             issue_url = s.get("issue_url")
+            submission_url = s.get("submission_url")
             if issue_url:
                 lines.append(f"- `{s['test_name']}` — [open issue]({issue_url})")
+            elif submission_url:
+                lines.append(f"- `{s['test_name']}` — [already addressed]({submission_url})")
             else:
                 lines.append(f"- `{s['test_name']}`")
         lines.extend([

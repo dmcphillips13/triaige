@@ -83,17 +83,13 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
   const isPreMerge = run.triage_mode === "pre_merge";
   const isPostMerge = run.triage_mode !== "pre_merge";
 
-  // Derive gate status from submissions + known failures
+  // Derive gate status from this run's submissions only
   const allAddressed =
     actionsLoaded &&
     isPreMerge &&
     !isClosed &&
     run.results.length > 0 &&
-    run.results.every(
-      (r) =>
-        submitted[r.test_name] ||
-        knownFailures[r.test_name]?.open_submission
-    );
+    run.results.every((r) => submitted[r.test_name]);
   const gateStatus = !actionsLoaded || isClosed || !isPreMerge
     ? null
     : allAddressed
