@@ -6,7 +6,7 @@ Last updated: 2026-03-15
 
 ## Current status
 
-**Phase:** Repos landing page and settings cleanup complete. Next: SSE for real-time dashboard updates, then Polish + Loom.
+**Phase:** SSE complete. Next: bug fixes, E2E testing (including SSE verification), then Google Slides.
 
 ### Completed
 - [x] Project planning and scoping
@@ -89,8 +89,23 @@ Last updated: 2026-03-15
 - [x] Step 24: Repos landing page — `/repos` as post-login landing page with repo cards showing run stats; `/runs?repo=owner/repo` for repo-scoped runs; back links and logo point to `/repos`; skeleton loading; "Add or remove repositories" links to GitHub App installation settings
 - [x] Step 25: Settings page removed — localStorage repo selection obsolete (now URL-scoped via repos page); settings page and nav link deleted
 
-### Up next — SSE
-- [ ] Step 26: Server-sent events for real-time dashboard updates — runner emits events on run creation, classification completion, and run close; dashboard subscribes and updates runs list + run detail live
+### Step 26 — SSE (complete)
+- [x] Step 26: Server-sent events for real-time dashboard updates — in-memory event bus on runner emits `run_created`/`run_closed` at all mutation points; SSE endpoint with 30s keepalive; dashboard proxy streams SSE directly; React hook with EventSource + tab-refocus reconnection; runs list and run detail pages update live
+
+### Up next
+- [ ] Step 27: Bug fixes — address known issues before E2E testing
+  - [ ] 27.1: Issue drift comment should only fire on merge — currently posts "further modifies this area" during pre-merge triage, but it's only relevant if changes actually merge; also producing duplicates
+  - [ ] 27.2: Diff overlay should use grayscale — convert baseline/actual to grayscale so the red diff overlay stands out more clearly
+  - [ ] 27.3: Issues tab should show full diff views like run cards — known failure cards only show a single screenshot, should show baseline vs actual comparison
+  - [ ] 27.4: Add PR number to baseline failure for issue — when filing a GitHub issue for a rejected failure, include the PR number for context
+  - [ ] 27.5: Tabs should all be the same size — PR/Issues/Closed Runs/Closed Issues tabs have inconsistent widths
+- [ ] Step 28: Rigorous E2E test — full pipeline verification including SSE (trigger PR → watch run appear live → approve/reject → submit → verify merge gate + auto-close via SSE → verify closed run moves tabs without refresh)
+- [ ] Step 29: Demo presentation
+  - [ ] 29.1: Demo flow script — define the exact live demo sequence (what to click, what to show, what to narrate at each step); this is the most important deliverable
+  - [ ] 29.2: Google Slides — build prompting docs for Gemini (or Claude desktop etc.) to generate slides; Google Slides are being used
+  - **Story:** frame around productivity gains
+    - Single dashboard accessible to people of all technical levels — designers, QA, developers, etc.
+    - Unlocks developer time by catching bugs before they happen and providing clear understanding of expected vs unexpected changes
 
 ### Post-Demo Day
 - [ ] Repo setup CLI (`npx triaige init`) — guided setup: checks `gh` auth, verifies dashboard connection + GitHub App Checks permission, sets GitHub secrets, scaffolds workflow + script, detects Playwright config, offers initial baseline generation + commit, branch protection setup
