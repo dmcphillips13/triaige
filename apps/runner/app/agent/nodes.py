@@ -268,6 +268,12 @@ def compose_answer(state: AgentState) -> dict:
         if vision_summary:
             user_parts.append(f"Vision analysis of screenshots: {vision_summary}")
 
+        image_diff = state.get("image_diff")
+        if image_diff and image_diff.changed_regions:
+            user_parts.append(
+                f"PIXEL DIFF REGIONS (where pixels actually changed): {', '.join(image_diff.changed_regions)}"
+            )
+
         user_msg = "\n\n".join(user_parts)
 
         # --- Pass 1: Scope & defect review ---
@@ -287,6 +293,11 @@ def compose_answer(state: AgentState) -> dict:
             devil_parts.append(f"GIT DIFF (actual code changes):\n{diff_text}")
         if vision_summary:
             devil_parts.append(f"Vision analysis of screenshots: {vision_summary}")
+
+        if image_diff and image_diff.changed_regions:
+            devil_parts.append(
+                f"PIXEL DIFF REGIONS (where pixels actually changed): {', '.join(image_diff.changed_regions)}"
+            )
 
         devil_response = llm.invoke([
             {"role": "system", "content": DEVIL_ADVOCATE_SYSTEM_PROMPT},

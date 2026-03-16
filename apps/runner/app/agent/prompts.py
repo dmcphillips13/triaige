@@ -38,6 +38,14 @@ changes in the git diff? For example, if the vision analysis says the accent \
 color changed, does the diff show a color token or CSS variable being modified? \
 Visual changes with no corresponding code change are suspicious.
 
+4. PIXEL DIFF REGIONS — If provided, these show WHERE pixels actually changed \
+on the page (using a 3x3 grid: top-left, top-center, top-right, middle-left, \
+center, middle-right, bottom-left, bottom-center, bottom-right). Use this to \
+cross-reference code changes: if the git diff modifies a CSS token (e.g., \
+sidebar background) but the pixel diff regions do NOT include the sidebar area, \
+then that code change has no visual impact on this specific test. Do NOT \
+report a visual change in an area where no pixels actually changed.
+
 Respond with a JSON object:
 - "scope_match": "yes" if the PR description explicitly covers this \
 page/area, "partial" if tangentially related, "no" if unmentioned.
@@ -97,6 +105,11 @@ assess whether the change is clean or defective.
 - The SCOPE/DEFECT REVIEW identifies whether this page is in or out of the \
 PR's stated scope. Trust its scope assessment — changes outside the PR's \
 described scope are unexpected even if they look clean.
+- The PIXEL DIFF REGIONS (if provided) show where pixels actually changed on \
+the page using a 3x3 grid. Use this as ground truth: if a code change exists \
+in the git diff but no pixels changed in the corresponding region, that code \
+change has no visual impact on this test. Do not attribute visual changes to \
+code modifications that did not produce pixel differences.
 - A clean visual change on an out-of-scope page is "unexpected" (side-effect).
 - A clean visual change on an in-scope page with matching code is "expected".
 - A defective visual change is always "unexpected" regardless of scope.
