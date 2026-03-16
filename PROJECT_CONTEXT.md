@@ -6,7 +6,7 @@ Last updated: 2026-03-15
 
 ## Current status
 
-**Phase:** SSE complete. Next: bug fixes, E2E testing (including SSE verification), then Google Slides.
+**Phase:** Bug fixes and E2E testing complete. Next: P0 classifier fix, then demo prep (Step 29).
 
 ### Completed
 - [x] Project planning and scoping
@@ -104,17 +104,11 @@ Last updated: 2026-03-15
   - [x] 28.1: Prerequisites (deploy to Render, clean state, update baselines)
   - [x] 28.2: Create PRs A and B on sample app
   - [x] 28.3: Execute test steps 0-14
-  - **Findings — fix after E2E (priority order):**
-    - **P0 — Classifier accuracy (own step):** Classifier mentions visual changes that didn't actually happen (e.g., "sidebar color change" when pixels show no sidebar diff) — inject `changed_regions` from image diff into classification/compose prompt so the LLM cross-references code changes against actual pixel changes
-    - Issues tab count doesn't update via SSE when a known failure is created on merge — need to refetch known failures on `run_closed` events
-    - Issues tab known failure cards: add PR link pill (matching run card style) and issue link pill at top of card
-    - Issues tab diff overlay disabled — known_failures doesn't store the overlay image; either store it at filing time or recompute on the fly
-    - PR run cards should link to the GitHub PR (title is shown but not clickable)
-    - Failure cards should sort by classification: expected first, then uncertain, then unexpected (each group sorted by confidence descending)
-  - **Findings — fixed during E2E:**
+  - **Fixed during E2E:**
     - Tabs not visible when zero runs exist (page showed "No triage runs found" instead of rendering RunsList with tabs)
-  - **Findings — post-demo:**
-    - `close-pr-runs.yml` PR number extraction only reliably handles merge commits ("Merge pull request #N"). Needs to support all merge strategies: squash-and-merge (different commit message format), rebase-and-merge via button (no merge commit, but GitHub links commits immediately), and CLI rebase + direct push (no merge commit, slow commit→PR API). For demo: using GitHub merge button with "Create a merge commit" option.
+  - **P0 — fix before demo:**
+    - Classifier mentions visual changes that didn't actually happen (e.g., "sidebar color change" when pixels show no sidebar diff) — inject `changed_regions` from image diff into classification/compose prompt so the LLM cross-references code changes against actual pixel changes
+  - **Demo note:** Merge PRs via GitHub merge button ("Create a merge commit") — this is the only merge strategy where `close-pr-runs.yml` reliably extracts the PR number
 - [ ] Step 29: Demo presentation — see `docs/slides.md` for full demo plan
   - [ ] 29.1: Pre-stage demo data — create two sample app PRs (one with completed triage run, one ready to trigger live for SSE moment)
   - [ ] 29.2: Demo flow script — define exact live sequence with slide/demo transitions and timing marks; see `docs/slides.md`
@@ -122,18 +116,18 @@ Last updated: 2026-03-15
   - [ ] 29.4: Dry run — practice the full 10-minute presentation end to end, verify timing and pre-staged data
 
 ### Post-Demo Day — E2E findings
-- [ ] Closed Issues tab should show screenshot comparison viewer (same as Issues tab) for easy sharing/reference
-- [ ] Reconsider tab prominence — Closed Runs and Closed Issues may not need equal visual weight as PR and Issues tabs (could be collapsed, secondary nav, or a filter)
-- [ ] Closed Runs tab should show PR link on run cards (same as PR tab)
-- [ ] Closing a GitHub issue directly doesn't sync back to the Issues tab — need a webhook endpoint for `issues` closed events (already noted in stretch goals as Step 34)
-- [ ] Drift-on-merge comment doesn't fire when all failures are known (no triage run created → no closed runs → drift block skipped). Need to store drift results during pre-merge triage and replay at merge time, or re-run comparison independently of runs.
-- [ ] Show known failures as a non-actionable section at bottom of run detail (test name, issue link, screenshot comparison, no approve/reject) — gives developers full visual context without navigating to Issues tab; especially valuable when drift is detected
-- [ ] Issues tab: add PR link pill and issue link pill at top of known failure cards (match run card styling)
+- [ ] `close-pr-runs.yml` PR number extraction: support squash-and-merge, rebase-and-merge via button, and CLI rebase + direct push (currently only handles "Merge pull request #N" merge commits)
+- [ ] Drift-on-merge comment doesn't fire when all failures are known (no triage run → no closed runs → drift block skipped) — store drift results during pre-merge triage and replay at merge time
+- [ ] Closing a GitHub issue doesn't sync to Issues tab — need webhook for `issues` closed events (Step 34)
+- [ ] Show known failures as non-actionable section at bottom of run detail (screenshot comparison, issue link, no approve/reject)
+- [ ] Issues tab: add PR link pill and issue link pill at top of known failure cards
 - [ ] Issues tab: diff overlay disabled — store overlay at filing time or recompute on the fly
 - [ ] Issues tab count doesn't update via SSE on merge — refetch known failures on `run_closed` events
+- [ ] Closed Issues tab: add screenshot comparison viewer for reference/sharing
+- [ ] Closed Runs tab: add PR link on run cards
+- [ ] Reconsider tab prominence — Closed Runs/Issues may not need equal visual weight (collapse, secondary nav, or filter)
 - [ ] PR run cards should link to the GitHub PR (title shown but not clickable)
 - [ ] Failure cards should sort by classification (expected → uncertain → unexpected, each by confidence desc)
-- [ ] Classifier references visual changes that didn't happen — inject `changed_regions` into classification prompt (P0, own step)
 
 ### Post-Demo Day
 - [ ] `update-snapshots.yml` should NOT be included in the setup CLI or repo template — it's a dev convenience for the sample app only; if included, add a confirmation input to prevent accidental runs

@@ -115,10 +115,14 @@ comparison, and run lifecycle.
 **Expected duration:** ~45-60 minutes. Most time is spent waiting for CI runs
 (~3 min each) and Render cold starts. There are 6-7 wait points across the test.
 
-**Key setup constraint:** PR A, PR B, and PR C all need to trigger the same
-failing test (the one PR A rejects as unexpected). Plan the exact CSS changes
-for all three PRs before writing any code — Steps 4, 8, and 12 all depend on
-this overlap.
+**Key setup constraint:** PR A and PR B must both trigger the same failing test
+(the one PR A rejects as unexpected). PR C should modify the known-broken area
+to trigger drift detection. Plan the exact CSS changes for all three PRs before
+writing any code — Steps 4 and 8 depend on the PR A/B overlap.
+
+**Merge strategy:** Always merge via the GitHub merge button ("Create a merge
+commit"). This is the only strategy where `close-pr-runs.yml` reliably extracts
+the PR number. Do not use CLI `git merge --ff-only` + push.
 
 ### Prerequisites
 
@@ -282,7 +286,7 @@ verify real-time SSE updates alongside each action.
 - [ ] Rejected failures show red X
 - [ ] After each verdict, failure card **collapses** rationale + screenshots
       (reduces visual noise — Step 23.17)
-- [ ] "Submit Changes" button appears
+- [ ] "Submit Changes" button appears after the **first** verdict (not after all)
 
 ### Step 3 — Submit changes on PR A
 
