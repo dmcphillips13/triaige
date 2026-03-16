@@ -106,8 +106,8 @@ Last updated: 2026-03-15
   - [x] 28.3: Execute test steps 0-14
   - **Fixed during E2E:**
     - Tabs not visible when zero runs exist (page showed "No triage runs found" instead of rendering RunsList with tabs)
-  - **P0 — fix before demo:**
-    - Classifier mentions visual changes that didn't actually happen (e.g., "sidebar color change" when pixels show no sidebar diff) — inject `changed_regions` from image diff into classification/compose prompt so the LLM cross-references code changes against actual pixel changes
+  - **P0 — fixed:**
+    - Classifier no longer mentions visual changes that didn't happen — `changed_regions` from image diff injected into both devil's advocate and compose prompts; LLM now cross-references code changes against actual pixel regions
   - **Demo note:** Merge PRs via GitHub merge button ("Create a merge commit") — this is the only merge strategy where `close-pr-runs.yml` reliably extracts the PR number
 - [ ] Step 29: Demo presentation — see `docs/slides.md` for full demo plan
   - [ ] 29.1: Pre-stage demo data — create two sample app PRs (one with completed triage run, one ready to trigger live for SSE moment)
