@@ -64,6 +64,8 @@ tmp/
 # Strategy & vision (confidential — not for public repo)
 docs/strategy.md
 docs/vision.md
+docs/demo-script.md
+docs/slides.md
 
 # Claude
 .claude/
