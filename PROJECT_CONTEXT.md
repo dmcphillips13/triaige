@@ -116,6 +116,7 @@ Last updated: 2026-03-15
   - [ ] 29.4: Dry run — practice the full 10-minute presentation end to end, verify timing and pre-staged data
 
 ### Post-Demo Day — E2E findings
+- [ ] **Rationale accuracy (P0):** Rationale bullets sometimes reference visual changes in regions where no pixels actually changed (e.g., "sidebar color change" on overview when diff overlay shows no sidebar pixels changed). The classifier uses pixel diff regions for classification correctly, but doesn't consistently cross-reference them when generating rationale bullets. Possible fixes: (1) upgrade text model from GPT-4o-mini to GPT-4o or Claude for better instruction following, (2) generate rationale in a separate pass that explicitly receives the pixel diff regions as constraints, (3) relax the 12-word bullet limit to allow more precise descriptions, (4) structured rationale generation where each bullet must cite a specific pixel region. This is the core product value — rationale must be trustworthy.
 - [ ] `close-pr-runs.yml` PR number extraction: support squash-and-merge, rebase-and-merge via button, and CLI rebase + direct push (currently only handles "Merge pull request #N" merge commits)
 - [ ] Drift-on-merge comment doesn't fire when all failures are known (no triage run → no closed runs → drift block skipped) — store drift results during pre-merge triage and replay at merge time
 - [ ] Closing a GitHub issue doesn't sync to Issues tab — need webhook for `issues` closed events (Step 34)
@@ -137,6 +138,7 @@ Last updated: 2026-03-15
 - [ ] RAGAS evaluation
 - [ ] Separate test repo support — link a dedicated Playwright/baselines repo separate from the UI repo
 - [ ] Auto-approve baselines above confidence threshold
+- [ ] Mobile optimization for the dashboard
 
 ---
 
