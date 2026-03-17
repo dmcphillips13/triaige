@@ -1,17 +1,34 @@
 // GitHub App OAuth callback handler.
 //
-// GitHub redirects here with a ?code= parameter after the user authorizes.
-// We exchange the code for a user access token (scoped to repos where the
-// GitHub App is installed), fetch the user's profile, create a signed JWT
-// session cookie, and redirect to the dashboard.
+// GitHub redirects here with ?code= and ?state= parameters after the user
+// authorizes. We verify the state against the cookie set by /api/auth/login
+// (CSRF protection), exchange the code for a user access token, fetch the
+// user's profile, create a signed JWT session cookie, and redirect to the
+// dashboard.
 
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { createSession } from "@/lib/auth";
+
+const STATE_COOKIE = "oauth_state";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   if (!code) {
     return NextResponse.json({ error: "Missing code" }, { status: 400 });
+  }
+
+  // Verify OAuth state parameter (CSRF protection)
+  const state = request.nextUrl.searchParams.get("state");
+  const jar = await cookies();
+  const storedState = jar.get(STATE_COOKIE)?.value;
+  jar.delete(STATE_COOKIE);
+
+  if (!state || !storedState || state !== storedState) {
+    return NextResponse.json(
+      { error: "Invalid OAuth state — possible CSRF attack" },
+      { status: 403 }
+    );
   }
 
   const clientId = process.env.GITHUB_CLIENT_ID;

@@ -1,4 +1,4 @@
-// Sign-in page — redirects to GitHub App OAuth authorization.
+// Sign-in page — links to /api/auth/login which handles OAuth state and redirect.
 //
 // Uses a GitHub App (not an OAuth App) so users can select which specific
 // repos to grant access to, rather than giving blanket repo access.
@@ -8,12 +8,6 @@ import { Logo } from "@/components/logo";
 
 export default function SignInPage() {
   const clientId = process.env.GITHUB_CLIENT_ID;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  const redirectUri = `${appUrl}/api/auth/callback`;
-
-  const githubUrl = clientId
-    ? `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}`
-    : null;
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-50">
@@ -26,9 +20,9 @@ export default function SignInPage() {
         </div>
 
         <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-          {githubUrl ? (
+          {clientId ? (
             <a
-              href={githubUrl}
+              href="/api/auth/login"
               className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
             >
               <svg
