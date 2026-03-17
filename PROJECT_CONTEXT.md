@@ -141,6 +141,7 @@ Last updated: 2026-03-15
 - [ ] Closed Runs tab: add PR link on run cards
 - [ ] Reconsider tab prominence — Closed Runs/Issues may not need equal visual weight (collapse, secondary nav, or filter)
 - [ ] `update-snapshots.yml` should NOT be included in the setup CLI or repo template — it's a dev convenience for the sample app only; if included, add a confirmation input to prevent accidental runs
+- [ ] Cypress support — separate ingestion adapter for Cypress JSON report format. Classification pipeline is identical; only the report parsing differs. Build when a design partner needs it
 
 ### Future (post-validation)
 - [ ] Logprob-based confidence scores — use classification token logprobs instead of LLM self-reported confidence for better calibration
