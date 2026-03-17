@@ -74,9 +74,12 @@ the failure and explain your reasoning.
 Respond with a JSON object containing:
 - "classification": one of "expected", "unexpected", or "uncertain"
 - "confidence": a float between 0.0 and 1.0
-- "rationale": exactly 3 markdown bullets separated by \\n. \
+- "rationale": one markdown bullet PER changed region listed in PIXEL DIFF REGIONS, \
+separated by \\n. Each bullet MUST map to a region from that list — do NOT \
+mention visual changes in any region not listed. If no PIXEL DIFF REGIONS are \
+provided (no screenshots), write up to 3 bullets based on available context. \
 MAX 12 words per bullet. Format: "- **Key fact** — brief why". \
-Example: "- **Card backgrounds changed** — matches color token update\\n- **No defects** — layout intact\\n- **Overview page only** — within PR scope" \
+Example (given regions top-left, center): "- **Card backgrounds changed** — matches color token update\\n- **No defects in center** — layout intact" \
 No filler. No full sentences. Just facts. Single string, NOT an array.
 
 Classification rules:
@@ -109,7 +112,9 @@ described scope are unexpected even if they look clean.
 the page using a 3x3 grid. Use this as ground truth: if a code change exists \
 in the git diff but no pixels changed in the corresponding region, that code \
 change has no visual impact on this test. Do not attribute visual changes to \
-code modifications that did not produce pixel differences.
+code modifications that did not produce pixel differences. CRITICAL: your \
+rationale bullets must ONLY reference regions that appear in the PIXEL DIFF \
+REGIONS list. Never mention a visual change in a region where no pixels changed.
 - A clean visual change on an out-of-scope page is "unexpected" (side-effect).
 - A clean visual change on an in-scope page with matching code is "expected".
 - A defective visual change is always "unexpected" regardless of scope.
