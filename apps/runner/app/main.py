@@ -56,17 +56,26 @@ async def lifespan(app: FastAPI):
     await close_db()
 
 
-app = FastAPI(title="Triaige Runner", lifespan=lifespan)
+app = FastAPI(
+    title="Triaige Runner",
+    lifespan=lifespan,
+    docs_url="/docs" if settings.enable_docs else None,
+    redoc_url="/redoc" if settings.enable_docs else None,
+    openapi_url="/openapi.json" if settings.enable_docs else None,
+)
 
 
 class ApiKeyMiddleware(BaseHTTPMiddleware):
-    OPEN_PATHS = {"/health", "/docs", "/openapi.json"}
+    OPEN_PATHS = {"/health"}
 
     async def dispatch(self, request: Request, call_next):
-        if not settings.api_key:
-            return await call_next(request)
         if request.url.path in self.OPEN_PATHS:
             return await call_next(request)
+        if not settings.api_key:
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "API key not configured. Set the API_KEY environment variable."},
+            )
         auth = request.headers.get("Authorization", "")
         if auth != f"Bearer {settings.api_key}":
             return JSONResponse(status_code=401, content={"detail": "Unauthorized"})

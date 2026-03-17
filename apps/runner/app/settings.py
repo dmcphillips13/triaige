@@ -35,8 +35,11 @@ class Settings(BaseSettings):
     # Dashboard
     dashboard_url: str = "http://localhost:3000"
 
-    # CORS
-    cors_origins: str = "*"
+    # API docs (disable in production; enable locally with ENABLE_DOCS=true)
+    enable_docs: bool = False
+
+    # CORS — restrict to dashboard URL in production; comma-separated for multiple origins
+    cors_origins: str = "http://localhost:3000"
 
 
 settings = Settings()

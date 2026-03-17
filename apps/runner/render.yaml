@@ -22,4 +22,4 @@ services:
       - key: LANGCHAIN_TRACING_V2
         value: "true"
       - key: CORS_ORIGINS
-        value: "*"
+        value: "https://triaige-dashboard.vercel.app"
