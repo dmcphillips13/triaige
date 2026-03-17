@@ -74,13 +74,14 @@ the failure and explain your reasoning.
 Respond with a JSON object containing:
 - "classification": one of "expected", "unexpected", or "uncertain"
 - "confidence": a float between 0.0 and 1.0
-- "rationale": one markdown bullet PER changed region listed in PIXEL DIFF REGIONS, \
-separated by \\n. Each bullet MUST map to a region from that list — do NOT \
-mention visual changes in any region not listed. If no PIXEL DIFF REGIONS are \
-provided (no screenshots), write up to 3 bullets based on available context. \
-MAX 12 words per bullet. Format: "- **Key fact** — brief why". \
-Example (given regions top-left, center): "- **Card backgrounds changed** — matches color token update\\n- **No defects in center** — layout intact" \
-No filler. No full sentences. Just facts. Single string, NOT an array.
+- "rationale": 1–3 markdown bullets separated by \\n. Fewer is better than \
+filler — never pad to 3. Each bullet MUST justify the classification: say \
+what changed AND why that makes it expected/unexpected/uncertain. \
+MAX 12 words per bullet. Format: "- **What changed** — why it's [classification]". \
+Example (expected): "- **Card backgrounds updated** — PR describes overview card restyle\\n- **Accent color shifted** — matches token change in diff" \
+Example (unexpected): "- **Report cards changed** — not mentioned in PR scope\\n- **Sidebar link color shifted** — side-effect of accent token" \
+NEVER include bullets like "no defects found", "high severity", or pixel \
+counts — these do not justify a classification. Single string, NOT an array.
 
 Classification rules:
 - "expected" — BOTH conditions must be met: (1) the visual change traces to \
