@@ -61,9 +61,11 @@ pnpm-debug.log*
 .cache/
 tmp/
 
-# Strategy & vision (confidential — not for public repo)
+# Strategy & planning (confidential — not for public repo)
 docs/strategy.md
 docs/vision.md
+docs/sequencing.md
+docs/security.md
 docs/demo-script.md
 docs/slides.md
 
