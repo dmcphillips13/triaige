@@ -1,12 +1,12 @@
 # PROJECT_CONTEXT.md — Triaige (Session Handoff)
 
-Last updated: 2026-03-15
+Last updated: 2026-03-17
 
 ---
 
 ## Current status
 
-**Phase:** Transitioning from demo project to product validation. Demo day skipped — focus on rationale accuracy P0, polish, CLI setup, and design partner outreach. See `docs/strategy.md` for full sequencing plan.
+**Phase:** Transitioning from demo project to product validation. Demo day skipped. Rationale accuracy P0 and security critical/high fixes complete. Next: functional test failure support, CLI setup, multi-tenancy, BYOK. See `docs/sequencing.md` for full phased plan.
 
 ### Completed
 - [x] Project planning and scoping
