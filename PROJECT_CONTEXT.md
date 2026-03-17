@@ -112,8 +112,25 @@ Last updated: 2026-03-15
 - [ ] ~~Step 29: Demo presentation~~ — **Skipped.** Decision made 2026-03-16 to skip demo day and focus on validation + design partners. See `docs/strategy.md` for full sequencing plan and rationale
 
 ### Post-Demo Day — E2E findings
-- [ ] **Rationale accuracy (P0):** Rationale bullets sometimes reference visual changes in regions where no pixels actually changed (e.g., "sidebar color change" on overview when diff overlay shows no sidebar pixels changed). The classifier uses pixel diff regions for classification correctly, but doesn't consistently cross-reference them when generating rationale bullets. Possible fixes: (1) upgrade text model from GPT-4o-mini to GPT-4o or Claude for better instruction following, (2) generate rationale in a separate pass that explicitly receives the pixel diff regions as constraints, (3) relax the 12-word bullet limit to allow more precise descriptions, (4) structured rationale generation where each bullet must cite a specific pixel region. This is the core product value — rationale must be trustworthy.
+- [x] **Rationale accuracy (P0):** Fixed — prompt now requires each bullet to justify the classification (what changed + why it's expected/unexpected/uncertain) and bans filler bullets. Bullet count is dynamic (1-3) instead of fixed at 3. Confabulation (phantom region references) eliminated.
+
+### New MVP functionality (build before going to market)
+- [ ] **Functional test failure support** — extend triage to handle functional Playwright failures (assertion errors, navigation failures, timeouts) alongside visual regressions. Same expected/unexpected/uncertain classification. Plain English failure summaries. "Acknowledge" action opens test update issues instead of committing baselines. See `docs/functional-test-plan.md` for implementation plan and `docs/strategy.md` for design rationale
+- [ ] Repo setup CLI (`npx triaige init`) — guided setup: checks `gh` auth, verifies dashboard connection + GitHub App Checks permission, sets GitHub secrets, scaffolds workflow + script, detects Playwright config, offers initial baseline generation + commit, branch protection setup
+- [ ] Basic multi-tenancy — per-org data isolation so two teams' runs don't mix
+- [ ] BYOK key management — let users provide their own OpenAI/Anthropic keys (encrypted storage, validation)
+
+### Market demo polish
+- [ ] **Known failure card states need fixing** — re-triggered CI runs produce non-actionable cards even when no action was taken on the previous run. Correct behavior: (1) **open GH issue exists** → card shown at bottom, non-actionable, links to the issue (informational only); (2) **pending issue (staged but not yet created)** → card shows a note that an issue is pending, but user can unselect and then approve baseline or re-stage; (3) **no action taken** → card is fully actionable. Only an opened issue makes a card non-actionable — pending is a draft decision the user can change each run
+- [ ] **Rationale prompt refinement** — further iteration to eliminate vague bullets (e.g., "overall design impact — broader than described in PR") and improve cross-card disambiguation (same code change should explain why it's expected on one page and unexpected on another). Consider model upgrade (GPT-4o / Claude Sonnet) if prompt changes plateau
 - [ ] `close-pr-runs.yml` PR number extraction: support squash-and-merge, rebase-and-merge via button, and CLI rebase + direct push (currently only handles "Merge pull request #N" merge commits)
+- [ ] PR run cards should link to the GitHub PR (title shown but not clickable)
+- [ ] Failure cards should sort by classification (expected → uncertain → unexpected, each by confidence desc)
+- [ ] Upgrade Render to paid tier ($7/mo — eliminate cold starts)
+
+### Go to market polish
+- [ ] Security fixes — medium (error message sanitization, rate limiting, SSE subscriber cap)
+- [ ] Data migration strategy for breaking runner changes
 - [ ] Drift-on-merge comment doesn't fire when all failures are known (no triage run → no closed runs → drift block skipped) — store drift results during pre-merge triage and replay at merge time
 - [ ] Closing a GitHub issue doesn't sync to Issues tab — need webhook for `issues` closed events (Step 34)
 - [ ] Show known failures as non-actionable section at bottom of run detail (screenshot comparison, issue link, no approve/reject)
@@ -123,13 +140,9 @@ Last updated: 2026-03-15
 - [ ] Closed Issues tab: add screenshot comparison viewer for reference/sharing
 - [ ] Closed Runs tab: add PR link on run cards
 - [ ] Reconsider tab prominence — Closed Runs/Issues may not need equal visual weight (collapse, secondary nav, or filter)
-- [ ] PR run cards should link to the GitHub PR (title shown but not clickable)
-- [ ] Failure cards should sort by classification (expected → uncertain → unexpected, each by confidence desc)
-
-### Post-Demo Day
-- [ ] **Functional test failure support** — extend triage to handle functional Playwright failures (assertion errors, navigation failures, timeouts) alongside visual regressions. Expected functional failures open "test update" issues instead of committing baselines. Same known failure workflow, no drift detection. Plain English failure summaries generated by LLM. See `docs/strategy.md` "Functional test failure support" section for full design
 - [ ] `update-snapshots.yml` should NOT be included in the setup CLI or repo template — it's a dev convenience for the sample app only; if included, add a confirmation input to prevent accidental runs
-- [ ] Repo setup CLI (`npx triaige init`) — guided setup: checks `gh` auth, verifies dashboard connection + GitHub App Checks permission, sets GitHub secrets, scaffolds workflow + script, detects Playwright config, offers initial baseline generation + commit, branch protection setup
+
+### Future (post-validation)
 - [ ] Logprob-based confidence scores — use classification token logprobs instead of LLM self-reported confidence for better calibration
 - [ ] Component ownership lookup
 - [ ] RAGAS evaluation
