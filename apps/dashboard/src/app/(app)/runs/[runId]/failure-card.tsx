@@ -12,9 +12,9 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { Check, X, ChevronDown, ChevronRight, AlertCircle } from "lucide-react";
+import { Check, X, ChevronDown, ChevronRight, AlertCircle, Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ClassificationBadge } from "@/components/classification-badge";
 import { ScreenshotViewer } from "@/components/screenshot-viewer";
@@ -52,8 +52,18 @@ export function FailureCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [errorExpanded, setErrorExpanded] = useState(false);
+  const [screenshotFullscreen, setScreenshotFullscreen] = useState(false);
   const { ask_response: res } = result;
   const isFunctional = result.failure_type === "error";
+
+  useEffect(() => {
+    if (!screenshotFullscreen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setScreenshotFullscreen(false);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [screenshotFullscreen]);
 
   return (
     <div
@@ -162,6 +172,31 @@ export function FailureCard({
           );
         }
         if (!readOnly && !actionGated) {
+          if (isFunctional) {
+            return (
+              <div className="border-t border-zinc-100 px-4 py-2">
+                <p className="mb-2 text-xs text-zinc-500">
+                  If this change is expected, update the test in your PR to match. If this is unexpected, fix the underlying bug or open an issue to track it.
+                </p>
+                <button
+                  onClick={() =>
+                    onVerdict(verdict === "rejected" ? null : "rejected")
+                  }
+                  className={cn(
+                    "inline-flex w-full items-center justify-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-all duration-200",
+                    verdict === "rejected"
+                      ? "border-rose-300 bg-rose-100 text-rose-800"
+                      : "border-rose-200 bg-rose-50/50 text-rose-700 hover:bg-rose-100 hover:border-rose-300"
+                  )}
+                >
+                  <X className="h-3.5 w-3.5 shrink-0" />
+                  <span className="whitespace-nowrap">
+                    {verdict === "rejected" ? "Rejected (click to undo)" : "Open GH issue to track bug"}
+                  </span>
+                </button>
+              </div>
+            );
+          }
           return (
             <div className="flex items-center gap-1 border-t border-zinc-100 px-4 py-2">
               <button
@@ -181,9 +216,7 @@ export function FailureCard({
                 <span className="whitespace-nowrap">
                   {verdict === "approved"
                     ? "Approved (click to undo)"
-                    : isFunctional
-                      ? "Acknowledge test update"
-                      : "Approve baseline update"}
+                    : "Approve baseline update"}
                 </span>
               </button>
               <button
@@ -245,20 +278,26 @@ export function FailureCard({
           {/* Failure screenshot for functional tests (single image, no comparison) */}
           {isFunctional && !result.screenshot_baseline && result.screenshot_actual && (
             <div className="border-t border-zinc-100 px-4 py-4">
-              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                Failure Screenshot
-              </h4>
-              <img
-                src={`data:image/png;base64,${result.screenshot_actual}`}
-                alt="Failure screenshot"
-                className="w-full rounded border border-zinc-200 cursor-pointer"
-                onClick={() => {
-                  const win = window.open();
-                  if (win) {
-                    win.document.write(`<img src="data:image/png;base64,${result.screenshot_actual}" style="max-width:100%">`);
-                  }
-                }}
-              />
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                  Failure Screenshot
+                </h4>
+                <button
+                  onClick={() => setScreenshotFullscreen(true)}
+                  className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-600 transition-colors"
+                >
+                  <Maximize2 className="h-3 w-3" />
+                  Expand
+                </button>
+              </div>
+              <div className="mt-2 max-w-md">
+                <img
+                  src={`data:image/png;base64,${result.screenshot_actual}`}
+                  alt="Failure screenshot"
+                  className="max-h-[250px] w-full object-contain rounded border border-zinc-200 cursor-pointer"
+                  onClick={() => setScreenshotFullscreen(true)}
+                />
+              </div>
             </div>
           )}
 
@@ -340,6 +379,34 @@ export function FailureCard({
               </ul>
             </div>
           )}
+        </div>
+      )}
+      {/* Fullscreen modal for functional failure screenshot */}
+      {screenshotFullscreen && result.screenshot_actual && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col bg-black/80 backdrop-blur-sm"
+          onClick={() => setScreenshotFullscreen(false)}
+        >
+          <div
+            className="flex flex-1 flex-col p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-end mb-4">
+              <button
+                onClick={() => setScreenshotFullscreen(false)}
+                className="rounded-md p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto flex items-center justify-center">
+              <img
+                src={`data:image/png;base64,${result.screenshot_actual}`}
+                alt="Failure screenshot"
+                className="max-h-[80vh] max-w-full object-contain rounded border border-zinc-700"
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>
