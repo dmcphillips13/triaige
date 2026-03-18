@@ -597,3 +597,30 @@ gh pr create --title "Minor styling tweak" --body "Small token change"
 - **Screenshot comparison is binary**: Compares base64 strings for equality —
   any difference (even re-render noise) triggers the "further modified" notice.
   May need perceptual hashing in the future.
+
+---
+
+## Functional test follow-ups
+
+Verification steps for the functional failure card refinements (referenced from PROJECT_CONTEXT.md).
+
+### Prerequisites
+
+- Runner deployed with card action + screenshot size changes
+- PR #79 (`test/functional-visual-mixed`) on sample app still open, or re-create equivalent PR that breaks one visual test + one functional test
+
+### Test: Card actions
+
+**What to verify:**
+1. Functional failure card shows exactly one button: "Open GH issue to track bug" — no "Acknowledge test update", no second button
+2. Visual failure cards still show both buttons ("Approve baseline update" and "Reject and open GH issue") — unchanged
+3. Guidance note visible on functional card: "If this change is expected, update the test in your PR to match. If this is unexpected, fix the underlying bug or open an issue to track it."
+4. Clicking "Open GH issue to track bug" on the functional card creates a GitHub issue and passes the merge gate
+5. PR comment table still shows functional failures with correct status
+
+### Test: Screenshot size
+
+**What to verify:**
+1. Functional failure screenshot constrained to same width as one side of the visual comparison viewer (~50% card width or similar)
+2. Screenshot still viewable — not cropped or distorted, just scaled down
+3. Visual failure comparison viewer unchanged
