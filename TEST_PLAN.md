@@ -615,8 +615,11 @@ Verification steps for the functional failure card refinements (referenced from 
 1. Functional failure card shows exactly one button: "Open GH issue to track bug" — no "Acknowledge test update", no second button
 2. Visual failure cards still show both buttons ("Approve baseline update" and "Reject and open GH issue") — unchanged
 3. Guidance note visible on functional card: "If this change is expected, update the test in your PR to match. If this is unexpected, fix the underlying bug or open an issue to track it."
-4. Clicking "Open GH issue to track bug" on the functional card creates a GitHub issue and passes the merge gate
-5. PR comment table still shows functional failures with correct status
+4. Clicking "Open GH issue to track bug" stages a pending issue — card shows "Issue will be filed on merge" in amber
+5. Submitting all verdicts passes the merge gate (Triaige Visual Regression check → success)
+6. Merging the PR materializes the GitHub issue (via `/report-clean`)
+7. Subsequent PRs that trigger the same functional test failure show it as a known failure with the open issue link, non-actionable — does not block merge gate
+8. PR comment table still shows functional failures with correct status
 
 ### Test: Screenshot size
 
