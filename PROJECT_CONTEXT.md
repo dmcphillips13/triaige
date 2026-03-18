@@ -130,6 +130,7 @@ Last updated: 2026-03-17
 - [ ] PR run cards should link to the GitHub PR (title shown but not clickable)
 - [ ] Failure cards should sort by classification (expected → uncertain → unexpected, each by confidence desc)
 - [ ] Upgrade Render to paid tier ($7/mo — eliminate cold starts)
+- [ ] **Classification regression library** — build up a library of sample app PRs with known expected outcomes (expected/unexpected/uncertain) across visual and functional failures. Use as a repeatable regression suite when changing prompts, classification logic, or adding new failure types. Start by keeping PRs created during feature work (functional test support, prompt refinements) as reference scenarios rather than creating them separately. Include edge cases over time: mixed-scope PRs, empty diffs, vague descriptions, large diffs
 
 ### Go to market polish
 - [ ] Security fixes — medium (error message sanitization, rate limiting, SSE subscriber cap)
