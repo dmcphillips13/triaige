@@ -111,14 +111,23 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
 
   // Failures ready to submit: have a verdict, no submission from this run,
   // and no open submission from a previous run
-  const pendingApproved = run.results.filter(
+  const pendingApprovedVisual = run.results.filter(
     (r) =>
       verdicts[r.test_name] === "approved" &&
       !submitted[r.test_name] &&
       !knownFailures[r.test_name]?.open_submission &&
+      r.failure_type !== "error" &&
       r.screenshot_actual &&
       r.snapshot_path
   );
+  const pendingApprovedFunctional = run.results.filter(
+    (r) =>
+      verdicts[r.test_name] === "approved" &&
+      !submitted[r.test_name] &&
+      !knownFailures[r.test_name]?.open_submission &&
+      r.failure_type === "error"
+  );
+  const pendingApproved = [...pendingApprovedVisual, ...pendingApprovedFunctional];
   const pendingRejected = run.results.filter(
     (r) =>
       verdicts[r.test_name] === "rejected" &&
@@ -135,17 +144,34 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
     const newSubmitted: Record<string, SubmissionResult> = {};
 
     try {
-      if (pendingApproved.length > 0) {
+      // Visual approvals → baseline update
+      if (pendingApprovedVisual.length > 0) {
         const { pr_url } = await updateBaselines(
           run.run_id,
-          pendingApproved.map((r) => r.test_name),
+          pendingApprovedVisual.map((r) => r.test_name),
           run.repo
         );
-        for (const r of pendingApproved) {
+        for (const r of pendingApprovedVisual) {
           newSubmitted[r.test_name] = { url: pr_url, type: "pr" };
         }
       }
 
+      // Functional approvals → file test-update issues
+      if (pendingApprovedFunctional.length > 0) {
+        const { issues } = await createIssues(
+          run.run_id,
+          pendingApprovedFunctional.map((r) => r.test_name),
+          run.repo
+        );
+        for (const issue of issues) {
+          newSubmitted[issue.test_name] = {
+            url: issue.issue_url,
+            type: "issue",
+          };
+        }
+      }
+
+      // Rejected failures → GitHub issues
       if (pendingRejected.length > 0) {
         const { issues } = await createIssues(
           run.run_id,
@@ -297,11 +323,18 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
                   `${pendingRejected.length} rejected`}
               </p>
               <p className="mt-0.5 text-xs text-zinc-500">
-                {pendingApproved.length > 0 &&
+                {pendingApprovedVisual.length > 0 &&
                   (isPreMerge
                     ? "Approved → commit baselines to PR"
                     : "Approved → baseline update PR")}
-                {pendingApproved.length > 0 &&
+                {pendingApprovedVisual.length > 0 &&
+                  (pendingApprovedFunctional.length > 0 || pendingRejected.length > 0) &&
+                  " · "}
+                {pendingApprovedFunctional.length > 0 &&
+                  (isPreMerge
+                    ? "Test updates → issues on merge"
+                    : "Test updates → GitHub issues")}
+                {pendingApprovedFunctional.length > 0 &&
                   pendingRejected.length > 0 &&
                   " · "}
                 {pendingRejected.length > 0 &&

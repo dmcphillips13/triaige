@@ -51,6 +51,7 @@ export interface AskResponse {
   image_diff: ImageDiff | null;
   vision_summary: string | null;
   debug: DebugInfo | null;
+  error_message?: string | null;
 }
 
 export interface TriageFailureResult {
@@ -60,6 +61,7 @@ export interface TriageFailureResult {
   screenshot_baseline?: string | null;
   screenshot_actual?: string | null;
   snapshot_path?: string | null;
+  failure_type?: string | null;
 }
 
 export interface TriageRunSummary {

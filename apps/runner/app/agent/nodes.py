@@ -5,8 +5,10 @@ from langchain_openai import ChatOpenAI
 
 from app.agent.prompts import (
     CLASSIFY_SYSTEM_PROMPT,
-    COMPOSE_SYSTEM_PROMPT,
-    DEVIL_ADVOCATE_SYSTEM_PROMPT,
+    COMPOSE_FUNCTIONAL_PROMPT,
+    COMPOSE_VISUAL_PROMPT,
+    DEVIL_ADVOCATE_FUNCTIONAL_PROMPT,
+    DEVIL_ADVOCATE_VISUAL_PROMPT,
 )
 from app.agent.state import AgentState
 from app.clients.openai_client import embed_texts
@@ -246,6 +248,10 @@ def compose_answer(state: AgentState) -> dict:
     try:
         llm = _get_llm()
 
+        # Determine if this is a functional (error-based) failure
+        run_summary = state.get("run_summary")
+        is_functional = run_summary and run_summary.failure_type == "error"
+
         # Build user message (shared by both passes)
         pr = state.get("enriched_pr_context") or state.get("pr_context")
         user_parts = [f"Question: {state['question']}"]
@@ -257,28 +263,32 @@ def compose_answer(state: AgentState) -> dict:
                     diff_text += "\n... (truncated)"
                 user_parts.append(f"GIT DIFF (actual code changes in this PR):\n{diff_text}")
 
-        run_summary = state.get("run_summary")
         if run_summary:
             summary_data = run_summary.model_dump(
                 exclude={"screenshot_baseline", "screenshot_actual"}
             )
             user_parts.append(f"Run summary: {json.dumps(summary_data)}")
 
-        vision_summary = state.get("vision_summary")
-        if vision_summary:
-            user_parts.append(f"Vision analysis of screenshots: {vision_summary}")
+        if is_functional:
+            # Functional path: use error message instead of vision/image diff
+            error_msg = run_summary.playwright_notes[0] if run_summary.playwright_notes else None
+            if error_msg:
+                user_parts.append(f"ERROR MESSAGE (what the test expected vs what it got):\n{error_msg}")
+        else:
+            # Visual path: use vision analysis and pixel diff regions
+            vision_summary = state.get("vision_summary")
+            if vision_summary:
+                user_parts.append(f"Vision analysis of screenshots: {vision_summary}")
 
-        image_diff = state.get("image_diff")
-        if image_diff and image_diff.changed_regions:
-            user_parts.append(
-                f"PIXEL DIFF REGIONS (where pixels actually changed): {', '.join(image_diff.changed_regions)}"
-            )
+            image_diff = state.get("image_diff")
+            if image_diff and image_diff.changed_regions:
+                user_parts.append(
+                    f"PIXEL DIFF REGIONS (where pixels actually changed): {', '.join(image_diff.changed_regions)}"
+                )
 
         user_msg = "\n\n".join(user_parts)
 
         # --- Pass 1: Scope & defect review ---
-        # Give the reviewer the vision analysis, PR title, and PR description
-        # so it can assess whether this page is in the PR's stated scope.
         devil_parts = [f"Test: {state['question']}"]
         if pr and pr.title:
             devil_parts.append(f"PR title: {pr.title}")
@@ -291,16 +301,27 @@ def compose_answer(state: AgentState) -> dict:
             if len(pr.diff) > 3000:
                 diff_text += "\n... (truncated)"
             devil_parts.append(f"GIT DIFF (actual code changes):\n{diff_text}")
-        if vision_summary:
-            devil_parts.append(f"Vision analysis of screenshots: {vision_summary}")
 
-        if image_diff and image_diff.changed_regions:
-            devil_parts.append(
-                f"PIXEL DIFF REGIONS (where pixels actually changed): {', '.join(image_diff.changed_regions)}"
-            )
+        if is_functional:
+            # Functional: pass error message to devil's advocate
+            error_msg = run_summary.playwright_notes[0] if run_summary.playwright_notes else None
+            if error_msg:
+                devil_parts.append(f"ERROR MESSAGE:\n{error_msg}")
+            devil_prompt = DEVIL_ADVOCATE_FUNCTIONAL_PROMPT
+        else:
+            # Visual: pass vision analysis and pixel diff regions
+            vision_summary = state.get("vision_summary")
+            if vision_summary:
+                devil_parts.append(f"Vision analysis of screenshots: {vision_summary}")
+            image_diff = state.get("image_diff")
+            if image_diff and image_diff.changed_regions:
+                devil_parts.append(
+                    f"PIXEL DIFF REGIONS (where pixels actually changed): {', '.join(image_diff.changed_regions)}"
+                )
+            devil_prompt = DEVIL_ADVOCATE_VISUAL_PROMPT
 
         devil_response = llm.invoke([
-            {"role": "system", "content": DEVIL_ADVOCATE_SYSTEM_PROMPT},
+            {"role": "system", "content": devil_prompt},
             {"role": "user", "content": "\n\n".join(devil_parts)},
         ])
         devil_review = devil_response.content
@@ -329,7 +350,8 @@ def compose_answer(state: AgentState) -> dict:
         else:
             episode_blocks = "(No past episodes found)"
 
-        system_prompt = COMPOSE_SYSTEM_PROMPT.format(
+        compose_prompt = COMPOSE_FUNCTIONAL_PROMPT if is_functional else COMPOSE_VISUAL_PROMPT
+        system_prompt = compose_prompt.format(
             context_blocks=context_blocks,
             episode_blocks=episode_blocks,
         )
@@ -345,11 +367,18 @@ def compose_answer(state: AgentState) -> dict:
             {"role": "user", "content": final_user_msg},
         ])
         data = json.loads(response.content)
-        return {
+
+        result = {
             "classification": data.get("classification", "uncertain"),
             "confidence": float(data.get("confidence", 0.0)),
             "rationale": data.get("rationale", "No rationale provided."),
         }
+
+        # Set error_message for functional failures
+        if is_functional and run_summary and run_summary.playwright_notes:
+            result["error_message"] = run_summary.playwright_notes[0]
+
+        return result
     except Exception as e:
         logger.warning("compose_answer failed: %s", e, exc_info=True)
         errors.append(f"compose_answer: {e}")

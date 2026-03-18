@@ -53,4 +53,5 @@ def build_response(state: AgentState) -> AskResponse:
             intent=state.get("intent", "triage"),
             errors=state.get("errors", []),
         ),
+        error_message=state.get("error_message"),
     )

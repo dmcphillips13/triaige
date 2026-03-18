@@ -55,12 +55,13 @@ async def create_run(
             )
             for r in results:
                 await conn.execute(
-                    """INSERT INTO failure_results (run_id, test_name, snapshot_path, group_names, screenshot_baseline, screenshot_actual, response)
-                       VALUES ($1, $2, $3, $4, $5, $6, $7)""",
+                    """INSERT INTO failure_results (run_id, test_name, snapshot_path, group_names, screenshot_baseline, screenshot_actual, response, failure_type)
+                       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)""",
                     run_id, r.test_name, r.snapshot_path,
                     json.dumps(r.group) if r.group else None,
                     r.screenshot_baseline, r.screenshot_actual,
                     r.ask_response.model_dump_json(),
+                    r.failure_type,
                 )
 
     return TriageRunResponse(
@@ -95,6 +96,7 @@ async def get_run(run_id: str) -> TriageRunResponse | None:
             screenshot_baseline=fr["screenshot_baseline"],
             screenshot_actual=fr["screenshot_actual"],
             snapshot_path=fr["snapshot_path"],
+            failure_type=fr.get("failure_type"),
         )
         for fr in failure_rows
     ]
@@ -129,6 +131,7 @@ async def get_result(run_id: str, test_name: str) -> TriageFailureResult | None:
         screenshot_baseline=fr["screenshot_baseline"],
         screenshot_actual=fr["screenshot_actual"],
         snapshot_path=fr["snapshot_path"],
+        failure_type=fr.get("failure_type"),
     )
 
 

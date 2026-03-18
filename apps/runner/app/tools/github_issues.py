@@ -23,8 +23,9 @@ def create_bug_issue(
     dashboard_url: str | None = None,
     github_token: str | None = None,
     pr_number: int | None = None,
+    failure_type: str | None = None,
 ) -> str:
-    """Create a GitHub issue for a rejected visual regression failure.
+    """Create a GitHub issue for a rejected test failure.
 
     Args:
         repo: "owner/repo" format.
@@ -36,6 +37,7 @@ def create_bug_issue(
         dashboard_url: Base URL of the Triaige dashboard.
         github_token: Per-request token. Falls back to env var.
         pr_number: Originating PR number for context.
+        failure_type: "error" for functional failures, None for visual.
 
     Returns:
         URL of the created issue.
@@ -47,6 +49,8 @@ def create_bug_issue(
     base_url = dashboard_url or settings.dashboard_url
     run_link = f"{base_url}/runs/{run_id}"
 
+    is_functional = failure_type == "error"
+
     # Build source line with PR link when available
     if pr_number:
         pr_url = f"https://github.com/{repo}/pull/{pr_number}"
@@ -54,8 +58,21 @@ def create_bug_issue(
     else:
         source_line = None
 
+    if is_functional:
+        title = f"Test update needed: {test_name}"
+        heading = "## Test Update Needed"
+        label = "test-update"
+        details_text = f"View failure details and triage analysis: [{run_id[:8]}]({run_link})"
+        footer = "*Created by [Triaige](https://triaige-dashboard.vercel.app) test failure triage*"
+    else:
+        title = f"Visual regression: {test_name}"
+        heading = "## Visual Regression Bug Report"
+        label = "visual-regression"
+        details_text = f"View screenshots and full triage details: [{run_id[:8]}]({run_link})"
+        footer = "*Created by [Triaige](https://triaige-dashboard.vercel.app) visual regression triage*"
+
     body_lines = [
-        "## Visual Regression Bug Report",
+        heading,
         "",
         f"**Test:** `{test_name}`",
         f"**Classification:** {classification} ({round(confidence * 100)}% confidence)",
@@ -70,10 +87,10 @@ def create_bug_issue(
         "",
         "### Details",
         "",
-        f"View screenshots and full triage details: [{run_id[:8]}]({run_link})",
+        details_text,
         "",
         "---",
-        "*Created by [Triaige](https://triaige-dashboard.vercel.app) visual regression triage*",
+        footer,
     ])
 
     client = httpx.Client(
@@ -88,9 +105,9 @@ def create_bug_issue(
     resp = client.post(
         f"/repos/{repo}/issues",
         json={
-            "title": f"Visual regression: {test_name}",
+            "title": title,
             "body": "\n".join(body_lines),
-            "labels": ["visual-regression"],
+            "labels": [label],
         },
     )
     # If label doesn't exist, retry without it
@@ -98,7 +115,7 @@ def create_bug_issue(
         resp = client.post(
             f"/repos/{repo}/issues",
             json={
-                "title": f"Visual regression: {test_name}",
+                "title": title,
                 "body": "\n".join(body_lines),
             },
         )

@@ -33,6 +33,7 @@ class AgentState(TypedDict, total=False):
     classification: str
     confidence: float
     rationale: str
+    error_message: str | None
 
     # Observability
     errors: list[str]

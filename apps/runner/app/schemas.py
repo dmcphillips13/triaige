@@ -79,6 +79,7 @@ class AskResponse(BaseModel):
     image_diff: ImageDiff | None = None
     vision_summary: str | None = None
     debug: DebugInfo | None = None
+    error_message: str | None = None
 
 
 # --- Triage Run models ---
@@ -118,6 +119,7 @@ class TriageFailureResult(BaseModel):
     screenshot_baseline: str | None = None
     screenshot_actual: str | None = None
     snapshot_path: str | None = None
+    failure_type: str | None = None
 
 
 class UpdateBaselinesRequest(BaseModel):

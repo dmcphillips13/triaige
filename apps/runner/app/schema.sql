@@ -129,3 +129,14 @@ BEGIN
         ALTER TABLE repo_settings ADD COLUMN merge_gate BOOLEAN NOT NULL DEFAULT TRUE;
     END IF;
 END $$;
+
+-- Migration: add failure_type column to failure_results if missing (safe to re-run)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'failure_results' AND column_name = 'failure_type'
+    ) THEN
+        ALTER TABLE failure_results ADD COLUMN failure_type TEXT;
+    END IF;
+END $$;

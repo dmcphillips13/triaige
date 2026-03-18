@@ -9,9 +9,13 @@ that can be fed directly into the existing agent graph.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 
 from app.schemas import AskRequest, PRContext, RunSummary
+
+# Strip ANSI escape sequences (color codes) that Playwright embeds in error messages
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 
 @dataclass
@@ -84,7 +88,9 @@ def _walk_suite(
                     status=result.get("status", "failed"),
                     duration_ms=result.get("duration", 0),
                     error_messages=[
-                        e.get("message", "") for e in result.get("errors", []) if e.get("message")
+                        _clean_error_message(e.get("message", ""))
+                        for e in result.get("errors", [])
+                        if e.get("message")
                     ],
                     stdout=[
                         entry.get("text", "") for entry in result.get("stdout", []) if isinstance(entry, dict)
@@ -100,16 +106,54 @@ def _walk_suite(
         _walk_suite(child, titles, failures)
 
 
+def _clean_error_message(msg: str) -> str:
+    """Strip ANSI codes and deduplicate Call log retry lines."""
+    msg = _ANSI_RE.sub("", msg)
+
+    # Collapse repetitive retry lines in Call log sections.
+    # Playwright repeats "  - unexpected value ..." lines until timeout —
+    # keep the first and last occurrence only.
+    lines = msg.split("\n")
+    cleaned: list[str] = []
+    prev_retry = None
+    retry_count = 0
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("- unexpected value") or stripped.startswith("- locator resolved to"):
+            if stripped == prev_retry:
+                retry_count += 1
+                continue
+            if retry_count > 0:
+                cleaned.append(f"  - ... ({retry_count} retries omitted)")
+                retry_count = 0
+            prev_retry = stripped
+        else:
+            if retry_count > 0:
+                cleaned.append(f"  - ... ({retry_count} retries omitted)")
+                retry_count = 0
+            prev_retry = None
+        cleaned.append(line)
+    if retry_count > 0:
+        cleaned.append(f"  - ... ({retry_count} retries omitted)")
+
+    return "\n".join(cleaned)
+
+
 def _extract_screenshots(attachments: list[dict]) -> tuple[str | None, str | None, str | None]:
     """Extract baseline/actual screenshot base64 and snapshot path from attachments.
 
     Returns (baseline_b64, actual_b64, snapshot_path).
     The snapshot_path is the repo-relative path to the expected (baseline) image,
     used by the update-baselines endpoint to commit replacements.
+
+    Also captures Playwright's on-failure screenshot (named "screenshot")
+    as `actual` when no visual diff pair exists — used for functional failures
+    with `screenshot: 'only-on-failure'` config.
     """
     baseline = None
     actual = None
     snapshot_path = None
+    failure_screenshot = None
     for att in attachments:
         name = att.get("name", "")
         body = att.get("body")
@@ -130,6 +174,14 @@ def _extract_screenshots(attachments: list[dict]) -> tuple[str | None, str | Non
         elif is_actual:
             if body:
                 actual = body
+        elif name == "screenshot" and body:
+            failure_screenshot = body
+
+    # For functional failures (no visual diff pair), use the on-failure
+    # screenshot as `actual` so the dashboard can display it
+    if not baseline and not actual and failure_screenshot:
+        actual = failure_screenshot
+
     return baseline, actual, snapshot_path
 
 
@@ -139,7 +191,10 @@ def parsed_result_to_ask_request(
 ) -> AskRequest:
     """Convert a ParsedTestResult into an AskRequest for the agent graph."""
     baseline, actual, snapshot_path = _extract_screenshots(result.attachments)
-    has_screenshots = baseline is not None or actual is not None
+    # Visual diff requires both baseline and actual screenshots (visual regression pair).
+    # A lone actual screenshot (from screenshot: 'only-on-failure') is a functional
+    # failure with a failure screenshot — not a visual diff.
+    is_visual_diff = baseline is not None and actual is not None
 
     question = f"Test '{result.test_name}' failed with status '{result.status}'."
     if result.error_messages:
@@ -149,7 +204,7 @@ def parsed_result_to_ask_request(
         question=question,
         run_summary=RunSummary(
             test_name=result.test_name,
-            failure_type="visual_diff" if has_screenshots else "error",
+            failure_type="visual_diff" if is_visual_diff else "error",
             playwright_notes=result.error_messages,
             screenshot_baseline=baseline,
             screenshot_actual=actual,

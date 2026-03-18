@@ -51,7 +51,9 @@ export function FailureCard({
   actionsLoaded?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [errorExpanded, setErrorExpanded] = useState(false);
   const { ask_response: res } = result;
+  const isFunctional = result.failure_type === "error";
 
   return (
     <div
@@ -177,7 +179,11 @@ export function FailureCard({
               >
                 <Check className="h-3.5 w-3.5 shrink-0" />
                 <span className="whitespace-nowrap">
-                  {verdict === "approved" ? "Approved (click to undo)" : "Approve baseline update"}
+                  {verdict === "approved"
+                    ? "Approved (click to undo)"
+                    : isFunctional
+                      ? "Acknowledge test update"
+                      : "Approve baseline update"}
                 </span>
               </button>
               <button
@@ -214,7 +220,50 @@ export function FailureCard({
             <MarkdownContent text={res.rationale} />
           </div>
 
-          {result.screenshot_baseline && result.screenshot_actual && (
+          {/* Error details for functional failures */}
+          {isFunctional && res.error_message && (
+            <div className="border-t border-zinc-100 px-4 py-3">
+              <button
+                onClick={() => setErrorExpanded(!errorExpanded)}
+                className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-zinc-400 hover:text-zinc-600"
+              >
+                {errorExpanded ? (
+                  <ChevronDown className="h-3 w-3" />
+                ) : (
+                  <ChevronRight className="h-3 w-3" />
+                )}
+                Error Details
+              </button>
+              {errorExpanded && (
+                <pre className="mt-2 overflow-x-auto rounded bg-zinc-50 p-3 text-xs text-zinc-700 font-mono whitespace-pre-wrap">
+                  {res.error_message}
+                </pre>
+              )}
+            </div>
+          )}
+
+          {/* Failure screenshot for functional tests (single image, no comparison) */}
+          {isFunctional && !result.screenshot_baseline && result.screenshot_actual && (
+            <div className="border-t border-zinc-100 px-4 py-4">
+              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                Failure Screenshot
+              </h4>
+              <img
+                src={`data:image/png;base64,${result.screenshot_actual}`}
+                alt="Failure screenshot"
+                className="w-full rounded border border-zinc-200 cursor-pointer"
+                onClick={() => {
+                  const win = window.open();
+                  if (win) {
+                    win.document.write(`<img src="data:image/png;base64,${result.screenshot_actual}" style="max-width:100%">`);
+                  }
+                }}
+              />
+            </div>
+          )}
+
+          {/* Screenshot comparison for visual tests */}
+          {!isFunctional && result.screenshot_baseline && result.screenshot_actual && (
             <div className="border-t border-zinc-100 px-4 py-4">
               <ScreenshotViewer
                 baseline={result.screenshot_baseline}

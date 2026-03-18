@@ -399,8 +399,24 @@ async def triage_run(req: TriageRunRequest, request: Request):
             triage_mode=mode,
         )
 
-    # Group related failures to reduce LLM calls
-    groups = group_failures(ask_requests)
+    # Split functional failures out — they bypass grouping and are always
+    # processed individually for classification accuracy
+    functional_requests = [
+        r for r in ask_requests
+        if r.run_summary and r.run_summary.failure_type == "error"
+    ]
+    visual_requests = [
+        r for r in ask_requests
+        if not (r.run_summary and r.run_summary.failure_type == "error")
+    ]
+
+    # Process functional failures individually
+    for ask_req in functional_requests:
+        response = await asyncio.to_thread(run_graph, ask_req)
+        results.append(_build_result(ask_req, response, None))
+
+    # Group related visual failures to reduce LLM calls
+    groups = group_failures(visual_requests)
 
     results: list[TriageFailureResult] = []
     for grp in groups:
@@ -504,6 +520,7 @@ def _build_result(
         screenshot_baseline=rs.screenshot_baseline if rs else None,
         screenshot_actual=rs.screenshot_actual if rs else None,
         snapshot_path=rs.snapshot_path if rs else None,
+        failure_type=rs.failure_type if rs else None,
     )
 
 
@@ -740,6 +757,7 @@ async def create_issues(req: CreateIssuesRequest, request: Request):
                     rationale=result.ask_response.rationale,
                     github_token=github_token,
                     pr_number=run_pr,
+                    failure_type=result.failure_type,
                 )
                 issues.append({"test_name": name, "issue_url": issue_url})
 
