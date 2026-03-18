@@ -119,6 +119,7 @@ Last updated: 2026-03-17
 - [ ] Repo setup CLI (`npx triaige init`) — guided setup: checks `gh` auth, verifies dashboard connection + GitHub App Checks permission, sets GitHub secrets, scaffolds workflow + script, detects Playwright config, offers initial baseline generation + commit, branch protection setup
 - [ ] Basic multi-tenancy — per-org data isolation so two teams' runs don't mix
 - [ ] BYOK key management — let users provide their own OpenAI/Anthropic keys (encrypted storage, validation)
+- [ ] Multi-repo upstream diff resolution — when a PR is a dependency version bump, resolve the real diff from upstream repo(s) to give the classifier meaningful code context. Covers the common enterprise pattern where multiple repos publish packages consumed by a UI repo. Without this, version-bump PRs get weak "uncertain" classifications. Build if a design partner needs it, skip if they don't
 
 ### Market demo polish
 - [ ] **Known failure card states need fixing** — re-triggered CI runs produce non-actionable cards even when no action was taken on the previous run. Correct behavior: (1) **open GH issue exists** → card shown at bottom, non-actionable, links to the issue (informational only); (2) **pending issue (staged but not yet created)** → card shows a note that an issue is pending, but user can unselect and then approve baseline or re-stage; (3) **no action taken** → card is fully actionable. Only an opened issue makes a card non-actionable — pending is a draft decision the user can change each run
@@ -148,6 +149,7 @@ Last updated: 2026-03-17
 - [ ] Component ownership lookup
 - [ ] RAGAS evaluation
 - [ ] Separate test repo support — link a dedicated Playwright/baselines repo separate from the UI repo
+- [ ] Post-deployment environment testing — support scheduled test runs against SIT/UAT/prod environments (no single PR trigger). Health dashboard use case with weaker intent signal — more about tracking what's broken than classifying intent. See `project_multi_repo.md` memory for full context
 - [ ] Auto-approve baselines above confidence threshold
 - [ ] Mobile optimization for the dashboard
 
