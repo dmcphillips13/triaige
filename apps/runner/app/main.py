@@ -410,6 +410,8 @@ async def triage_run(req: TriageRunRequest, request: Request):
         if not (r.run_summary and r.run_summary.failure_type == "error")
     ]
 
+    results: list[TriageFailureResult] = []
+
     # Process functional failures individually
     for ask_req in functional_requests:
         response = await asyncio.to_thread(run_graph, ask_req)
@@ -417,8 +419,6 @@ async def triage_run(req: TriageRunRequest, request: Request):
 
     # Group related visual failures to reduce LLM calls
     groups = group_failures(visual_requests)
-
-    results: list[TriageFailureResult] = []
     for grp in groups:
         group_names = grp.test_names if len(grp.test_names) > 1 else None
 
