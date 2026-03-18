@@ -141,6 +141,7 @@ Last updated: 2026-03-17
 - [ ] Closed Issues tab: add screenshot comparison viewer for reference/sharing
 - [ ] Closed Runs tab: add PR link on run cards
 - [ ] Reconsider tab prominence — Closed Runs/Issues may not need equal visual weight (collapse, secondary nav, or filter)
+- [ ] PR run detail shows previous closed runs for the same PR — list of links with timestamps and summary stats for review history context
 - [ ] `update-snapshots.yml` should NOT be included in the setup CLI or repo template — it's a dev convenience for the sample app only; if included, add a confirmation input to prevent accidental runs
 - [ ] Cypress support — separate ingestion adapter for Cypress JSON report format. Classification pipeline is identical; only the report parsing differs. Build when a design partner needs it
 
