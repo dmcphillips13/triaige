@@ -116,10 +116,11 @@ Last updated: 2026-03-17
 
 ### New MVP functionality (build before going to market)
 - [x] **Functional test failure support** — extend triage to handle functional Playwright failures (assertion errors, navigation failures, timeouts) alongside visual regressions. Same expected/unexpected/uncertain classification. Plain English failure summaries. See `docs/functional-test-plan.md` for implementation plan and `docs/strategy.md` for design rationale
-  - **Follow-ups (in priority order):**
-  - [ ] **Functional failure card actions** — remove "Acknowledge test update" button. Single action: "Open GH issue to track bug." Add guidance note: "If this change is expected, update the test in your PR to match. If this is unexpected, fix the underlying bug or open an issue to track it." No automated test fix — developer updates test and pushes, failure resolves naturally on next CI run. E2E verification: see `TEST_PLAN.md` § Functional test follow-ups
-  - [ ] **Functional failure screenshot size** — full-page screenshot renders too large on dashboard. Constrain to match visual comparison viewer dimensions
+  - **Follow-ups:**
+  - [x] **Functional failure card actions** — single "Open GH issue to track bug" button with guidance note. E2E verification: see `TEST_PLAN.md` § Functional test follow-ups
+  - [x] **Functional failure screenshot size** — constrained to `max-w-md` / `max-h-[250px]` with fullscreen modal on click
   - [ ] **Classification accuracy for functional failures (P0)** — navigation test on PR #79 misclassified as "unexpected" when it should be "expected." Prompt needs better guidance to trace assertion expected/received values back to code diff and PR description
+  - [ ] **E2E verification of functional failure flow** — re-trigger PR #79, verify card rendering, submit flow, merge gate, issue materialization, and known failure tracking on subsequent PRs. See `TEST_PLAN.md` § Functional test follow-ups
 - [ ] Repo setup CLI (`npx triaige init`) — guided setup: checks `gh` auth, verifies dashboard connection + GitHub App Checks permission, sets GitHub secrets, scaffolds workflow + script, detects Playwright config, offers initial baseline generation + commit, branch protection setup
 - [ ] Basic multi-tenancy — per-org data isolation so two teams' runs don't mix
 - [ ] BYOK key management — let users provide their own OpenAI/Anthropic keys (encrypted storage, validation)

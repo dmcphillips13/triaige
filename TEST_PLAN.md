@@ -602,28 +602,48 @@ gh pr create --title "Minor styling tweak" --body "Small token change"
 
 ## Functional test follow-ups
 
-Verification steps for the functional failure card refinements (referenced from PROJECT_CONTEXT.md).
+End-to-end verification of functional failure card refinements (referenced from PROJECT_CONTEXT.md).
 
 ### Prerequisites
 
-- Runner deployed with card action + screenshot size changes
-- PR #79 (`test/functional-visual-mixed`) on sample app still open, or re-create equivalent PR that breaks one visual test + one functional test
+- Runner deployed with latest changes
+- Dashboard deployed with card action + screenshot size changes
+- PR #79 (`test/functional-visual-mixed`) on sample app, or re-create equivalent PR that breaks one visual test + one functional test
+- Clear any stale verdicts from prior test runs (or re-trigger CI for a fresh run)
 
-### Test: Card actions
+### Step-by-step flow
 
-**What to verify:**
-1. Functional failure card shows exactly one button: "Open GH issue to track bug" — no "Acknowledge test update", no second button
-2. Visual failure cards still show both buttons ("Approve baseline update" and "Reject and open GH issue") — unchanged
-3. Guidance note visible on functional card: "If this change is expected, update the test in your PR to match. If this is unexpected, fix the underlying bug or open an issue to track it."
-4. Clicking "Open GH issue to track bug" stages a pending issue — card shows "Issue will be filed on merge" in amber
-5. Submitting all verdicts passes the merge gate (Triaige Visual Regression check → success)
-6. Merging the PR materializes the GitHub issue (via `/report-clean`)
-7. Subsequent PRs that trigger the same functional test failure show it as a known failure with the open issue link, non-actionable — does not block merge gate
-8. PR comment table still shows functional failures with correct status
+**1. Trigger a fresh run**
+- Re-trigger CI on PR #79 (or push a no-op commit to get a clean run with no prior verdicts)
 
-### Test: Screenshot size
+**2. Verify card rendering**
+- [ ] Functional failure card shows exactly one button: "Open GH issue to track bug" — no "Acknowledge test update", no second button
+- [ ] Guidance note visible on functional card: "If this change is expected, update the test in your PR to match. If this is unexpected, fix the underlying bug or open an issue to track it."
+- [ ] Visual failure cards still show both buttons ("Approve baseline update" and "Reject and open GH issue") — unchanged
+- [ ] Functional failure rationale is visible (not collapsed)
+- [ ] Error details section is present and expandable
+- [ ] PR comment table shows functional failures with correct status
 
-**What to verify:**
-1. Functional failure screenshot constrained to same width as one side of the visual comparison viewer (~50% card width or similar)
-2. Screenshot still viewable — not cropped or distorted, just scaled down
-3. Visual failure comparison viewer unchanged
+**3. Verify screenshot size + fullscreen**
+- [ ] Functional failure screenshot constrained (not full-width) — roughly matches one side of the visual comparison viewer
+- [ ] Screenshot is not cropped or distorted, just scaled down
+- [ ] Clicking screenshot or "Expand" button opens fullscreen modal
+- [ ] Fullscreen modal shows full-resolution image, closes with Escape or X button
+- [ ] Visual failure comparison viewer unchanged
+
+**4. Submit flow**
+- [ ] Approve the visual failures (baseline updates)
+- [ ] Click "Open GH issue to track bug" on the functional failure — card shows "Issue will be filed on merge" in amber
+- [ ] Submit all verdicts
+- [ ] Triaige Visual Regression check on PR transitions to success (merge gate passes)
+
+**5. Merge and verify issue creation**
+- [ ] Merge PR #79 via GitHub
+- [ ] `/report-clean` fires on push-to-main, materializes the deferred GitHub issue
+- [ ] GitHub issue exists with correct test name, error details, and link to the PR
+
+**6. Verify known failure tracking on subsequent PRs**
+- [ ] Create a new PR that triggers the same functional test failure
+- [ ] CI posts to runner, run appears on dashboard
+- [ ] The functional failure shows as a known failure with the open issue link
+- [ ] The known failure is non-actionable (no buttons) — does not block merge gate
