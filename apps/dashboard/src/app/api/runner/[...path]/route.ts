@@ -4,8 +4,10 @@ import { getSession } from '@/lib/auth';
 const RUNNER_BASE_URL = process.env.RUNNER_BASE_URL || 'http://localhost:8000';
 const RUNNER_API_KEY = process.env.RUNNER_API_KEY || '';
 
-async function proxyRequest(request: NextRequest, path: string) {
-  const url = `${RUNNER_BASE_URL}/${path}`;
+async function proxyRequest(request: NextRequest, segments: string[]) {
+  // Next.js decodes [...path] segments (%2F→/, %20→space), so re-encode
+  // each one to preserve test names with slashes and special characters
+  const url = `${RUNNER_BASE_URL}/${segments.map(encodeURIComponent).join('/')}`;
 
   const headers = new Headers();
   headers.set('Content-Type', 'application/json');
@@ -67,7 +69,7 @@ export async function GET(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   const { path } = await params;
-  return proxyRequest(request, path.join('/'));
+  return proxyRequest(request, path);
 }
 
 export async function POST(
@@ -75,7 +77,7 @@ export async function POST(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   const { path } = await params;
-  return proxyRequest(request, path.join('/'));
+  return proxyRequest(request, path);
 }
 
 export async function PUT(
@@ -83,7 +85,7 @@ export async function PUT(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   const { path } = await params;
-  return proxyRequest(request, path.join('/'));
+  return proxyRequest(request, path);
 }
 
 export async function DELETE(
@@ -91,7 +93,7 @@ export async function DELETE(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   const { path } = await params;
-  return proxyRequest(request, path.join('/'));
+  return proxyRequest(request, path);
 }
 
 export async function PATCH(
@@ -99,5 +101,5 @@ export async function PATCH(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   const { path } = await params;
-  return proxyRequest(request, path.join('/'));
+  return proxyRequest(request, path);
 }
