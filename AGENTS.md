@@ -51,7 +51,7 @@ A separate GitHub repo with a moderate dashboard-style web app (3–5 pages: nav
 - **LangGraph** StateGraph with conditional routing.
 
 ### 2.4 LLM + Embeddings
-- **GPT-4o-mini** for text reasoning (classification, composition).
+- **GPT-5.4-nano** for text reasoning (classification, composition).
 - **GPT-4o** for vision analysis (screenshot diffs).
 - **text-embedding-3-small** (1536 dimensions) for embeddings.
 
@@ -160,7 +160,7 @@ apps/runner/
 | `QDRANT_API_KEY` | — | Yes |
 | `QDRANT_COLLECTION` | `triaige_triage_memory` | No |
 | `OPENAI_API_KEY` | — | Yes |
-| `OPENAI_MODEL` | `gpt-4o-mini` | No |
+| `OPENAI_MODEL` | `gpt-5.4-nano` | No |
 | `OPENAI_EMBEDDINGS_MODEL` | `text-embedding-3-small` | No |
 | `OPENAI_EMBEDDINGS_DIMENSIONS` | `1536` | No |
 | `GITHUB_TOKEN` | — | No (enriches with PR context when set) |
@@ -386,7 +386,7 @@ The agent stores its own triage instructions in Qdrant (`doc_type: procedure`). 
 ## 8) Agentic RAG workflow (LangGraph)
 
 ### Initial graph nodes
-1. `classify_query` — determine intent and extract failure signals via GPT-4o-mini
+1. `classify_query` — determine intent and extract failure signals via GPT-5.4-nano
 2. `fetch_pr_context` — read PR details from GitHub API (changed files, commits, diff) if `repo` and `pr_number` provided
 3. `retrieve_semantic` — Qdrant search filtered by `doc_type` in (`case`, `runbook`, `known_change`) and optionally by `component`
 4. `retrieve_episodes` — Qdrant search filtered by `doc_type: episode`; results formatted as few-shot examples in the system prompt

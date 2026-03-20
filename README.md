@@ -14,7 +14,7 @@ AI-powered visual regression triage system that classifies CI test failures, sur
 
 ## Stack
 
-- **Runner:** FastAPI + LangGraph agent with GPT-4o-mini (text) and GPT-4o (vision)
+- **Runner:** FastAPI + LangGraph agent with GPT-5.4-nano (text) and GPT-4o (vision)
 - **Memory:** Qdrant Cloud — semantic retrieval (triage corpus) + episodic memory (human feedback)
 - **Dashboard:** Next.js App Router with Tailwind CSS
 - **Deploy:** Render (runner) + Vercel (dashboard)

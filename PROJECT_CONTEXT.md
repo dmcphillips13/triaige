@@ -169,7 +169,7 @@ Last updated: 2026-03-17
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| LLM (text) | GPT-4o-mini | Cheapest capable model; best LangChain integration |
+| LLM (text) | GPT-5.4-nano | Fast, capable reasoning model; best LangChain integration |
 | LLM (vision) | GPT-4o | Vision capabilities for screenshot diff analysis |
 | Embeddings | text-embedding-3-small (1536d) | Pairs with OpenAI; one API key |
 | Vector DB | Qdrant Cloud (free tier) | Production-ready, metadata filtering, hybrid search |
@@ -196,7 +196,7 @@ Last updated: 2026-03-17
 | Service | Status | Notes |
 |---|---|---|
 | Qdrant Cloud | Provisioned | Collection `triaige_triage_memory`, 1536d cosine |
-| OpenAI API | Configured | GPT-4o-mini + GPT-4o vision + text-embedding-3-small |
+| OpenAI API | Configured | GPT-5.4-nano + GPT-4o vision + text-embedding-3-small |
 | GitHub App | Configured | Triaige app with Contents + Pull Requests permissions |
 | LangSmith | Configured | Tracing enabled via LangGraph |
 | Render | Deployed | https://triaige-runner.onrender.com |

@@ -11,7 +11,7 @@ class Settings(BaseSettings):
 
     # OpenAI
     openai_api_key: str | None = None
-    openai_model: str = "gpt-4o-mini"
+    openai_model: str = "gpt-5.4-nano"
     openai_vision_model: str = "gpt-4o"
     openai_embeddings_model: str = "text-embedding-3-small"
     openai_embeddings_dimensions: int = 1536
