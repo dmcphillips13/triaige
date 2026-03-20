@@ -18,6 +18,11 @@ def build_response(state: AgentState) -> AskResponse:
     classification = state.get("classification", "uncertain")
     action_type = _ACTION_MAP.get(classification, "request_human_review")
 
+    # Functional failures have no baseline — use appropriate label
+    run_summary = state.get("run_summary")
+    if run_summary and run_summary.failure_type == "error" and classification == "expected":
+        action_type = "update_test"
+
     # Build citations from semantic + episode docs
     citations = []
     seen_ids: set[str] = set()

@@ -284,18 +284,13 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
               ? kf.open_submission
               : null;
 
-          // Pre-existing failures (failing on main) are non-actionable
-          // on pre-merge runs — they're already tracked on main
-          const isPreExisting =
-            isPreMerge && kf?.failing_since != null;
-
           return (
             <li key={result.test_name}>
               <FailureCard
                 result={result}
                 verdict={verdicts[result.test_name] ?? null}
                 onVerdict={(v) => handleVerdict(result.test_name, v)}
-                readOnly={isClosed || isPostMerge || isPreExisting || submitStatus === "loading"}
+                readOnly={isClosed || isPostMerge || submitStatus === "loading"}
                 submitted={submitted[result.test_name] ?? null}
                 knownFailure={kf ?? null}
                 actionGated={existingSubmission !== null}
