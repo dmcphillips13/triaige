@@ -604,6 +604,14 @@ gh pr create --title "Minor styling tweak" --body "Small token change"
 
 End-to-end verification of functional failure card refinements (referenced from PROJECT_CONTEXT.md).
 
+### Known regression: URL encoding broke submit flow
+
+Adding functional tests required changing `testDir` from `./tests/visual` to `./tests` in the sample app's Playwright config. This added `visual/` and `functional/` subdirectory prefixes to all test names (e.g., `header.spec.ts` → `visual/header.spec.ts`). The slashes broke `putVerdict` and `putSubmission`, which encoded test names in URL paths — the Next.js proxy decoded `%2F` back to `/`, producing malformed URLs that the runner couldn't route (404). Errors were silently swallowed because neither function checked `res.ok`.
+
+The main E2E test (Steps 0-14) passed because test names had no slashes at that time. The submit → gate check → auto-close path worked correctly. The bug only manifested after functional test support landed.
+
+**Fix:** Move `test_name` from URL path to request body for `putVerdict` and `putSubmission`. Add `res.ok` checks to both functions so API errors surface in the UI.
+
 ### Prerequisites
 
 - Runner deployed with latest changes

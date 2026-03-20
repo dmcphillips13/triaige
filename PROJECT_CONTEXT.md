@@ -119,6 +119,7 @@ Last updated: 2026-03-17
   - **Follow-ups:**
   - [x] **Functional failure card actions** — single "Open GH issue to track bug" button with guidance note. E2E verification: see `TEST_PLAN.md` § Functional test follow-ups
   - [x] **Functional failure screenshot size** — constrained to `max-w-md` / `max-h-[250px]` with fullscreen modal on click
+  - [x] **Fix proxy URL encoding for test names with slashes** — functional test support changed `testDir` from `./tests/visual` to `./tests`, adding `visual/` and `functional/` prefixes to test names. Slashes in test names broke `putVerdict` and `putSubmission` URL paths (Next.js `[...path]` decodes `%2F`→`/`, producing malformed URLs → silent 404s). Fix: move `test_name` from URL path to request body for all mutation endpoints. Also added `res.ok` checks so future API errors surface in the UI
   - [ ] **Classification accuracy for functional failures (P0)** — navigation test on PR #79 misclassified as "unexpected" when it should be "expected." Prompt needs better guidance to trace assertion expected/received values back to code diff and PR description
   - [ ] **E2E verification of functional failure flow** — re-trigger PR #79, verify card rendering, submit flow, merge gate, issue materialization, and known failure tracking on subsequent PRs. See `TEST_PLAN.md` § Functional test follow-ups
 - [ ] Repo setup CLI (`npx triaige init`) — guided setup: checks `gh` auth, verifies dashboard connection + GitHub App Checks permission, sets GitHub secrets, scaffolds workflow + script, detects Playwright config, offers initial baseline generation + commit, branch protection setup
@@ -136,6 +137,8 @@ Last updated: 2026-03-17
 - [ ] PR run cards should link to the GitHub PR (title shown but not clickable)
 - [ ] Failure cards should sort by classification (expected → uncertain → unexpected, each by confidence desc)
 - [ ] Upgrade Render to paid tier ($7/mo — eliminate cold starts)
+- [ ] **Audit API functions for silent failures** — `putVerdict` and `putSubmission` were swallowing errors silently (no `res.ok` check). Audit all mutation functions in `api.ts` for the same pattern. Any mutation that doesn't surface errors is a ticking time bomb — failures look like success to the user
+- [ ] **Submit flow smoke test** — automated test that stores a submission via `putSubmission`, fetches it back via `fetchSubmissions`, and verifies it persists. Would have caught the URL encoding regression the moment functional tests landed. Start with the runner's critical paths: submit + verdict storage, gate check, issue creation flow. These are highest-leverage because bugs here are invisible until a user hits them in production
 - [ ] **Classification regression library** — build up a library of sample app PRs with known expected outcomes (expected/unexpected/uncertain) across visual and functional failures. Use as a repeatable regression suite when changing prompts, classification logic, or adding new failure types. Start by keeping PRs created during feature work (functional test support, prompt refinements) as reference scenarios rather than creating them separately. Include edge cases over time: mixed-scope PRs, empty diffs, vague descriptions, large diffs
 
 ### Go to market polish

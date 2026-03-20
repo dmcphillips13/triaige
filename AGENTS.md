@@ -142,6 +142,7 @@ apps/runner/
 ### Dashboard
 - Proxy route at `api/runner/[...path]/route.ts` forwards to runner (avoids CORS).
 - Uses `RUNNER_BASE_URL` env var (server-side, not `NEXT_PUBLIC_`).
+- **URL path rule:** Never put user-generated or variable-format strings (test names, file paths) in URL path parameters for mutation endpoints. Next.js `[...path]` decodes `%2F`→`/` and Starlette decodes `%2F` before routing, so slashes in values break path matching silently. Use the request body instead. GET endpoints that fetch all records by `run_id` (no test name in path) are fine.
 
 ### Sample app (separate repo)
 - Separate GitHub repo (not in this monorepo).
