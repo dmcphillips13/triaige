@@ -14,7 +14,7 @@
 
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { Check, X, ChevronDown, ChevronRight, AlertCircle, Maximize2 } from "lucide-react";
+import { Check, X, ChevronDown, ChevronRight, Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ClassificationBadge } from "@/components/classification-badge";
 import { ScreenshotViewer } from "@/components/screenshot-viewer";
@@ -90,63 +90,13 @@ export function FailureCard({
         )}
       </div>
 
-      {/* Known failure annotation */}
-      {knownFailure?.failing_since && (
-        <div className="flex items-center gap-2 border-t border-zinc-100 bg-amber-50 px-4 py-2">
-          <AlertCircle className="h-3.5 w-3.5 shrink-0 text-amber-500" />
-          <span className="text-xs text-amber-700">
-            Failing since{" "}
-            {knownFailure.failing_since.pr_url ? (
-              <a
-                href={knownFailure.failing_since.pr_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium hover:underline"
-              >
-                {knownFailure.failing_since.pr_title ||
-                  knownFailure.failing_since.pr_url}
-              </a>
-            ) : (
-              <span className="font-medium">
-                {knownFailure.failing_since.pr_title || "a previous run"}
-              </span>
-            )}
-          </span>
-          {/* Show existing open submission link inline */}
-          {(existingSubmission || knownFailure.open_submission) && (
-            <>
-              <span className="text-xs text-amber-400">·</span>
-              <a
-                href={
-                  (existingSubmission || knownFailure.open_submission)!.url
-                }
-                target="_blank"
-                rel="noopener noreferrer"
-                className={cn(
-                  "text-xs font-medium hover:underline",
-                  (existingSubmission || knownFailure.open_submission)!
-                    .type === "pr"
-                    ? "text-emerald-700"
-                    : "text-rose-700"
-                )}
-              >
-                {(existingSubmission || knownFailure.open_submission)!
-                  .type === "pr"
-                  ? (isPreMerge ? "Baseline committed" : "Baseline committed")
-                  : "Issue open"}
-              </a>
-            </>
-          )}
-        </div>
-      )}
-
       {/* Submission display — unified for both current and existing submissions */}
       {!actionsLoaded ? (
         <div className="border-t border-zinc-100 bg-zinc-50 px-4 py-2">
           <div className="h-4 w-32 animate-pulse rounded bg-zinc-200/60" />
         </div>
       ) : (() => {
-        const sub = submitted || existingSubmission || (!knownFailure?.failing_since && knownFailure?.open_submission) || null;
+        const sub = submitted || existingSubmission || knownFailure?.open_submission || null;
         if (sub) {
           const isDeferred = sub.url.startsWith("deferred:");
           return (
