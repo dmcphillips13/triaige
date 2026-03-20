@@ -43,14 +43,11 @@ export async function putVerdict(
   testName: string,
   verdict: "approved" | "rejected"
 ): Promise<void> {
-  const res = await fetch(
-    `/api/runner/runs/${runId}/failures/${encodeURIComponent(testName)}/verdict`,
-    {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ verdict }),
-    }
-  );
+  const res = await fetch(`/api/runner/runs/${runId}/verdict`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ test_name: testName, verdict }),
+  });
   if (!res.ok) {
     throw new Error(`Failed to store verdict: ${res.status}`);
   }
@@ -72,14 +69,11 @@ export async function putSubmission(
   url: string,
   type: "pr" | "issue"
 ): Promise<void> {
-  const res = await fetch(
-    `/api/runner/runs/${runId}/failures/${encodeURIComponent(testName)}/submission`,
-    {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url, type }),
-    }
-  );
+  const res = await fetch(`/api/runner/runs/${runId}/submission`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ test_name: testName, url, type }),
+  });
   if (!res.ok) {
     throw new Error(`Failed to store submission: ${res.status}`);
   }

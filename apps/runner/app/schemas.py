@@ -153,12 +153,14 @@ class CreateIssuesResponse(BaseModel):
 class VerdictRequest(BaseModel):
     """Human verdict on a single failure."""
 
+    test_name: str
     verdict: str  # "approved" or "rejected"
 
 
 class SubmissionRequest(BaseModel):
     """Submission result for a single failure (PR or issue URL)."""
 
+    test_name: str
     url: str
     type: str  # "pr" or "issue"
 

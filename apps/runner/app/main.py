@@ -551,12 +551,12 @@ async def close_run(run_id: str):
 # --- Verdicts ---
 
 
-@app.put("/runs/{run_id}/failures/{test_name}/verdict")
-async def put_verdict(run_id: str, test_name: str, req: VerdictRequest):
+@app.put("/runs/{run_id}/verdict")
+async def put_verdict(run_id: str, req: VerdictRequest):
     """Store a human verdict for a failure."""
     if req.verdict not in ("approved", "rejected"):
         raise HTTPException(status_code=400, detail="Verdict must be 'approved' or 'rejected'")
-    await store.set_verdict(run_id, test_name, req.verdict)
+    await store.set_verdict(run_id, req.test_name, req.verdict)
     return {"status": "stored"}
 
 
@@ -569,10 +569,10 @@ async def get_verdicts(run_id: str):
 # --- Submissions ---
 
 
-@app.put("/runs/{run_id}/failures/{test_name}/submission")
-async def put_submission(run_id: str, test_name: str, req: SubmissionRequest, request: Request):
+@app.put("/runs/{run_id}/submission")
+async def put_submission(run_id: str, req: SubmissionRequest, request: Request):
     """Store a submission result (PR or issue URL) for a failure."""
-    await store.set_submission(run_id, test_name, req.url, req.type)
+    await store.set_submission(run_id, req.test_name, req.url, req.type)
 
     # Check if all pre-merge failures are now addressed → update merge gate
     if await store.check_pre_merge_gate(run_id):
