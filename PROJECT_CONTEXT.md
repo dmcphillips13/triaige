@@ -122,6 +122,28 @@ Last updated: 2026-03-22
 - [x] **Submit → gate check → auto-close works end-to-end** — PR #76 on sample app: approved 5 failures, submitted, submissions persisted, gate passed, run auto-closed. First successful gate-pass auto-close (previous auto-closes were all via superseding mechanism)
 - **GPT-5.4-nano is a step change in classification quality** — rationale went from vague summaries (4o-mini: "color change not in PR scope") to grounded explanations (5.4-nano: "Card border radius changed — aligns with globals.css radius token update"). Functional test P0 misclassification also appears resolved. The product thesis — intent-aware triage grounded in code context — now lands visibly in the output
 
+### Session 2026-03-22 — CLI setup, per-repo API keys, settings page, onboarding test
+
+**Built:**
+- [x] **Repo setup CLI (`npx triaige init`)** — full interactive CLI at `packages/cli/`. Checks prerequisites (gh, jq, git remote, package manager), prompts for API key (masked), validates runner connection, sets GitHub secrets via `gh secret set` (stdin, never in args/files), detects Playwright config + JSON reporter, generates workflow files + post-failures.sh, generates baselines in CI (temporary workflow, wait for completion, pull, cleanup), handles branch protection (removes before baseline push, restores after), checks GitHub App access, prints validation summary. Built with tsup + @inquirer/prompts + chalk. All green checks on test-triaige-onboarding repo
+- [x] **Per-repo API keys** — `api_key` column on `repo_settings` table, auto-generated on first access (`tr_` prefix + cryptographically random token). Auth middleware accepts both global key (dashboard proxy) and per-repo keys (CI workflows). `GET /repos/{repo}/api-key` endpoint
+- [x] **Dashboard settings page** — `/repos/[owner]/[repo]/settings` route. Shows API key (copy-to-clipboard), `npx triaige init` command (copy-to-clipboard), merge gate toggle. Settings link on repo cards
+- [x] **Runner URL hardcoded in CLI** — removed runner URL prompt, hardcoded to `https://triaige-runner.onrender.com`
+- [x] **CI baseline generation** — CLI creates temporary update-snapshots workflow, pushes it, triggers via `gh workflow run`, waits with retry logic, pulls CI-generated baselines, removes temp workflow. Handles branch protection removal/restoration automatically. Shows GitHub Actions URL during wait
+- [x] **Empty run fix** — if `/triage-run` receives 0 failures after parsing, creates passing check and returns early (no empty run creation)
+- [x] **gh auth detection fix** — handles stdout/stderr correctly across gh CLI versions
+- [x] **Runner health check timeout** — 15s timeout on `/health` validation
+
+**Blocking bug (P0 — next session):**
+- [ ] **Triage run shows 0 failures despite CI reporting 1 failure** — test-triaige-onboarding PR #2 ("Switch to dark theme"). CI log confirms "Found 1 unexpected test failure(s), posting to Triaige... Triage run created: 441a4f70". But dashboard shows the run with 0 failures and "Action required" with no failure cards. Merge gate check stuck pending. No PR comment posted. No errors in Render logs — just a 200 OK on the POST. Root cause unknown. Theories: (1) Playwright parser not extracting failures from this repo's JSON format, (2) classification failing silently, (3) per-repo API key auth interfering with GitHub token forwarding for check run creation. **Test repo:** `dmcphillips13/test-triaige-onboarding`, PR #2 still open, run ID `441a4f70-aa19-4398-b467-ffed743691e3`
+
+**Test repo state:**
+- `dmcphillips13/test-triaige-onboarding` — fresh Next.js app with 1 Playwright visual test
+- Fully configured via `triaige init` (workflows, secrets, branch protection, CI baselines)
+- PR #2 open (`test/dark-theme` branch) with background color change from white to dark navy
+- CI workflow ran, Playwright test failed (7177 pixel diff), posted to runner, but dashboard shows 0 failures
+- Branch protection active with "Triaige Visual Regression" required check
+
 ### Vision night 2026-03-21 — GTM sharpening + compliance mode
 - **Primary GTM target identified:** frustrated Percy/Chromatic customers at mid-market B2B SaaS companies (10-30 engineers, complex UIs, already paying $200-500/mo for visual testing). Product substitution pitch, not category creation
 - **SaMD vertical expansion:** confirmed gap (no tool automates visual verification evidence for FDA Design History Files), but 6-12 month sales cycles and risk-averse buyers make it a secondary play. Compliance features are cheap to build and unlock value across all markets, not just SaMD
@@ -142,7 +164,7 @@ Last updated: 2026-03-22
   - [x] **Fix proxy URL encoding for test names with slashes** — move `test_name` from URL path to request body for all mutation endpoints. Also added `res.ok` checks so future API errors surface in the UI
   - [ ] **Classification accuracy for functional failures (P0)** — appears resolved by GPT-5.4-nano upgrade (commit cf4169b). Needs a few more runs to confirm
   - [ ] **E2E verification of functional failure flow** — create a new PR with mixed visual + functional failures to verify card rendering, submit flow, merge gate, issue materialization, and known failure tracking. See `TEST_PLAN.md` § Functional test follow-ups
-- [ ] **Repo setup CLI (`npx triaige init`)** — HIGHEST PRIORITY. The gate to "works on someone else's repo." Guided setup: checks `gh` auth, verifies dashboard connection + GitHub App Checks permission, sets GitHub secrets, scaffolds workflow + script, detects Playwright config, offers initial baseline generation + commit, branch protection setup. See AGENTS.md §14 Step 26 for full spec
+- [x] **Repo setup CLI (`npx triaige init`)** — built at `packages/cli/`. Full interactive setup with CI baseline generation. See session 2026-03-22 notes above for details
 - [ ] **Basic multi-tenancy** — per-org data isolation so two teams' runs don't mix. Required before a second team can use the product
 - [ ] **Compliance mode** (from vision night 2026-03-21) — repo setting toggle (default: off) that enables e-signature modal, requirement ID tagging, immutable audit log, and PDF audit export. Makes Triaige enterprise-ready for any compliance-conscious buyer (SaMD, SOX, SOC 2). ~1-2 hour session. See `docs/strategy.md` compliance section and `docs/sequencing.md` §2 for full spec
 - [ ] BYOK key management — deprioritized. Eat API costs during design partner phase. Build when paying customers need it
@@ -156,7 +178,8 @@ Last updated: 2026-03-22
 
 ### Onboarding polish
 - [ ] **Repos page doesn't update when a new repo is added to the GitHub App** — requires manual page refresh. Repos page is a server component; SSE doesn't cover new repo additions. Either add SSE event for repo changes or add a client-side refetch on focus
-- [ ] **Empty runs created when all tests pass** — if `/triage-run` receives a report with 0 failures after net-new filtering, it should not create a run. Instead it should create a passing check and return early. Currently creates an empty run with "action required" that blocks the merge gate. Discovered during onboarding test on test-triaige-onboarding repo PR #1
+- [x] **Empty runs created when all tests pass** — fixed: if `/triage-run` receives 0 failures after parsing, creates passing check and returns early. However, see blocking bug above — triage runs with actual failures are also showing 0 failures on the dashboard
+- [ ] **P0: Triage run shows 0 failures despite CI reporting failures** — see session 2026-03-22 blocking bug. Test repo `test-triaige-onboarding` PR #2. Runner returns 200 with run_id but dashboard shows empty run. Must investigate: check Render logs for classification errors, verify Playwright parser handles this repo's JSON format, check if GitHub token forwarding works with per-repo API key auth
 - [ ] **Settings link should be on the repo-scoped runs page, not the repo card** — settings is a per-repo action and should be accessible from within the runs page (e.g., as a link/tab alongside the PR/Issues/Closed tabs), not from the repo card on the repos landing page
 
 ### Market demo polish
