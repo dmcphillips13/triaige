@@ -1,6 +1,7 @@
 // Main init orchestrator — runs all setup steps sequentially.
 // Each step is independent and records its result for the final summary.
 
+import { execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { password, input, confirm } from "@inquirer/prompts";
 import chalk from "chalk";
@@ -15,6 +16,7 @@ import {
 } from "./utils/playwright.js";
 import { generateFiles } from "./utils/templates.js";
 import { setupBranchProtection } from "./utils/branch-protection.js";
+import { generateBaselinesInCI } from "./utils/baselines.js";
 import {
   checkGitHubApp,
   printAppStatus,
@@ -165,16 +167,67 @@ export async function init(): Promise<void> {
     `  ${chalk.green("✓")} Package manager: ${chalk.cyan(prereqs.packageManager)}`
   );
 
-  // Step 7: Generate files
+  const installCommand =
+    prereqs.packageManager === "pnpm"
+      ? "pnpm install --frozen-lockfile"
+      : prereqs.packageManager === "yarn"
+        ? "yarn install --frozen-lockfile"
+        : "npm ci";
+  const cacheKey = prereqs.packageManager;
+
+  // Step 7: Generate workflow files
   generateFiles({
     nodeVersion,
     buildCommand,
     packageManager: prereqs.packageManager,
   });
 
-  // Step 8: Branch protection (optional)
+  // Step 8: Commit and push generated files (needed before baseline generation)
+  if (prereqs.ghAvailable) {
+    try {
+      execSync("git add .github/workflows/ scripts/", { stdio: "pipe" });
+      execSync('git commit -m "Add Triaige CI integration via triaige init"', {
+        stdio: "pipe",
+      });
+      execSync("git push", { stdio: "pipe" });
+      console.log(`  ${chalk.green("✓")} Committed and pushed workflow files`);
+    } catch {
+      console.log(
+        `  ${chalk.yellow("!")} Could not push workflow files — commit and push manually`
+      );
+    }
+  }
+
+  // Step 9: Generate baselines in CI (optional but recommended)
+  let baselinesGenerated = false;
+  if (prereqs.ghAvailable && playwrightResult.configPath) {
+    const generateBaselines = await confirm({
+      message:
+        "Generate initial baselines in CI? (recommended — ensures baselines match the CI environment)",
+      default: true,
+    });
+
+    if (generateBaselines) {
+      baselinesGenerated = await generateBaselinesInCI({
+        nodeVersion,
+        installCommand,
+        buildCommand,
+        cacheKey,
+        repoFullName: prereqs.repoContext.fullName,
+      });
+    } else {
+      console.log(
+        chalk.dim(
+          "  Skipped. Generate baselines before opening your first PR."
+        )
+      );
+    }
+  }
+
+  // Step 10: Branch protection (after baselines, so pushes aren't blocked)
   let branchProtectionSet = false;
   if (prereqs.ghAvailable) {
+    console.log();
     console.log(chalk.bold("Merge Gate"));
     console.log();
 
@@ -193,7 +246,7 @@ export async function init(): Promise<void> {
     }
   }
 
-  // Step 9: Check GitHub App via runner
+  // Step 11: Check GitHub App via runner
   const appResult = await checkGitHubApp(
     prereqs.repoContext.fullName,
     runnerUrl,
@@ -201,13 +254,14 @@ export async function init(): Promise<void> {
   );
   printAppStatus(appResult);
 
-  // Step 10: Summary
+  // Step 12: Summary
   const status: SetupStatus = {
     secretsSet: secretsResult.success,
     workflowsGenerated: true,
     scriptGenerated: true,
     playwrightConfigFound: !!playwrightResult.configPath,
     jsonReporterConfigured: playwrightResult.jsonReporterConfigured,
+    baselinesGenerated,
     branchProtectionSet,
     githubAppInstalled: appResult.installed,
   };
