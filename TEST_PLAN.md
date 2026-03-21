@@ -655,3 +655,102 @@ The main E2E test (Steps 0-14) passed because test names had no slashes at that 
 - [ ] CI posts to runner, run appears on dashboard
 - [ ] The functional failure shows as a known failure with the open issue link
 - [ ] The known failure is non-actionable (no buttons) — does not block merge gate
+
+---
+
+## New user onboarding test
+
+End-to-end test of the CLI setup flow on a fresh repo that was NOT built for
+Triaige. Simulates a new user's first experience from zero to a working triage
+run. Tests the `npx triaige init` CLI, GitHub App installation, and full
+pipeline integration.
+
+### Setup: Create a fresh Next.js app
+
+1. `npx create-next-app test-triaige-onboarding`
+2. `cd test-triaige-onboarding`
+3. `gh repo create test-triaige-onboarding --public --source=. --push`
+
+### Step 1 — Install Playwright and write one visual test
+
+4. `npm init playwright@latest` — accept defaults
+5. Add JSON reporter to `playwright.config.ts` if not already present:
+   `reporter: [["list"], ["json", { outputFile: "test-results/results.json" }]]`
+6. Configure `webServer` in `playwright.config.ts`:
+   `webServer: { command: "npm run build && npm start", url: "http://localhost:3000", reuseExistingServer: !process.env.CI }`
+7. Write one visual test (e.g., `tests/visual/homepage.spec.ts`):
+   navigate to `/`, take a screenshot with `toHaveScreenshot()`
+8. Generate initial baselines: `npx playwright test --update-snapshots`
+9. Commit and push to main
+
+### Step 2 — Connect repo to Triaige
+
+10. Sign into the Triaige dashboard
+
+**Verify:**
+- [ ] Dashboard is accessible and shows repos page
+
+11. Install the Triaige GitHub App on the new repo
+
+**Verify:**
+- [ ] New repo appears on the dashboard repos page
+
+### Step 3 — Run triaige init
+
+12. Run `node <path-to-cli>/dist/cli.js init` in the test repo
+
+**Verify:**
+- [ ] Prerequisites all pass (gh, jq, repo detected, package manager detected)
+- [ ] API key accepted and connection validated
+- [ ] GitHub secrets set successfully
+- [ ] Playwright config found and JSON reporter detected
+- [ ] Workflow files generated (visual-regression.yml, close-pr-runs.yml)
+- [ ] post-failures.sh created with executable permissions
+- [ ] Branch protection set (merge gate)
+- [ ] GitHub App detected as accessible
+- [ ] Summary shows all green checks
+
+13. Commit the generated files and push to main
+
+### Step 4 — Trigger a triage run
+
+14. Create a branch with a visible CSS change (e.g., change background color
+    in `globals.css`)
+15. Write a PR description mentioning the change
+16. Push and open a PR
+
+**Wait:** ~2-3 min for CI
+
+**Verify:**
+- [ ] GitHub Actions workflow triggered (`Visual Regression Tests`)
+- [ ] Workflow completes (may have test failures — that's expected)
+- [ ] Triaige PR comment appears with classification table
+- [ ] "Triaige Visual Regression" check shows on PR (action_required or success)
+- [ ] Run appears on the Triaige dashboard under the PR tab for this repo
+
+### Step 5 — Triage in dashboard
+
+17. Open the run in the Triaige dashboard
+
+**Verify:**
+- [ ] Failure cards render with classification, rationale, and screenshots
+- [ ] Approve/reject buttons work
+- [ ] Submit changes completes successfully
+- [ ] Merge gate check updates to success after submit
+- [ ] PR is mergeable on GitHub
+
+### Cleanup
+
+18. Delete the test repo: `gh repo delete test-triaige-onboarding --yes`
+19. Remove local directory
+
+### What this validates
+
+- Full new-user onboarding from zero to working triage run
+- CLI works on a repo not built for Triaige
+- GitHub App installation flow
+- Playwright config detection on a default setup
+- Generated workflows trigger correctly and post to the runner
+- Dashboard displays results from a non-sample-app repo
+- Approve/reject + submit flow works end-to-end
+- Merge gate functions correctly

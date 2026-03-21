@@ -555,14 +555,15 @@ Commit messages: plain imperative sentences (e.g., "Add GitHub API client for PR
     - **Initial baselines**: offers to generate initial baselines (`npx playwright test --update-snapshots`) if app can be started locally; commits them so the first PR run has a clean comparison
     - **Validation**: runs a dry-run check — verifies secrets are set, workflow file is valid YAML, script is executable, Playwright config has JSON reporter, branch protection is configured; prints a summary of what's ready and what needs manual attention
 27. Polish + Loom prep
-28 (stretch). Issue attribution agent: a separate async agent that runs after issues are filed; scans recent merge history and adds attribution comments to issues linking the likely responsible PR and author
-29 (stretch). Baseline knowledge doc: LLM auto-generates semantic descriptions of each page from baseline screenshots and app code; classifier references during triage for richer context
-30 (stretch). Separate test repo support: allow linking a dedicated Playwright/baselines repo separate from the UI repo; baseline commits and issues target the test repo; merge gate still applies to the UI repo's PRs; configured via a "baseline target repo" setting in repo_settings
-31 (stretch). Auto-approve baselines above confidence threshold (needs discussion; default should always be human-in-the-loop)
-32 (stretch). Procedural memory: agent reflection on feedback patterns → self-updating triage instructions, versioned in Qdrant
-33 (stretch). Component ownership lookup
-34 (stretch). Auto-close main dashboard failures when linked GitHub issue closes: webhook endpoint for `issues` closed events
-35 (stretch). RAGAS evaluation
+28. Compliance mode: "Compliance mode" toggle in `repo_settings` (default off). When enabled: e-signature modal on approve/reject (re-auth + meaning statement), requirement ID text field on failure cards, immutable append-only audit log table, PDF audit export endpoint (structured verification report with embedded screenshots, requirement IDs, approval records, signature details). All features gated behind the toggle — zero friction when disabled. Makes Triaige enterprise-ready for compliance-conscious buyers (SaMD/FDA, SOX, SOC 2)
+29 (stretch). Issue attribution agent: a separate async agent that runs after issues are filed; scans recent merge history and adds attribution comments to issues linking the likely responsible PR and author
+30 (stretch). Baseline knowledge doc: LLM auto-generates semantic descriptions of each page from baseline screenshots and app code; classifier references during triage for richer context
+31 (stretch). Separate test repo support: allow linking a dedicated Playwright/baselines repo separate from the UI repo; baseline commits and issues target the test repo; merge gate still applies to the UI repo's PRs; configured via a "baseline target repo" setting in repo_settings
+32 (stretch). Auto-approve baselines above confidence threshold (needs discussion; default should always be human-in-the-loop)
+33 (stretch). Procedural memory: agent reflection on feedback patterns → self-updating triage instructions, versioned in Qdrant
+34 (stretch). Component ownership lookup
+35 (stretch). Auto-close main dashboard failures when linked GitHub issue closes: webhook endpoint for `issues` closed events
+36 (stretch). RAGAS evaluation
 
 ---
 

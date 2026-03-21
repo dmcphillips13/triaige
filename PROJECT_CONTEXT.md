@@ -1,12 +1,19 @@
 # PROJECT_CONTEXT.md — Triaige (Session Handoff)
 
-Last updated: 2026-03-20
+Last updated: 2026-03-22
 
 ---
 
 ## Current status
 
-**Phase:** Transitioning from demo project to product validation. Demo day skipped. Rationale accuracy P0 and security critical/high fixes complete. Next: functional test failure support, CLI setup, multi-tenancy, BYOK. See `docs/sequencing.md` for full phased plan.
+**Phase:** Pre-vacation build sprint. Transitioning from demo project to product validation. Functional test failure support complete. Vision night (2026-03-21) sharpened GTM: primary target is frustrated Percy/Chromatic customers at mid-market B2B SaaS; SaMD/compliance is a vertical expansion play. Compliance mode features (~1-2 hours) unlock enterprise value across multiple markets. See `docs/sequencing.md` for phased plan and `docs/strategy.md` for full GTM analysis.
+
+**Build priorities (in order):**
+1. CLI setup (`npx triaige init`) — gate to "works on someone else's repo"
+2. Basic multi-tenancy — per-org data isolation
+3. Compliance mode — repo setting toggle with e-signature, audit log, PDF export
+4. Reliability fixes — report-clean 500, merged PR actionability, silent API failures
+5. BYOK — deprioritized to post-validation (eat API costs during design partner phase)
 
 ### Completed
 - [x] Project planning and scoping
@@ -115,6 +122,15 @@ Last updated: 2026-03-20
 - [x] **Submit → gate check → auto-close works end-to-end** — PR #76 on sample app: approved 5 failures, submitted, submissions persisted, gate passed, run auto-closed. First successful gate-pass auto-close (previous auto-closes were all via superseding mechanism)
 - **GPT-5.4-nano is a step change in classification quality** — rationale went from vague summaries (4o-mini: "color change not in PR scope") to grounded explanations (5.4-nano: "Card border radius changed — aligns with globals.css radius token update"). Functional test P0 misclassification also appears resolved. The product thesis — intent-aware triage grounded in code context — now lands visibly in the output
 
+### Vision night 2026-03-21 — GTM sharpening + compliance mode
+- **Primary GTM target identified:** frustrated Percy/Chromatic customers at mid-market B2B SaaS companies (10-30 engineers, complex UIs, already paying $200-500/mo for visual testing). Product substitution pitch, not category creation
+- **SaMD vertical expansion:** confirmed gap (no tool automates visual verification evidence for FDA Design History Files), but 6-12 month sales cycles and risk-averse buyers make it a secondary play. Compliance features are cheap to build and unlock value across all markets, not just SaMD
+- **Compliance mode designed:** repo setting toggle (default off) enabling e-signature modal, requirement ID tagging, immutable audit log, PDF audit export. ~1-2 hour build session
+- **Expansion paths documented:** integration test triage, performance regression triage, flaky test reclassification. All use the same pipeline with different parsers. Don't build — listen for demand in feedback calls
+- **Joined OpenRegulatory Slack** for SaMD community signal (mostly regulatory docs discussion, not automated testing)
+- **Outreach scripts written** for both developer teams and SaMD quality managers
+- See `docs/strategy.md` for full analysis and `docs/sequencing.md` for updated build priorities
+
 ### Post-Demo Day — E2E findings
 - [x] **Rationale accuracy (P0):** Fixed — prompt now requires each bullet to justify the classification (what changed + why it's expected/unexpected/uncertain) and bans filler bullets. Bullet count is dynamic (1-3) instead of fixed at 3. Confabulation (phantom region references) eliminated.
 
@@ -123,19 +139,20 @@ Last updated: 2026-03-20
   - **Follow-ups:**
   - [x] **Functional failure card actions** — single "Open GH issue to track bug" button with guidance note. E2E verification: see `TEST_PLAN.md` § Functional test follow-ups
   - [x] **Functional failure screenshot size** — constrained to `max-w-md` / `max-h-[250px]` with fullscreen modal on click
-  - [x] **Fix proxy URL encoding for test names with slashes** — functional test support changed `testDir` from `./tests/visual` to `./tests`, adding `visual/` and `functional/` prefixes to test names. Slashes in test names broke `putVerdict` and `putSubmission` URL paths (Next.js `[...path]` decodes `%2F`→`/`, producing malformed URLs → silent 404s). Fix: move `test_name` from URL path to request body for all mutation endpoints. Also added `res.ok` checks so future API errors surface in the UI
-  - [ ] **Classification accuracy for functional failures (P0)** — navigation test on PR #79 was misclassified as "unexpected" with GPT-4o-mini. After upgrading to GPT-5.4-nano (commit cf4169b), the same test classified as **Expected at 90%** — appears resolved by the model upgrade. Rationale quality also jumped dramatically: bullets now reference specific code changes (e.g., "matches globals.css shadow-sm tweak") instead of vague summaries. Needs a few more runs to confirm, but the P0 may be closed by the model upgrade alone
-  - [ ] **E2E verification of functional failure flow** — PR #79 is now merged. Create a new PR with mixed visual + functional failures to verify card rendering, submit flow, merge gate, issue materialization, and known failure tracking. See `TEST_PLAN.md` § Functional test follow-ups
-- [ ] Repo setup CLI (`npx triaige init`) — guided setup: checks `gh` auth, verifies dashboard connection + GitHub App Checks permission, sets GitHub secrets, scaffolds workflow + script, detects Playwright config, offers initial baseline generation + commit, branch protection setup
-- [ ] Basic multi-tenancy — per-org data isolation so two teams' runs don't mix
-- [ ] BYOK key management — let users provide their own OpenAI/Anthropic keys (encrypted storage, validation)
-- [ ] Multi-repo upstream diff resolution — when a PR is a dependency version bump, resolve the real diff from upstream repo(s) to give the classifier meaningful code context. Covers the common enterprise pattern where multiple repos publish packages consumed by a UI repo. Without this, version-bump PRs get weak "uncertain" classifications. Build if a design partner needs it, skip if they don't
+  - [x] **Fix proxy URL encoding for test names with slashes** — move `test_name` from URL path to request body for all mutation endpoints. Also added `res.ok` checks so future API errors surface in the UI
+  - [ ] **Classification accuracy for functional failures (P0)** — appears resolved by GPT-5.4-nano upgrade (commit cf4169b). Needs a few more runs to confirm
+  - [ ] **E2E verification of functional failure flow** — create a new PR with mixed visual + functional failures to verify card rendering, submit flow, merge gate, issue materialization, and known failure tracking. See `TEST_PLAN.md` § Functional test follow-ups
+- [ ] **Repo setup CLI (`npx triaige init`)** — HIGHEST PRIORITY. The gate to "works on someone else's repo." Guided setup: checks `gh` auth, verifies dashboard connection + GitHub App Checks permission, sets GitHub secrets, scaffolds workflow + script, detects Playwright config, offers initial baseline generation + commit, branch protection setup. See AGENTS.md §14 Step 26 for full spec
+- [ ] **Basic multi-tenancy** — per-org data isolation so two teams' runs don't mix. Required before a second team can use the product
+- [ ] **Compliance mode** (from vision night 2026-03-21) — repo setting toggle (default: off) that enables e-signature modal, requirement ID tagging, immutable audit log, and PDF audit export. Makes Triaige enterprise-ready for any compliance-conscious buyer (SaMD, SOX, SOC 2). ~1-2 hour session. See `docs/strategy.md` compliance section and `docs/sequencing.md` §2 for full spec
+- [ ] BYOK key management — deprioritized. Eat API costs during design partner phase. Build when paying customers need it
+- [ ] Multi-repo upstream diff resolution — build if a design partner needs it, skip if they don't
 
-### Reliability — next priority
-- [ ] **Investigate and fix `/report-clean` 500 on PR #78 merge** — the endpoint returned Internal Server Error when PR #78 merged (2026-03-18), leaving 3 pre-merge runs open and actionable. Root cause unknown — could be PR number extraction failure in the workflow, a DB error, or an unhandled exception before `auto_close_pre_merge_runs` was reached. The runs were NOT closed, meaning the close step either wasn't reached or failed. Need to check the `close-pr-runs.yml` workflow and Render logs to determine actual cause. Once identified, make the endpoint resilient so the close always succeeds
-- [ ] **Merged PR runs must not be actionable** — PR #78's run showed approve/reject buttons on the PR tab days after the PR merged. If any close mechanism fails for any reason, there is no fallback — the run stays actionable indefinitely. Fix: dashboard should detect merged PRs and show the run as read-only
-- [ ] **Audit API functions for silent failures** — `putVerdict` and `putSubmission` were swallowing errors silently (no `res.ok` check). Audit all mutation functions in `api.ts` for the same pattern. Any mutation that doesn't surface errors is a ticking time bomb — failures look like success to the user
-- [ ] **Submit flow smoke test** — automated test that stores a submission via `putSubmission`, fetches it back via `fetchSubmissions`, and verifies it persists. Would have caught the URL encoding regression the moment functional tests landed. Start with the runner's critical paths: submit + verdict storage, gate check, issue creation flow. These are highest-leverage because bugs here are invisible until a user hits them in production
+### Reliability fixes
+- [ ] **Investigate and fix `/report-clean` 500 on PR #78 merge** — endpoint returned Internal Server Error when PR #78 merged (2026-03-18), leaving 3 pre-merge runs open and actionable. Root cause unknown. Once identified, make the endpoint resilient so the close always succeeds
+- [ ] **Merged PR runs must not be actionable** — PR #78's run showed approve/reject buttons on the PR tab days after the PR merged. Dashboard should detect merged PRs and show the run as read-only
+- [ ] **Audit API functions for silent failures** — audit all mutation functions in `api.ts` for missing `res.ok` checks. Any mutation that doesn't surface errors is a ticking time bomb
+- [ ] **Submit flow smoke test** — automated test for runner's critical paths: submit + verdict storage, gate check, issue creation flow
 
 ### Market demo polish
 - [ ] **Known failure card states need fixing** — re-triggered CI runs produce non-actionable cards even when no action was taken on the previous run. Correct behavior: (1) **open GH issue exists** → card shown at bottom, non-actionable, links to the issue (informational only); (2) **pending issue (staged but not yet created)** → card shows a note that an issue is pending, but user can unselect and then approve baseline or re-stage; (3) **no action taken** → card is fully actionable. Only an opened issue makes a card non-actionable — pending is a draft decision the user can change each run
