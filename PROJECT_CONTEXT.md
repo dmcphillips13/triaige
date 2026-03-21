@@ -1,6 +1,6 @@
 # PROJECT_CONTEXT.md — Triaige (Session Handoff)
 
-Last updated: 2026-03-22
+Last updated: 2026-03-21
 
 ---
 
@@ -134,15 +134,14 @@ Last updated: 2026-03-22
 - [x] **gh auth detection fix** — handles stdout/stderr correctly across gh CLI versions
 - [x] **Runner health check timeout** — 15s timeout on `/health` validation
 
-**Blocking bug (P0 — next session):**
-- [ ] **Triage run shows 0 failures despite CI reporting 1 failure** — test-triaige-onboarding PR #2 ("Switch to dark theme"). CI log confirms "Found 1 unexpected test failure(s), posting to Triaige... Triage run created: 441a4f70". But dashboard shows the run with 0 failures and "Action required" with no failure cards. Merge gate check stuck pending. No PR comment posted. No errors in Render logs — just a 200 OK on the POST. Root cause unknown. Theories: (1) Playwright parser not extracting failures from this repo's JSON format, (2) classification failing silently, (3) per-repo API key auth interfering with GitHub token forwarding for check run creation. **Test repo:** `dmcphillips13/test-triaige-onboarding`, PR #2 still open, run ID `441a4f70-aa19-4398-b467-ffed743691e3`
+**Blocking bug (P0 — FIXED):**
+- [x] **Triage run shows 0 failures despite CI reporting 1 failure** — Root cause: `get_or_create_api_key` inserted `(repo, api_key)` without explicit boolean columns, and the DB column default for `pre_merge` was `FALSE` instead of `TRUE` (schema mismatch). The `/triage-run` endpoint hit the early return at line 292 (`if mode == "pre_merge" and not rs.pre_merge`) creating an empty run. Fix: explicit `pre_merge=TRUE, post_merge=TRUE, merge_gate=TRUE` in the INSERT + migration to fix existing rows. Confirmed via `GET /repos/.../settings` showing `pre_merge: false` before fix, `true` after
 
 **Test repo state:**
 - `dmcphillips13/test-triaige-onboarding` — fresh Next.js app with 1 Playwright visual test
-- Fully configured via `triaige init` (workflows, secrets, branch protection, CI baselines)
-- PR #2 open (`test/dark-theme` branch) with background color change from white to dark navy
-- CI workflow ran, Playwright test failed (7177 pixel diff), posted to runner, but dashboard shows 0 failures
-- Branch protection active with "Triaige Visual Regression" required check
+- Fully re-configured via `triaige init` from clean slate (workflows removed, branch protection removed, then re-ran init)
+- PR #3 open (`dark-theme` branch) — dark theme CSS change. CI ran, failure classified, PR comment posted, merge gate blocking. Full pipeline working end-to-end
+- Onboarding test Steps 1-4 complete (TEST_PLAN.md § New user onboarding test). Step 5 (triage in dashboard) in progress
 
 ### Vision night 2026-03-21 — GTM sharpening + compliance mode
 - **Primary GTM target identified:** frustrated Percy/Chromatic customers at mid-market B2B SaaS companies (10-30 engineers, complex UIs, already paying $200-500/mo for visual testing). Product substitution pitch, not category creation
@@ -178,8 +177,12 @@ Last updated: 2026-03-22
 
 ### Onboarding polish
 - [ ] **Repos page doesn't update when a new repo is added to the GitHub App** — requires manual page refresh. Repos page is a server component; SSE doesn't cover new repo additions. Either add SSE event for repo changes or add a client-side refetch on focus
-- [x] **Empty runs created when all tests pass** — fixed: if `/triage-run` receives 0 failures after parsing, creates passing check and returns early. However, see blocking bug above — triage runs with actual failures are also showing 0 failures on the dashboard
-- [ ] **P0: Triage run shows 0 failures despite CI reporting failures** — see session 2026-03-22 blocking bug. Test repo `test-triaige-onboarding` PR #2. Runner returns 200 with run_id but dashboard shows empty run. Must investigate: check Render logs for classification errors, verify Playwright parser handles this repo's JSON format, check if GitHub token forwarding works with per-repo API key auth
+- [x] **Empty runs created when all tests pass** — fixed: if `/triage-run` receives 0 failures after parsing, creates passing check and returns early
+- [x] **P0: Triage run shows 0 failures despite CI reporting failures** — fixed: `pre_merge` defaulting to `FALSE` in DB. See session 2026-03-22 blocking bug (resolved)
+- [ ] **Repo setup checklist on repos page** — show setup steps (GitHub App installed, first successful run received) on repo cards before runs exist. Disappears once setup is complete. Dashboard-only change
+- [ ] **Classification accuracy: intentional changes classified as unexpected** — dark theme change on test-triaige-onboarding PR #3 classified as "unexpected" (72%) despite PR title "Switch to dark theme" and description explicitly mentioning the color changes. Classifier should weigh PR description match more heavily for clearly scoped changes
+- [ ] **Delete stale PR comment on clean pass** — when `/report-clean` creates a passing check for a PR (all tests pass after baseline commit), delete any existing Triaige comments on that PR. Currently the old "action required" comment remains after the re-run passes
+- [ ] **Manual setup path for `triaige init` without `gh` CLI** — when `gh` is not available, print step-by-step manual instructions for setting repo secrets, adding workflow files, and configuring branch protection. Currently warns but doesn't provide the instructions
 - [ ] **Settings link should be on the repo-scoped runs page, not the repo card** — settings is a per-repo action and should be accessible from within the runs page (e.g., as a link/tab alongside the PR/Issues/Closed tabs), not from the repo card on the repos landing page
 
 ### Market demo polish
