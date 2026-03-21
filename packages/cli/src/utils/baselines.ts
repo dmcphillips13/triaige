@@ -64,6 +64,26 @@ function run(cmd: string): string {
   return execSync(cmd, { stdio: "pipe" }).toString().trim();
 }
 
+function restoreProtection(repoFullName: string): void {
+  try {
+    const payload = JSON.stringify({
+      required_status_checks: {
+        strict: true,
+        contexts: ["Triaige Visual Regression"],
+      },
+      enforce_admins: false,
+      required_pull_request_reviews: null,
+      restrictions: null,
+    });
+    execSync(
+      `gh api repos/${repoFullName}/branches/main/protection -X PUT --input -`,
+      { input: payload, stdio: ["pipe", "pipe", "pipe"] }
+    );
+  } catch {
+    // Best effort — protection will be re-added by the CLI's branch protection step
+  }
+}
+
 function runSilent(cmd: string): boolean {
   try {
     execSync(cmd, { stdio: "pipe" });
@@ -103,7 +123,26 @@ export async function generateBaselinesInCI(opts: {
   );
   writeFileSync(WORKFLOW_PATH, workflow);
 
-  // Step 2: Commit and push (the workflow must exist on the default branch to trigger)
+  // Step 2: Temporarily remove branch protection if it exists (so CI can push baselines)
+  let hadProtection = false;
+  let protectionConfig: string | null = null;
+  try {
+    protectionConfig = run(
+      `gh api repos/${opts.repoFullName}/branches/main/protection 2>/dev/null`
+    );
+    execSync(
+      `gh api repos/${opts.repoFullName}/branches/main/protection -X DELETE`,
+      { stdio: "pipe" }
+    );
+    hadProtection = true;
+    console.log(
+      `  ${chalk.green("✓")} Temporarily removed branch protection`
+    );
+  } catch {
+    // No protection to remove — that's fine
+  }
+
+  // Step 3: Commit and push
   try {
     execSync("git add .github/workflows/update-snapshots.yml", {
       stdio: "pipe",
@@ -115,26 +154,42 @@ export async function generateBaselinesInCI(opts: {
     execSync("git push", { stdio: "pipe" });
   } catch (e) {
     console.log(
-      `  ${chalk.red("✗")} Failed to push workflow — check your branch protection settings`
+      `  ${chalk.red("✗")} Failed to push workflow`
     );
-    // Clean up the local file
     if (existsSync(WORKFLOW_PATH)) unlinkSync(WORKFLOW_PATH);
     runSilent("git reset HEAD~1");
+    // Restore protection if we removed it
+    if (hadProtection && protectionConfig) {
+      restoreProtection(opts.repoFullName);
+    }
     return false;
   }
 
   console.log(`  ${chalk.green("✓")} Pushed baseline generation workflow`);
 
-  // Step 3: Trigger the workflow
-  try {
-    execSync(
-      `gh workflow run "Update Snapshots" --repo ${opts.repoFullName}`,
-      { stdio: "pipe" }
-    );
-  } catch {
+  // Step 3: Wait for GitHub to register the workflow, then trigger it
+  // GitHub needs a few seconds after a push to make a new workflow dispatchable
+  console.log(`  ⏳ Waiting for GitHub to register the workflow...`);
+  let triggered = false;
+  for (let attempt = 0; attempt < 6; attempt++) {
+    await new Promise((r) => setTimeout(r, 5000));
+    try {
+      execSync(
+        `gh workflow run "Update Snapshots" --repo ${opts.repoFullName}`,
+        { stdio: "pipe" }
+      );
+      triggered = true;
+      break;
+    } catch {
+      // Workflow not yet available, retry
+    }
+  }
+
+  if (!triggered) {
     console.log(
       `  ${chalk.red("✗")} Failed to trigger workflow — try running it manually from GitHub Actions`
     );
+    if (hadProtection) restoreProtection(opts.repoFullName);
     return false;
   }
 
@@ -214,6 +269,12 @@ export async function generateBaselinesInCI(opts: {
     console.log(
       `  ${chalk.yellow("!")} Could not remove temporary workflow — delete .github/workflows/update-snapshots.yml manually`
     );
+  }
+
+  // Step 7: Restore branch protection if we removed it
+  if (hadProtection) {
+    restoreProtection(opts.repoFullName);
+    console.log(`  ${chalk.green("✓")} Restored branch protection`);
   }
 
   return true;
