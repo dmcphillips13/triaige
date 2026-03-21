@@ -64,11 +64,12 @@ async def get_or_create_api_key(repo: str) -> str:
         if row and row["api_key"]:
             return row["api_key"]
 
-        # Generate a new key and upsert
+        # Generate a new key and upsert — explicitly set boolean columns
+        # to avoid relying on DB defaults (which may not match schema.sql)
         key = generate_api_key()
         await conn.execute(
-            """INSERT INTO repo_settings (repo, api_key)
-               VALUES ($1, $2)
+            """INSERT INTO repo_settings (repo, api_key, pre_merge, post_merge, merge_gate)
+               VALUES ($1, $2, TRUE, TRUE, TRUE)
                ON CONFLICT (repo)
                DO UPDATE SET api_key = $2""",
             repo, key,

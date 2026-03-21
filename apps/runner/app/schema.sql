@@ -141,6 +141,10 @@ BEGIN
     END IF;
 END $$;
 
+-- Migration: fix repo_settings rows where pre_merge is FALSE due to missing
+-- explicit values in the original get_or_create_api_key INSERT (safe to re-run)
+UPDATE repo_settings SET pre_merge = TRUE WHERE pre_merge = FALSE;
+
 -- Migration: add failure_type column to failure_results if missing (safe to re-run)
 DO $$
 BEGIN
