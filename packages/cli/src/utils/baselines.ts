@@ -194,6 +194,9 @@ export async function generateBaselinesInCI(opts: {
   }
 
   console.log(`  ${chalk.green("✓")} Triggered baseline generation`);
+  console.log(
+    `  ${chalk.dim(`  Watch progress: https://github.com/${opts.repoFullName}/actions/workflows/update-snapshots.yml`)}`
+  );
 
   // Step 4: Wait for the workflow to complete
   console.log(`  ⏳ Waiting for CI to generate baselines...`);
