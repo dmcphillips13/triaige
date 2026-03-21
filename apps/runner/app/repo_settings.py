@@ -1,11 +1,12 @@
-"""Postgres-backed per-repo triage mode settings.
+"""Postgres-backed per-repo triage mode settings and API keys.
 
-Stores pre_merge / post_merge / merge_gate toggles in the repo_settings table.
+Stores pre_merge / post_merge / merge_gate toggles and per-repo API keys
+in the repo_settings table.
 """
 
 from __future__ import annotations
 
-import json
+import secrets
 
 from pydantic import BaseModel
 
@@ -46,3 +47,40 @@ async def put_settings(repo: str, s: RepoSettings) -> RepoSettings:
             repo, s.pre_merge, s.post_merge, s.merge_gate,
         )
     return s
+
+
+def generate_api_key() -> str:
+    """Generate a cryptographically random API key."""
+    return f"tr_{secrets.token_urlsafe(32)}"
+
+
+async def get_or_create_api_key(repo: str) -> str:
+    """Return the API key for a repo, generating one if it doesn't exist."""
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT api_key FROM repo_settings WHERE repo = $1", repo
+        )
+        if row and row["api_key"]:
+            return row["api_key"]
+
+        # Generate a new key and upsert
+        key = generate_api_key()
+        await conn.execute(
+            """INSERT INTO repo_settings (repo, api_key)
+               VALUES ($1, $2)
+               ON CONFLICT (repo)
+               DO UPDATE SET api_key = $2""",
+            repo, key,
+        )
+        return key
+
+
+async def validate_repo_api_key(api_key: str) -> str | None:
+    """Check if an API key matches any repo. Returns the repo name or None."""
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT repo FROM repo_settings WHERE api_key = $1", api_key
+        )
+        return row["repo"] if row else None

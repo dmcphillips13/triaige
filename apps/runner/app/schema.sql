@@ -130,6 +130,17 @@ BEGIN
     END IF;
 END $$;
 
+-- Migration: add api_key column to repo_settings if missing (safe to re-run)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'repo_settings' AND column_name = 'api_key'
+    ) THEN
+        ALTER TABLE repo_settings ADD COLUMN api_key TEXT;
+    END IF;
+END $$;
+
 -- Migration: add failure_type column to failure_results if missing (safe to re-run)
 DO $$
 BEGIN

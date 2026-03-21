@@ -88,6 +88,35 @@ export async function fetchConnectedRepos(): Promise<ConnectedRepo[]> {
   return repos;
 }
 
+/** Fetch the API key for a repo (auto-generates if none exists). */
+export async function fetchRepoApiKey(repo: string): Promise<string> {
+  const res = await fetch(
+    `${RUNNER_BASE}/repos/${encodeURIComponent(repo)}/api-key`,
+    {
+      cache: "no-store",
+      headers: await authHeaders(),
+    }
+  );
+  if (!res.ok) throw new Error(`Failed to fetch API key: ${res.status}`);
+  const data = await res.json();
+  return data.api_key;
+}
+
+/** Fetch repo settings (merge gate, triage modes). */
+export async function fetchRepoSettings(
+  repo: string
+): Promise<{ pre_merge: boolean; post_merge: boolean; merge_gate: boolean }> {
+  const res = await fetch(
+    `${RUNNER_BASE}/repos/${encodeURIComponent(repo)}/settings`,
+    {
+      cache: "no-store",
+      headers: await authHeaders(),
+    }
+  );
+  if (!res.ok) throw new Error(`Failed to fetch settings: ${res.status}`);
+  return res.json();
+}
+
 /** Fetch a single triage run with full failure results. */
 export async function fetchRun(runId: string): Promise<TriageRunResponse> {
   const res = await fetch(`${RUNNER_BASE}/runs/${runId}`, {

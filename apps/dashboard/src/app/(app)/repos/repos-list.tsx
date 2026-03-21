@@ -52,38 +52,51 @@ export function ReposList({ repos }: { repos: RepoWithStats[] }) {
         {repos.map((repo) => {
           const [owner, name] = repo.full_name.split("/");
           return (
-            <Link
+            <div
               key={repo.full_name}
-              href={`/runs?repo=${encodeURIComponent(repo.full_name)}`}
-              className="block rounded-lg border border-zinc-200 bg-white p-5 shadow-sm transition-all hover:border-zinc-300 hover:shadow-md"
+              className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm transition-all hover:border-zinc-300 hover:shadow-md"
             >
-              <div>
-                <span className="text-xs text-zinc-400">{owner}</span>
-                <h2 className="text-base font-semibold text-zinc-900">
-                  {name}
-                </h2>
-              </div>
+              <Link
+                href={`/runs?repo=${encodeURIComponent(repo.full_name)}`}
+                className="block"
+              >
+                <div>
+                  <span className="text-xs text-zinc-400">{owner}</span>
+                  <h2 className="text-base font-semibold text-zinc-900">
+                    {name}
+                  </h2>
+                </div>
 
-              <div className="mt-3 flex items-center gap-3">
-                <span className="text-sm text-zinc-600">
-                  {repo.openRuns > 0
-                    ? `${repo.openRuns} open run${repo.openRuns !== 1 ? "s" : ""}`
-                    : "No runs yet"}
-                </span>
-
-                {repo.actionRequired > 0 && (
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                    {repo.actionRequired} action required
+                <div className="mt-3 flex items-center gap-3">
+                  <span className="text-sm text-zinc-600">
+                    {repo.openRuns > 0
+                      ? `${repo.openRuns} open run${repo.openRuns !== 1 ? "s" : ""}`
+                      : "No runs yet"}
                   </span>
-                )}
-              </div>
 
-              <p className="mt-2 text-xs text-zinc-400">
-                {repo.lastActivity
-                  ? `Last activity ${relativeTime(repo.lastActivity)}`
-                  : "No activity"}
-              </p>
-            </Link>
+                  {repo.actionRequired > 0 && (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                      {repo.actionRequired} action required
+                    </span>
+                  )}
+                </div>
+
+                <p className="mt-2 text-xs text-zinc-400">
+                  {repo.lastActivity
+                    ? `Last activity ${relativeTime(repo.lastActivity)}`
+                    : "No activity"}
+                </p>
+              </Link>
+
+              <div className="mt-3 border-t border-zinc-100 pt-3">
+                <Link
+                  href={`/repos/${owner}/${name}/settings`}
+                  className="text-xs text-zinc-400 transition-colors hover:text-zinc-600"
+                >
+                  Settings
+                </Link>
+              </div>
+            </div>
           );
         })}
       </div>

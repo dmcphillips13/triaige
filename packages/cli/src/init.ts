@@ -97,7 +97,14 @@ export async function init(): Promise<void> {
   console.log(chalk.bold("Triaige Credentials"));
   console.log();
   console.log(
-    chalk.dim("  Copy these from your Triaige dashboard settings page.")
+    chalk.dim(
+      "  Copy your API key from the Triaige dashboard:"
+    )
+  );
+  console.log(
+    chalk.dim(
+      `  https://triaige-dashboard.vercel.app/repos/${prereqs.repoContext.owner}/${prereqs.repoContext.repo}/settings`
+    )
   );
   console.log();
 
@@ -111,10 +118,7 @@ export async function init(): Promise<void> {
     process.exit(1);
   }
 
-  const runnerUrl = await input({
-    message: "Triaige runner URL:",
-    default: DEFAULT_RUNNER_URL,
-  });
+  const runnerUrl = DEFAULT_RUNNER_URL;
 
   // Validate connection
   console.log();

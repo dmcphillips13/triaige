@@ -71,15 +71,24 @@ class ApiKeyMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         if request.url.path in self.OPEN_PATHS:
             return await call_next(request)
-        if not settings.api_key:
-            return JSONResponse(
-                status_code=503,
-                content={"detail": "API key not configured. Set the API_KEY environment variable."},
-            )
+
         auth = request.headers.get("Authorization", "")
-        if auth != f"Bearer {settings.api_key}":
+        if not auth.startswith("Bearer "):
             return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
-        return await call_next(request)
+
+        token = auth[7:]  # Strip "Bearer "
+
+        # Check global API key first (dashboard proxy uses this)
+        if settings.api_key and token == settings.api_key:
+            return await call_next(request)
+
+        # Check per-repo API keys (CI workflows use these)
+        from app.repo_settings import validate_repo_api_key
+        repo = await validate_repo_api_key(token)
+        if repo:
+            return await call_next(request)
+
+        return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
 
 
 app.add_middleware(ApiKeyMiddleware)
@@ -257,6 +266,13 @@ async def get_repo_settings(repo: str):
 async def put_repo_settings(repo: str, req: RepoSettings):
     """Update triage mode settings for a repo."""
     return await repo_settings.put_settings(repo, req)
+
+
+@app.get("/repos/{repo:path}/api-key")
+async def get_repo_api_key(repo: str):
+    """Get or generate the API key for a repo."""
+    key = await repo_settings.get_or_create_api_key(repo)
+    return {"api_key": key}
 
 
 @app.post("/ask", response_model=AskResponse)
