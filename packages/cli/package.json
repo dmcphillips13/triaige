@@ -1,0 +1,29 @@
+{
+  "name": "triaige",
+  "version": "0.1.0",
+  "description": "CLI setup tool for Triaige — AI-powered visual regression triage",
+  "type": "module",
+  "bin": {
+    "triaige": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^7.0.0",
+    "chalk": "^5.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "tsup": "^8.0.0",
+    "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

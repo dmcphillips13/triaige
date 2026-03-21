@@ -1,0 +1,37 @@
+name: Close PR Runs
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  close-pr-runs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Close pre-merge runs
+        env:
+          TRIAIGE_RUNNER_URL: ${{ secrets.TRIAIGE_RUNNER_URL }}
+          TRIAIGE_API_KEY: ${{ secrets.TRIAIGE_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Extract PR number from merge commit message (squash/merge commits)
+          MERGE_MSG=$(git log -1 --format="%s" HEAD)
+          PR_NUMBER=""
+          if [[ "$MERGE_MSG" =~ Merge\ pull\ request\ \#([0-9]+) ]]; then
+            PR_NUMBER="${BASH_REMATCH[1]}"
+          fi
+
+          # Fallback: query GitHub API for associated PR (rebase/fast-forward merges)
+          if [ -z "$PR_NUMBER" ]; then
+            PR_NUMBER=$(gh api repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls --jq '.[0].number' 2>/dev/null || true)
+          fi
+
+          echo "Closing pre-merge runs for PR #${PR_NUMBER:-unknown}"
+          curl -s -X POST "${TRIAIGE_RUNNER_URL}/report-clean" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${TRIAIGE_API_KEY}" \
+            -d "{\"repo\": \"${GITHUB_REPOSITORY}\", \"head_sha\": \"${GITHUB_SHA}\", \"pr_number\": ${PR_NUMBER:-null}, \"event\": \"push\"}" || true
