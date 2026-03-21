@@ -30,9 +30,13 @@ async function validateRunnerConnection(
   apiKey: string
 ): Promise<boolean> {
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
     const response = await fetch(`${url}/health`, {
       headers: { Authorization: `Bearer ${apiKey}` },
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
     return response.ok;
   } catch {
     return false;

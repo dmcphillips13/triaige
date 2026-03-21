@@ -29,14 +29,28 @@ function commandExists(cmd: string): boolean {
 
 function getGhUser(): string | null {
   try {
-    const output = execSync("gh auth status 2>&1", {
-      stdio: "pipe",
-    }).toString();
-    const match = output.match(/Logged in to github\.com account (\S+)/);
-    return match ? match[1] : null;
-  } catch {
-    return null;
+    const output = execSync("gh auth status", {
+      stdio: ["pipe", "pipe", "pipe"],
+      encoding: "utf-8",
+    });
+    // gh auth status outputs to stdout on newer versions
+    const combined = (output || "").toString();
+    const match = combined.match(/Logged in to github\.com account (\S+)/);
+    if (match) return match[1];
+  } catch (e: unknown) {
+    // gh auth status may write to stderr even on success in some versions
+    if (e && typeof e === "object" && "stderr" in e) {
+      const stderr = String((e as { stderr: unknown }).stderr);
+      const match = stderr.match(/Logged in to github\.com account (\S+)/);
+      if (match) return match[1];
+    }
+    if (e && typeof e === "object" && "stdout" in e) {
+      const stdout = String((e as { stdout: unknown }).stdout);
+      const match = stdout.match(/Logged in to github\.com account (\S+)/);
+      if (match) return match[1];
+    }
   }
+  return null;
 }
 
 function getRepoContext(): RepoContext | null {
