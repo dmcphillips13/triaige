@@ -9,11 +9,14 @@ Last updated: 2026-03-21
 **Phase:** Pre-vacation build sprint. Transitioning from demo project to product validation. Functional test failure support complete. Vision night (2026-03-21) sharpened GTM: primary target is frustrated Percy/Chromatic customers at mid-market B2B SaaS; SaMD/compliance is a vertical expansion play. Compliance mode features (~1-2 hours) unlock enterprise value across multiple markets. See `docs/sequencing.md` for phased plan and `docs/strategy.md` for full GTM analysis.
 
 **Build priorities (in order):**
-1. CLI setup (`npx triaige init`) — gate to "works on someone else's repo"
-2. Basic multi-tenancy — per-org data isolation
-3. Compliance mode — repo setting toggle with e-signature, audit log, PDF export
-4. Reliability fixes — report-clean 500, merged PR actionability, silent API failures
-5. BYOK — deprioritized to post-validation (eat API costs during design partner phase)
+1. ~~CLI setup (`npx triaige init`)~~ — DONE. Full onboarding tested end-to-end
+2. BYOK OpenAI key — CRITICAL. Users must never share the project owner's API key. Encrypted storage + settings UI + CLI prompt
+3. Repo setup checklist — onboarding UX. Show GitHub App / init / first run status on repo cards
+4. Manual setup path for `triaige init` — support users without `gh` CLI
+5. E2E test round 2 (BYOK + checklist) → E2E test round 3 (manual setup, no `gh`)
+6. Reliability fixes — report-clean 500, merged PR actionability, silent API failures
+7. Basic multi-tenancy — per-org data isolation
+8. Compliance mode — repo setting toggle with e-signature, audit log, PDF export
 
 ### Completed
 - [x] Project planning and scoping
@@ -166,7 +169,7 @@ Last updated: 2026-03-21
 - [x] **Repo setup CLI (`npx triaige init`)** — built at `packages/cli/`. Full interactive setup with CI baseline generation. See session 2026-03-22 notes above for details
 - [ ] **Basic multi-tenancy** — per-org data isolation so two teams' runs don't mix. Required before a second team can use the product
 - [ ] **Compliance mode** (from vision night 2026-03-21) — repo setting toggle (default: off) that enables e-signature modal, requirement ID tagging, immutable audit log, and PDF audit export. Makes Triaige enterprise-ready for any compliance-conscious buyer (SaMD, SOX, SOC 2). ~1-2 hour session. See `docs/strategy.md` compliance section and `docs/sequencing.md` §2 for full spec
-- [ ] BYOK key management — deprioritized. Eat API costs during design partner phase. Build when paying customers need it
+- [ ] **BYOK OpenAI key management (CRITICAL — build now)** — users must provide their own OpenAI API key. NEVER share the project owner's key with other users. Key stored encrypted at rest in `repo_settings` using pgcrypto AES-256. Encryption key as Render env var (separate from DB). Editable on dashboard settings page (masked display `sk-...xxxx`). Key validated against OpenAI on save. CI can also pass key via `X-OpenAI-Key` header (takes precedence over DB-stored key). No key = no classification (no fallback to shared key). See implementation plan below
 - [ ] Multi-repo upstream diff resolution — build if a design partner needs it, skip if they don't
 
 ### Reliability fixes
@@ -184,6 +187,25 @@ Last updated: 2026-03-21
 - [ ] **Delete stale PR comment on clean pass** — when `/report-clean` creates a passing check for a PR (all tests pass after baseline commit), delete any existing Triaige comments on that PR. Currently the old "action required" comment remains after the re-run passes
 - [ ] **Manual setup path for `triaige init` without `gh` CLI** — when `gh` is not available, print step-by-step manual instructions for setting repo secrets, adding workflow files, and configuring branch protection. Currently warns but doesn't provide the instructions
 - [ ] **Settings link should be on the repo-scoped runs page, not the repo card** — settings is a per-repo action and should be accessible from within the runs page (e.g., as a link/tab alongside the PR/Issues/Closed tabs), not from the repo card on the repos landing page
+
+### BYOK implementation plan
+
+**Security requirements:**
+- AES-256 encryption at rest via pgcrypto `pgp_sym_encrypt`/`pgp_sym_decrypt`
+- Encryption key stored as Render env var (`BYOK_ENCRYPTION_KEY`), separate from DB
+- Masked display on dashboard settings (`sk-...xxxx`), never show full key after save
+- Validate key against OpenAI models endpoint before storing
+- Key never appears in application logs
+- No fallback to shared key — no key = no classification (return error)
+- CI can pass key via `X-OpenAI-Key` header (takes precedence over DB)
+
+**Implementation steps:**
+1. **DB**: Enable pgcrypto extension, add `openai_api_key_encrypted BYTEA` column to `repo_settings`
+2. **Runner**: Add encrypt/decrypt helpers, `PUT /repos/{repo}/openai-key` endpoint (validates → encrypts → stores), `GET` returns masked version only. Update agent graph to read per-repo key (header first, then DB, then error)
+3. **Dashboard settings page**: Add OpenAI key field (password input, save button, masked display after save, delete button)
+4. **CLI (`triaige init`)**: Prompt for OpenAI key, set as GitHub secret `TRIAIGE_OPENAI_KEY`, update workflow template to pass as `X-OpenAI-Key` header
+5. **Setup checklist**: Add "OpenAI key configured" as a checklist item on repo cards
+6. **Remove global OpenAI key usage**: Runner must NEVER use the global `OPENAI_API_KEY` env var for user requests. Global key only for internal operations (if any)
 
 ### Market demo polish
 - [ ] **Known failure card states need fixing** — re-triggered CI runs produce non-actionable cards even when no action was taken on the previous run. Correct behavior: (1) **open GH issue exists** → card shown at bottom, non-actionable, links to the issue (informational only); (2) **pending issue (staged but not yet created)** → card shows a note that an issue is pending, but user can unselect and then approve baseline or re-stage; (3) **no action taken** → card is fully actionable. Only an opened issue makes a card non-actionable — pending is a draft decision the user can change each run
