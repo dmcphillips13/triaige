@@ -59,6 +59,7 @@ jobs:
         env:
           TRIAIGE_RUNNER_URL: ${{ secrets.TRIAIGE_RUNNER_URL }}
           TRIAIGE_API_KEY: ${{ secrets.TRIAIGE_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GH_TOKEN: ${{ github.token }}
           TRIAIGE_PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
           TRIAIGE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}

@@ -41,5 +41,9 @@ class Settings(BaseSettings):
     # CORS — restrict to dashboard URL in production; comma-separated for multiple origins
     cors_origins: str = "http://localhost:3000"
 
+    # BYOK — encryption key for user-provided OpenAI API keys stored in repo_settings.
+    # Must be set on Render as BYOK_ENCRYPTION_KEY. Separate from the database.
+    byok_encryption_key: str | None = None
+
 
 settings = Settings()

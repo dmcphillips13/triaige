@@ -1,17 +1,25 @@
-"""OpenAI API client for embeddings (and later, vision).
+"""OpenAI API client for embeddings and vision.
 
-Uses a lazy singleton so the client is only created when first needed.
-Model and dimension settings come from app.settings.
+Uses a lazy singleton for the project key (shared embeddings infrastructure).
+For BYOK requests, returns a per-request client using the user's key from
+contextvars — the key is never included in prompts or model inputs, only in
+the Authorization header to OpenAI's API.
 """
 
 from openai import OpenAI
 
+from app.request_context import openai_api_key_var
 from app.settings import settings
 
 _client: OpenAI | None = None
 
 
 def get_openai_client() -> OpenAI:
+    """Return an OpenAI client, using the BYOK key if set."""
+    byok_key = openai_api_key_var.get()
+    if byok_key:
+        return OpenAI(api_key=byok_key)
+
     global _client
     if _client is None:
         _client = OpenAI(api_key=settings.openai_api_key)

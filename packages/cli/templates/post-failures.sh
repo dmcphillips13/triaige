@@ -191,6 +191,7 @@ RESPONSE=$(curl -s -w "\n%{http_code}" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${TRIAIGE_API_KEY}" \
   -H "X-GitHub-Token: ${GH_TOKEN:-}" \
+  -H "X-OpenAI-Key: ${OPENAI_API_KEY:-}" \
   -d @"$PAYLOAD_FILE")
 
 HTTP_CODE=$(echo "$RESPONSE" | tail -1)

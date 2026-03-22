@@ -143,11 +143,42 @@ export async function init(): Promise<void> {
     if (!continueAnyway) process.exit(1);
   }
 
+  // Step 2.5: OpenAI API key (optional — can also be set in dashboard settings)
+  console.log();
+  console.log(chalk.bold("OpenAI API Key"));
+  console.log(
+    chalk.dim(
+      "  Required for AI classification. You can also set this later in the dashboard settings."
+    )
+  );
+  console.log();
+
+  const openaiKey = await password({
+    message: "OpenAI API key (sk-..., or press Enter to skip):",
+    mask: "*",
+  });
+
+  let validatedOpenaiKey: string | undefined;
+  if (openaiKey && openaiKey.startsWith("sk-")) {
+    validatedOpenaiKey = openaiKey;
+    console.log(`  ${chalk.green("✓")} OpenAI key provided`);
+  } else if (openaiKey) {
+    console.log(`  ${chalk.yellow("!")} Key doesn't start with sk- — skipped`);
+    console.log(
+      chalk.dim(
+        `  Set your OpenAI key in the dashboard: https://triaige-dashboard.vercel.app/repos/${prereqs.repoContext.owner}/${prereqs.repoContext.repo}/settings`
+      )
+    );
+  } else {
+    console.log(`  ${chalk.dim("-")} Skipped — set in dashboard settings before opening a PR`);
+  }
+
   // Step 3: Set GitHub secrets
   const secretsResult = setSecrets(
     apiKey,
     runnerUrl,
-    prereqs.ghAvailable
+    prereqs.ghAvailable,
+    validatedOpenaiKey,
   );
 
   // Step 4: Detect Playwright

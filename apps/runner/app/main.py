@@ -7,6 +7,7 @@ in Postgres via the store module.
 
 import asyncio
 import logging
+import re
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
@@ -47,6 +48,20 @@ from app.settings import settings
 from app.tools.playwright_parser import parse_report, parsed_result_to_ask_request
 
 logger = logging.getLogger(__name__)
+
+_KEY_RE = re.compile(r"sk-[A-Za-z0-9_-]{20,}")
+
+
+class _KeyRedactingFilter(logging.Filter):
+    """Prevent OpenAI API keys from leaking into log output."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.msg, str):
+            record.msg = _KEY_RE.sub("sk-***REDACTED***", record.msg)
+        return True
+
+
+logging.getLogger().addFilter(_KeyRedactingFilter())
 
 
 @asynccontextmanager
@@ -275,8 +290,62 @@ async def get_repo_api_key(repo: str):
     return {"api_key": key}
 
 
+@app.get("/repos/{repo:path}/openai-key")
+async def get_openai_key(repo: str):
+    """Get the masked OpenAI key for a repo, or null if not set."""
+    key = await repo_settings.get_openai_key(repo)
+    if not key:
+        return {"masked": None}
+    return {"masked": repo_settings.mask_key(key)}
+
+
+@app.put("/repos/{repo:path}/openai-key")
+async def put_openai_key(repo: str, request: Request):
+    """Validate and store an encrypted OpenAI API key for a repo."""
+    body = await request.json()
+    key = body.get("openai_api_key")
+    if not key:
+        raise HTTPException(status_code=400, detail="openai_api_key is required")
+
+    from app.clients.openai_validation import validate_openai_key
+    valid = await validate_openai_key(key)
+    if not valid:
+        raise HTTPException(status_code=400, detail="Invalid OpenAI API key")
+
+    await repo_settings.store_openai_key(repo, key)
+    return {"masked": repo_settings.mask_key(key)}
+
+
+@app.delete("/repos/{repo:path}/openai-key")
+async def delete_openai_key(repo: str):
+    """Remove the stored OpenAI API key for a repo."""
+    await repo_settings.delete_openai_key(repo)
+    return {"status": "deleted"}
+
+
+async def _resolve_openai_key(request: Request, repo: str | None) -> str:
+    """Resolve the OpenAI API key from header or DB. No fallback to the global key."""
+    header_key = request.headers.get("X-OpenAI-Key")
+    if header_key:
+        return header_key
+
+    if repo:
+        db_key = await repo_settings.get_openai_key(repo)
+        if db_key:
+            return db_key
+
+    raise HTTPException(
+        status_code=400,
+        detail="OpenAI API key required. Set it in dashboard settings or pass X-OpenAI-Key header.",
+    )
+
+
 @app.post("/ask", response_model=AskResponse)
-async def ask(req: AskRequest):
+async def ask(req: AskRequest, request: Request):
+    repo = req.pr_context.repo if req.pr_context else None
+    openai_key = await _resolve_openai_key(request, repo)
+    from app.request_context import openai_api_key_var
+    openai_api_key_var.set(openai_key)
     return await asyncio.to_thread(run_graph, req)
 
 
@@ -444,6 +513,11 @@ async def triage_run(req: TriageRunRequest, request: Request):
             repo=repo,
             triage_mode=mode,
         )
+
+    # Resolve BYOK OpenAI key before LLM processing (header → DB → error)
+    openai_key = await _resolve_openai_key(request, repo)
+    from app.request_context import openai_api_key_var
+    openai_api_key_var.set(openai_key)
 
     # Split functional failures out — they bypass grouping and are always
     # processed individually for classification accuracy

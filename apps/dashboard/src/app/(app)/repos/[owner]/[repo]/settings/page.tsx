@@ -4,7 +4,11 @@
 // during onboarding. The merge gate toggle controls whether the GitHub check
 // blocks merges until all failures are addressed.
 
-import { fetchRepoApiKey, fetchRepoSettings } from "@/lib/api.server";
+import {
+  fetchRepoApiKey,
+  fetchRepoOpenAIKey,
+  fetchRepoSettings,
+} from "@/lib/api.server";
 import { SettingsPanel } from "./settings-panel";
 
 interface Props {
@@ -17,13 +21,18 @@ export default async function RepoSettingsPage({ params }: Props) {
 
   let apiKey = "";
   let mergeGate = true;
+  let openaiKeyMasked: string | null = null;
   let error = false;
 
   try {
-    [apiKey, { merge_gate: mergeGate }] = await Promise.all([
+    const [key, settings, openai] = await Promise.all([
       fetchRepoApiKey(fullName),
       fetchRepoSettings(fullName),
+      fetchRepoOpenAIKey(fullName),
     ]);
+    apiKey = key;
+    mergeGate = settings.merge_gate;
+    openaiKeyMasked = openai.masked;
   } catch {
     error = true;
   }
@@ -60,6 +69,7 @@ export default async function RepoSettingsPage({ params }: Props) {
         repo={fullName}
         apiKey={apiKey}
         mergeGate={mergeGate}
+        openaiKeyMasked={openaiKeyMasked}
       />
     </div>
   );

@@ -12,6 +12,7 @@ from app.agent.prompts import (
 )
 from app.agent.state import AgentState
 from app.clients.openai_client import embed_texts
+from app.request_context import openai_api_key_var
 from app.retrieval import qdrant_store
 from app.retrieval.service import RetrievedDocument
 from app.settings import settings
@@ -23,9 +24,10 @@ logger = logging.getLogger(__name__)
 
 
 def _get_llm() -> ChatOpenAI:
+    api_key = openai_api_key_var.get() or settings.openai_api_key
     return ChatOpenAI(
         model=settings.openai_model,
-        api_key=settings.openai_api_key,
+        api_key=api_key,
         temperature=0,
         model_kwargs={"response_format": {"type": "json_object"}},
     )

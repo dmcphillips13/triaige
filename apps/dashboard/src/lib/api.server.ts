@@ -117,6 +117,21 @@ export async function fetchRepoSettings(
   return res.json();
 }
 
+/** Fetch the masked OpenAI key status for a repo. */
+export async function fetchRepoOpenAIKey(
+  repo: string
+): Promise<{ masked: string | null }> {
+  const res = await fetch(
+    `${RUNNER_BASE}/repos/${encodeURIComponent(repo)}/openai-key`,
+    {
+      cache: "no-store",
+      headers: await authHeaders(),
+    }
+  );
+  if (!res.ok) throw new Error(`Failed to fetch OpenAI key: ${res.status}`);
+  return res.json();
+}
+
 /** Fetch a single triage run with full failure results. */
 export async function fetchRun(runId: string): Promise<TriageRunResponse> {
   const res = await fetch(`${RUNNER_BASE}/runs/${runId}`, {

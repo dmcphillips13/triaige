@@ -19,7 +19,8 @@ export function setGitHubSecret(name: string, value: string): boolean {
 export function setSecrets(
   apiKey: string,
   runnerUrl: string,
-  ghAvailable: boolean
+  ghAvailable: boolean,
+  openaiKey?: string,
 ): { success: boolean } {
   if (!ghAvailable) {
     console.log();
@@ -28,6 +29,9 @@ export function setSecrets(
     console.log("  Go to your repo → Settings → Secrets and variables → Actions");
     console.log(`  Add ${chalk.cyan("TRIAIGE_API_KEY")} with your API key`);
     console.log(`  Add ${chalk.cyan("TRIAIGE_RUNNER_URL")} with: ${runnerUrl}`);
+    if (openaiKey) {
+      console.log(`  Add ${chalk.cyan("OPENAI_API_KEY")} with your OpenAI key`);
+    }
     console.log();
     return { success: false };
   }
@@ -49,6 +53,15 @@ export function setSecrets(
   } else {
     console.log(`  ${chalk.red("✗")} Failed to set TRIAIGE_RUNNER_URL`);
     return { success: false };
+  }
+
+  if (openaiKey) {
+    const openaiSet = setGitHubSecret("OPENAI_API_KEY", openaiKey);
+    if (openaiSet) {
+      console.log(`  ${chalk.green("✓")} OPENAI_API_KEY`);
+    } else {
+      console.log(`  ${chalk.red("✗")} Failed to set OPENAI_API_KEY`);
+    }
   }
 
   return { success: true };

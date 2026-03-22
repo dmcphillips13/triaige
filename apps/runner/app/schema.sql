@@ -1,6 +1,8 @@
 -- Triaige database schema.
 -- Run on startup via CREATE TABLE IF NOT EXISTS — safe to re-run.
 
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 CREATE TABLE IF NOT EXISTS runs (
     run_id          TEXT PRIMARY KEY,
     created_at      TIMESTAMPTZ NOT NULL,
@@ -153,5 +155,16 @@ BEGIN
         WHERE table_name = 'failure_results' AND column_name = 'failure_type'
     ) THEN
         ALTER TABLE failure_results ADD COLUMN failure_type TEXT;
+    END IF;
+END $$;
+
+-- Migration: add encrypted OpenAI API key column to repo_settings (BYOK support)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'repo_settings' AND column_name = 'openai_api_key_encrypted'
+    ) THEN
+        ALTER TABLE repo_settings ADD COLUMN openai_api_key_encrypted BYTEA;
     END IF;
 END $$;

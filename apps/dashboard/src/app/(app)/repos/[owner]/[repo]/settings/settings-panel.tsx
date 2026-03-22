@@ -1,5 +1,6 @@
 // Client component for the repo settings page.
-// Handles copy-to-clipboard, merge gate toggle, and the init command display.
+// Handles copy-to-clipboard, merge gate toggle, OpenAI key management,
+// and the init command display.
 
 "use client";
 
@@ -28,11 +29,25 @@ interface Props {
   repo: string;
   apiKey: string;
   mergeGate: boolean;
+  openaiKeyMasked: string | null;
 }
 
-export function SettingsPanel({ repo, apiKey, mergeGate }: Props) {
+export function SettingsPanel({
+  repo,
+  apiKey,
+  mergeGate,
+  openaiKeyMasked,
+}: Props) {
   const [gate, setGate] = useState(mergeGate);
   const [saving, setSaving] = useState(false);
+
+  // OpenAI key state
+  const [masked, setMasked] = useState(openaiKeyMasked);
+  const [newKey, setNewKey] = useState("");
+  const [keyStatus, setKeyStatus] = useState<
+    "idle" | "saving" | "success" | "error"
+  >("idle");
+  const [keyError, setKeyError] = useState("");
 
   const initCommand = `npx triaige init`;
 
@@ -64,6 +79,54 @@ export function SettingsPanel({ repo, apiKey, mergeGate }: Props) {
     }
   }
 
+  async function saveOpenAIKey() {
+    if (!newKey.trim()) return;
+    setKeyStatus("saving");
+    setKeyError("");
+
+    try {
+      const res = await fetch(
+        `/api/runner/repos/${encodeURIComponent(repo)}/openai-key`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ openai_api_key: newKey.trim() }),
+        }
+      );
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setKeyError(data.detail || "Failed to save key");
+        setKeyStatus("error");
+        return;
+      }
+      const data = await res.json();
+      setMasked(data.masked);
+      setNewKey("");
+      setKeyStatus("success");
+      setTimeout(() => setKeyStatus("idle"), 2000);
+    } catch {
+      setKeyError("Connection error");
+      setKeyStatus("error");
+    }
+  }
+
+  async function deleteOpenAIKey() {
+    setKeyStatus("saving");
+    try {
+      const res = await fetch(
+        `/api/runner/repos/${encodeURIComponent(repo)}/openai-key`,
+        { method: "DELETE" }
+      );
+      if (res.ok) {
+        setMasked(null);
+        setKeyStatus("idle");
+      }
+    } catch {
+      setKeyStatus("error");
+      setKeyError("Failed to delete key");
+    }
+  }
+
   return (
     <div className="mt-8 space-y-8">
       {/* API Key */}
@@ -82,6 +145,68 @@ export function SettingsPanel({ repo, apiKey, mergeGate }: Props) {
             {apiKey}
           </code>
           <CopyButton text={apiKey} label="Copy" />
+        </div>
+      </section>
+
+      {/* OpenAI API Key */}
+      <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
+        <h2 className="text-sm font-semibold text-zinc-900">OpenAI API Key</h2>
+        <p className="mt-1 text-xs text-zinc-500">
+          Required for AI-powered test failure classification. Your key is
+          encrypted at rest and used only for classification requests on this
+          repo. It is never shared or included in prompts.
+        </p>
+        <div className="mt-3">
+          {masked ? (
+            <div className="flex items-center gap-3">
+              <code className="flex-1 rounded-md bg-zinc-50 px-3 py-2 font-mono text-sm text-zinc-800 border border-zinc-200">
+                {masked}
+              </code>
+              <button
+                onClick={() => setMasked(null)}
+                className="rounded-md bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
+              >
+                Update
+              </button>
+              <button
+                onClick={deleteOpenAIKey}
+                disabled={keyStatus === "saving"}
+                className="rounded-md bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 disabled:opacity-50"
+              >
+                Delete
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <input
+                  type="password"
+                  value={newKey}
+                  onChange={(e) => {
+                    setNewKey(e.target.value);
+                    setKeyError("");
+                    setKeyStatus("idle");
+                  }}
+                  placeholder="sk-..."
+                  className="flex-1 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 font-mono text-sm text-zinc-800 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none"
+                />
+                <button
+                  onClick={saveOpenAIKey}
+                  disabled={!newKey.trim() || keyStatus === "saving"}
+                  className="rounded-md bg-emerald-500 px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-600 disabled:opacity-50"
+                >
+                  {keyStatus === "saving"
+                    ? "Validating..."
+                    : keyStatus === "success"
+                      ? "Saved"
+                      : "Save"}
+                </button>
+              </div>
+              {keyError && (
+                <p className="text-xs text-red-600">{keyError}</p>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
