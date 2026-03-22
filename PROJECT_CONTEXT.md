@@ -41,34 +41,75 @@ Last updated: 2026-03-22
     - (20) Back online → actions work normally
     - (21) Full merge flow: PR → classify → submit → gate pass → merge → `/report-clean` → runs close
     - **Note:** Pydantic model validates types but not format (e.g., `head_sha` accepts any string, `repo` not validated as `owner/repo`). If E2E reveals downstream failures from well-typed but malformed inputs, add format validators (regex on head_sha, slash check on repo)
-- **Gate: once critical items are done, evaluate publishing CLI to npm.** Prerequisites: dashboard multi-tenancy, rate limiting, Qdrant collection isolation per tenant, invite code or waitlist gate on API key generation. For design partners before that: share the CLI as a local checkout or private tarball
+**Essential — do before test partners:**
+- [ ] Empty repos page after overnight session — OAuth expires, shows blank page instead of redirect to sign-in
+- [ ] Render paid tier ($7/mo) — eliminate 30-second cold starts that make CI feel broken
+- [ ] Error message sanitization — GitHub API errors leak internal URLs and token context to users
+- [ ] Favicon — use red plus sign from logo (default Vercel icon signals "unfinished")
+- [ ] close-pr-runs.yml merge strategy support — squash-and-merge, rebase-and-merge. Common workflow; runs won't auto-close without this
+- [ ] Classification accuracy + rationale quality — confirm GPT-5.4-nano resolved dark theme misclassification (PR #3, 72% "unexpected"). Test before investing time
+- [ ] **Publish CLI to npm** — polished `npx triaige init` experience for partners. Prerequisites: Qdrant collection isolation (below) and invite/waitlist gate on API key generation
 
-**Then (backlog — no priority order):**
-- [ ] Stale PR comment cleanup on clean pass — `/report-clean` should delete old Triaige comments when re-run passes after baseline commit
-- [ ] Classification accuracy — dark theme PR #3 classified as "unexpected" despite clear description. May be resolved by GPT-5.4-nano. Also: functional failure classification accuracy needs confirmation with more runs
-- [ ] Manual setup path for `triaige init` — print instructions when `gh` CLI unavailable
-- [ ] Empty repos page after overnight session — OAuth token expires, shows empty page instead of redirecting to sign-in
-- [ ] Error message sanitization — GitHub API errors leak implementation details. Wrap with generic messages
-- [ ] Favicon — currently shows default Vercel icon
-- [ ] Compliance mode — repo setting toggle with e-signature, audit log, PDF export. ~1-2 hour build. See `docs/strategy.md` and `docs/sequencing.md`
-- [ ] E2E verification of functional failure flow — mixed visual + functional PR to verify card rendering, submit flow, merge gate, issue materialization
-- [ ] Known failure card states — re-triggered runs produce non-actionable cards incorrectly. See "Market demo polish" section
-- [ ] Collapsed cards missing rationale/screenshots — "Show details" should include these after verdict
-- [ ] Disable actions on superseded PR runs — banner + disable buttons when newer commit is pushed
-- [ ] close-pr-runs.yml merge strategy support — squash-and-merge, rebase-and-merge (currently only handles merge commits)
+**Important — should do before partners, survivable if not:**
+- [ ] Known failure card states — re-triggered CI runs produce non-actionable cards incorrectly
+- [ ] Collapsed cards missing rationale/screenshots — "Show details" after verdict shows incomplete info
+- [ ] Manual setup path without `gh` CLI — print step-by-step instructions when `gh` unavailable
+- [ ] Qdrant collection isolation per tenant — episodic memories mix across tenants. Not exploitable but sloppy. CLI publish prerequisite
+- [ ] Invite code or waitlist gate on API key generation — CLI publish prerequisite. Prevents open access to the platform via npm
+- [ ] Functional failure follow-ups — classification accuracy for functional tests + E2E verification of mixed visual + functional flow (card rendering, submit, merge gate, issue materialization)
+
+**Nice-to-have — polish that helps but not critical:**
+- [ ] Disable actions on superseded PR runs — banner + disable buttons when newer commit pushed
 - [ ] PR cards link to GitHub PR — title shown but not clickable
-- [ ] Failure card sort order — expected → uncertain → unexpected, by confidence desc
-- [ ] Settings link on runs page — move from repo card to runs page (per-repo action)
-- [ ] Repos page refresh on App change — doesn't update when a new repo is added to GitHub App
-- [ ] Render paid tier — $7/mo to eliminate cold starts
-- [ ] CORS method/header wildcards — tighten to explicit lists
-- [ ] GitHub token in JWT cookie — consider JWE or server-side sessions
-- [ ] AUTH_SECRET minimum length — add startup validation
-- [ ] ~~Repo setup checklist on cards~~ — superseded by setup banners (amber pill covers the main case)
-- [ ] SSE event filtering by tenant — TransformStream in proxy to drop events for repos the user can't access. Low priority (events only contain `{run_id, repo}`, all actions validated)
-- [ ] Qdrant collection isolation per tenant — episodic memories currently shared across tenants. Not exploitable but cleaner with per-tenant filtering
-- [ ] Handle pgcrypto decryption failures gracefully — if `BYOK_ENCRYPTION_KEY` is rotated, `pgp_sym_decrypt` throws unhandled error. Add try/except, return None with warning log. Not a blocker (rotation is an admin action, fix is re-entering the key)
-- [ ] BYOK_ENCRYPTION_KEY rotation procedure — no migration path. Document or build a migration script when needed
+- [ ] Failure card sort order — expected → uncertain → unexpected by confidence desc
+- [ ] Settings link on runs page — move from repo card to runs page
+- [ ] Repos page doesn't update on App change — requires manual refresh
+- [ ] Stale PR comment cleanup on clean pass — old Triaige comments linger after baseline commit
+- [ ] Show known failures as non-actionable section at bottom of run detail
+- [ ] Data migration strategy for breaking runner changes — needed if schema changes during a trial
+- [ ] Drift-on-merge comment doesn't fire when all failures are known
+- [ ] Closing a GitHub issue doesn't sync to Issues tab (need webhook)
+- [ ] Issues tab: PR link pill and issue link pill
+- [ ] Issues tab: diff overlay disabled
+- [ ] Issues tab count doesn't update via SSE on merge
+- [ ] Closed Issues tab: screenshot comparison viewer
+- [ ] Closed Runs tab: PR link on cards
+- [ ] Tab prominence — Closed Runs/Issues may not need equal visual weight
+- [ ] PR run detail: show previous closed runs for same PR
+- [ ] `update-snapshots.yml` not for setup CLI — dev convenience only
+- [ ] Classification regression library — collect sample app PRs with known outcomes
+- [ ] Multi-PR interaction test matrix — observe with design partners, don't build formal harness
+
+**Backlog — build when demanded or post-validation:**
+- [ ] CORS method/header wildcards — tighten to explicit lists (no security risk: origins already restricted)
+- [ ] AUTH_SECRET minimum length — add startup validation (we control the env var)
+- [ ] SSE event filtering by tenant — events only contain `{run_id, repo}`, all actions validated
+- [ ] GitHub token in JWT cookie — consider JWE or server-side sessions (HTTP-only + Secure + SameSite covers main vectors)
+- [ ] Handle pgcrypto decryption failures gracefully — only triggered by admin key rotation
+- [ ] BYOK_ENCRYPTION_KEY rotation procedure — document when needed
+- [ ] Migrate rate limiting to Redis — when scaling to multiple Render instances
+- [ ] Tune rate limit values — based on real usage data from design partners
+- [ ] Add Cloudflare edge-level rate limiting rules — if volumetric attacks become a concern
+- [ ] Submit flow smoke test — automated test for runner's critical paths
+- [ ] Dashboard PR merge status check — revisit if stale actionable runs recur
+- [ ] `/report-clean` format validation — add `head_sha` regex, `repo` slash check if E2E reveals issues
+- [ ] Compliance mode — e-signature, audit log, PDF export. Build based on design partner feedback
+- [ ] Multi-repo upstream diff resolution — build if a design partner needs it
+- [ ] Partial init recovery — workflow exists but baselines missing
+- [ ] `triaige update` command — build when demanded
+- [ ] Workflow template auto-update — version and detect staleness
+- [ ] Cypress support — build when demanded
+
+**Future — post-validation:**
+- [ ] Logprob-based confidence scores
+- [ ] Component ownership lookup
+- [ ] RAGAS evaluation
+- [ ] Separate test repo support
+- [ ] Post-deployment environment testing (SIT/UAT/prod)
+- [ ] Auto-approve baselines above confidence threshold
+- [ ] Mobile optimization
+
+**Gate: E2E verification of all critical items (21-point checklist above), then work through Essential → Important → Nice-to-have before onboarding test partners**
 
 ---
 
@@ -201,7 +242,7 @@ Tenant = GitHub App installation. An org that installs the Triaige GitHub App is
 - [ ] **Classification accuracy** — dark theme PR #3 classified as "unexpected" (72%) despite clear description. Needs investigation
 
 ### New MVP functionality
-- [ ] **Basic multi-tenancy** — first step (done): per-repo API key access control. Second step: dashboard multi-tenancy (see "Critical" above)
+- [x] **Basic multi-tenancy (done)** — per-repo API key access control + dashboard multi-tenancy with GitHub App installation lookup
 - [ ] **Functional failure follow-ups** — classification accuracy confirmation, E2E verification of mixed visual + functional flow
 - [ ] **Compliance mode** — repo setting toggle (default off) with e-signature modal, requirement ID tagging, immutable audit log, PDF audit export. ~1-2 hours. See `docs/strategy.md`
 - [ ] **Multi-repo upstream diff resolution** — build if a design partner needs it
