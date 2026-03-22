@@ -87,6 +87,20 @@ export async function init(): Promise<void> {
     process.exit(1);
   }
 
+  // Guard against re-running init on an already-configured repo
+  if (existsSync(".github/workflows/visual-regression.yml")) {
+    console.log();
+    console.log(chalk.yellow("  Triaige is already configured in this repo."));
+    console.log();
+    console.log("  To update your setup:");
+    console.log(`    OpenAI key     ${chalk.dim("→")} ${chalk.cyan("Dashboard settings page")}`);
+    console.log(`    API key        ${chalk.dim("→")} ${chalk.cyan("gh secret set TRIAIGE_API_KEY")}`);
+    console.log(`    Merge gate     ${chalk.dim("→")} ${chalk.cyan("GitHub branch protection settings")}`);
+    console.log(`    Workflow file  ${chalk.dim("→")} ${chalk.cyan("Edit .github/workflows/visual-regression.yml directly")}`);
+    console.log();
+    process.exit(0);
+  }
+
   if (!prereqs.ghAvailable) {
     const continueWithout = await confirm({
       message:

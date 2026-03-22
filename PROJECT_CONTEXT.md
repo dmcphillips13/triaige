@@ -249,6 +249,10 @@ Last updated: 2026-03-21
 - [ ] **BYOK_ENCRYPTION_KEY rotation procedure** — currently no migration path. If the key changes, all stored BYOK keys become unreadable. Document: (1) decrypt all keys with old key, (2) re-encrypt with new key, or (3) accept that users re-enter keys. Add a migration script if rotation is ever needed
 
 ### Onboarding polish
+- [ ] **`triaige init` re-run guard** — detect if `.github/workflows/visual-regression.yml` exists and exit with a helpful message pointing to dashboard settings (OpenAI key), `gh secret set` (API key rotation), and GitHub branch protection settings. No `triaige update` command — init is one-shot. Baseline generation should never be offered on re-run — it resets all baselines and breaks PR comparisons
+  - **Future: partial init recovery** — if workflow exists but baselines are missing (first init failed partway through), the guard currently locks the user out. Consider detecting partial state and offering to resume only the missing steps
+  - **Future: `triaige update` command** — if design partners ask for it, add a selective update command (rotate secrets, update workflow template to latest version, re-run baseline generation). Don't build until there's demand
+  - **Future: workflow template auto-update** — when the `post-failures.sh` template changes (like the temp file cleanup we added), existing repos don't get the update. Options: version the template and detect staleness, or publish a migration guide with each release. Not needed pre-validation
 - [ ] **Repos page doesn't update when a new repo is added to the GitHub App** — requires manual page refresh. Repos page is a server component; SSE doesn't cover new repo additions. Either add SSE event for repo changes or add a client-side refetch on focus
 - [x] **Empty runs created when all tests pass** — fixed: if `/triage-run` receives 0 failures after parsing, creates passing check and returns early
 - [x] **P0: Triage run shows 0 failures despite CI reporting failures** — fixed: `pre_merge` defaulting to `FALSE` in DB. See session 2026-03-22 blocking bug (resolved)
