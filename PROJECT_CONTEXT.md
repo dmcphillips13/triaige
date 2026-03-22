@@ -180,21 +180,38 @@ Last updated: 2026-03-22
 
 **Completed this session (2026-03-22 evening):** Security hardening (global key fallback removed, per-repo access control on all 25 endpoints, run-repo consistency, temp file cleanup), setup banners, early return gate, header validation, init re-run guard, full E2E test with BYOK. See session notes above for details.
 
-**P1 — Blocking for onboarding:**
+**Critical — pick up here:**
 - [ ] **Dashboard multi-tenancy** — the dashboard proxy forwards all requests with the global API key, so any logged-in user can access any repo's data by crafting requests through the proxy. Fix: before forwarding, check that the logged-in user's GitHub account has access to the requested repo via their GitHub App installations. Also filter SSE events by repo. See "Basic multi-tenancy" under "New MVP functionality" for full design notes and tenancy model decision
-- [ ] **Manual setup path for `triaige init`** — print instructions when `gh` CLI unavailable. Then E2E test without `gh`
-- [ ] **Repo setup checklist on repo cards** — show setup steps (GitHub App, init, OpenAI key, first run) on repo cards, disappears when all complete
 - [ ] **Rate limiting** — no rate limiting on any endpoint. Risks: brute-forcing API keys, flooding `/triage-run` (triggers OpenAI calls billed to BYOK key + consumes Render compute), flooding `/ask`. Add middleware-level rate limiting before onboarding external users. Consider per-IP and per-API-key limits separately
 - [ ] **SSE connection limit** — `_subscribers` in `events.py` is an unbounded list with unbounded `asyncio.Queue` per subscriber. An authenticated caller (or buggy dashboard with reconnection loops) can exhaust server memory. Add a subscriber cap (e.g., 50) and bounded queue size (e.g., maxsize=100). Drop oldest subscriber when cap is reached
-- [ ] **Do NOT publish CLI to npm until self-serve is ready** — the CLI has the runner URL hardcoded. Publishing lets anyone with a GitHub account sign in, install the App, get an API key, and run triage against our infrastructure (Render, Neon DB, Qdrant). BYOK means they pay for OpenAI, but they consume our compute, storage, and Qdrant capacity with no limits. Prerequisites before publishing: dashboard multi-tenancy, rate limiting, Qdrant collection isolation per tenant, invite code or waitlist gate on API key generation. For design partners before that: share the CLI as a local checkout or private tarball, not via npm
+- [ ] **Reliability fixes** — `/report-clean` 500 on merge (PR #78), merged PR runs staying actionable, silent API failures in `api.ts`, pgcrypto decryption error handling. See "Reliability fixes" section below for details
+- **Gate: once critical items are done, evaluate publishing CLI to npm.** Prerequisites: dashboard multi-tenancy, rate limiting, Qdrant collection isolation per tenant, invite code or waitlist gate on API key generation. For design partners before that: share the CLI as a local checkout or private tarball
 
-**P2 — Quality:**
+**Then (backlog — no priority order):**
+- [ ] **Stale PR comment cleanup on clean pass** — `/report-clean` should delete old Triaige comments when re-run passes after baseline commit
+- [ ] **Classification accuracy** — dark theme PR #3 classified as "unexpected" despite clear description. May be resolved by GPT-5.4-nano. Also: functional failure classification accuracy needs confirmation with more runs
+- [ ] **Manual setup path for `triaige init`** — print instructions when `gh` CLI unavailable
+- [ ] **Empty repos page after overnight session** — OAuth token expires, shows empty page instead of redirecting to sign-in
+- [ ] **Error message sanitization** — GitHub API errors leak implementation details. Wrap with generic messages
 - [ ] **Favicon** — currently shows default Vercel icon
-- [ ] **Error message sanitization** — several endpoints return raw exception text to callers (e.g., `f"GitHub API error: {e}"`), leaking implementation details. Wrap with generic messages in production; log the full error server-side
-- [ ] **CORS method/header wildcards** — `allow_methods=["*"]` and `allow_headers=["*"]` are broader than needed. Origins are properly restricted so actual risk is low. Tighten to explicit lists: methods `GET, POST, PUT, PATCH, DELETE`; headers `Content-Type, Authorization, X-GitHub-Token, X-OpenAI-Key`
-- [ ] **`/report-clean` input validation** — accepts raw JSON body without Pydantic model. `head_sha` not validated as hex, `pr_number` not validated as int. Values go to parameterized SQL so injection risk is nil, but defense-in-depth says validate at the boundary
-- [ ] **GitHub token readable from JWT cookie** — JWT is signed (HS256) but not encrypted. The payload (containing `github_token` and `refresh_token`) is base64-readable by anyone with access to the cookie. HTTP-only + secure + sameSite protects against most browser attacks, but a compromised machine could extract the token. Fix: use JWE (encrypted JWT) or move tokens to a server-side session store and keep only a session ID in the cookie. `apps/dashboard/src/lib/auth.ts` lines 18-26
-- [ ] **AUTH_SECRET minimum length not enforced** — `auth.ts` line 28 checks if `AUTH_SECRET` exists but doesn't enforce minimum length. A weak secret could be brute-forced. Add `secret.length >= 32` validation at startup
+- [ ] **Compliance mode** — repo setting toggle with e-signature, audit log, PDF export. ~1-2 hour build. See `docs/strategy.md` and `docs/sequencing.md`
+- [ ] **E2E verification of functional failure flow** — mixed visual + functional PR to verify card rendering, submit flow, merge gate, issue materialization
+- [ ] **Known failure card states** — re-triggered runs produce non-actionable cards incorrectly. See "Market demo polish" section for details
+- [ ] **Collapsed cards missing rationale/screenshots** — "Show details" should include these after verdict
+- [ ] **Disable actions on superseded PR runs** — banner + disable buttons when newer commit is pushed
+- [ ] **close-pr-runs.yml merge strategy support** — squash-and-merge, rebase-and-merge (currently only handles merge commits)
+- [ ] **PR cards link to GitHub PR** — title shown but not clickable
+- [ ] **Failure card sort order** — expected → uncertain → unexpected, by confidence desc
+- [ ] **Settings link on runs page** — move from repo card to runs page (per-repo action)
+- [ ] **Repos page refresh on App change** — doesn't update when a new repo is added to GitHub App
+- [ ] **Render paid tier** — $7/mo to eliminate cold starts
+- [ ] **CORS method/header wildcards** — tighten to explicit lists
+- [ ] **`/report-clean` input validation** — Pydantic model, hex/int validation
+- [ ] **GitHub token in JWT cookie** — consider JWE or server-side sessions
+- [ ] **AUTH_SECRET minimum length** — add startup validation
+- [ ] ~~**Repo setup checklist on cards**~~ — superseded by setup banners (amber pill covers the main case)
+
+**Note:** Additional items in "Market demo polish," "Go to market polish," and "Future" sections below are reference — the backlog above is the working list.
 
 **Test repo state:**
 - `dmcphillips13/test-triaige-onboarding` — fully configured after E2E test (GitHub App installed, workflows in place, branch protection with merge gate, BYOK key set via dashboard, baselines committed). PR #4 merged successfully with full triage flow
@@ -220,7 +237,7 @@ Last updated: 2026-03-22
   - [ ] **Classification accuracy for functional failures (P0)** — appears resolved by GPT-5.4-nano upgrade (commit cf4169b). Needs a few more runs to confirm
   - [ ] **E2E verification of functional failure flow** — create a new PR with mixed visual + functional failures to verify card rendering, submit flow, merge gate, issue materialization, and known failure tracking. See `TEST_PLAN.md` § Functional test follow-ups
 - [x] **Repo setup CLI (`npx triaige init`)** — built at `packages/cli/`. Full interactive setup with CI baseline generation. See session 2026-03-22 notes above for details
-- [ ] **Basic multi-tenancy** — per-org data isolation so two teams' runs don't mix. Required before a second team can use the product. **First step: cross-repo access control fixes (see P0 security items in "Not yet done" above).** Second step: dashboard multi-tenancy (see below).
+- [ ] **Basic multi-tenancy** — per-org data isolation so two teams' runs don't mix. Required before a second team can use the product. **First step (done): per-repo API key access control on all endpoints.** Second step: dashboard multi-tenancy (see "Critical" in "Not yet done" above).
   - **Tenancy model decision (2026-03-22): Tenant = GitHub App installation.** An org that installs the Triaige GitHub App is one tenant. All org members with repo access share runs, verdicts, and submissions — triage is a team activity. A solo user with a personal GitHub account installation is also a valid tenant (no org required). This mirrors Vercel, Codecov, and Chromatic.
   - **Dashboard multi-tenancy (after per-repo key fix):** The dashboard proxy currently forwards all requests with the global API key, meaning any logged-in user can access any repo's data by crafting requests through the proxy. Fix: before forwarding, the proxy must check that the logged-in user's GitHub account has access to the requested repo via their GitHub App installations. This is the gate between "CI keys are isolated" and "dashboard users are isolated." Also scope SSE event filtering by repo at the same time (currently all events go to all subscribers)
 - [ ] **Compliance mode** (from vision night 2026-03-21) — repo setting toggle (default: off) that enables e-signature modal, requirement ID tagging, immutable audit log, and PDF audit export. Makes Triaige enterprise-ready for any compliance-conscious buyer (SaMD, SOX, SOC 2). ~1-2 hour session. See `docs/strategy.md` compliance section and `docs/sequencing.md` §2 for full spec
