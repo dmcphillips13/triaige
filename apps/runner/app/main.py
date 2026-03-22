@@ -167,6 +167,7 @@ async def report_clean(request: Request):
     event = body.get("event")
     if not repo or not head_sha:
         raise HTTPException(status_code=400, detail="repo and head_sha are required")
+    _check_repo_access(request, repo)
 
     # Auto-close pre-merge runs when a PR merges with all tests passing
     if event == "push" and pr_number:
@@ -274,20 +275,23 @@ async def report_clean(request: Request):
 
 
 @app.get("/repos/{repo:path}/settings", response_model=RepoSettings)
-async def get_repo_settings(repo: str):
+async def get_repo_settings(repo: str, request: Request):
     """Get triage mode settings for a repo."""
+    _check_repo_access(request, repo)
     return await repo_settings.get_settings(repo)
 
 
 @app.put("/repos/{repo:path}/settings", response_model=RepoSettings)
-async def put_repo_settings(repo: str, req: RepoSettings):
+async def put_repo_settings(repo: str, req: RepoSettings, request: Request):
     """Update triage mode settings for a repo."""
+    _check_repo_access(request, repo)
     return await repo_settings.put_settings(repo, req)
 
 
 @app.get("/repos/{repo:path}/api-key")
-async def get_repo_api_key(repo: str):
+async def get_repo_api_key(repo: str, request: Request):
     """Get or generate the API key for a repo."""
+    _check_repo_access(request, repo)
     key = await repo_settings.get_or_create_api_key(repo)
     return {"api_key": key}
 
@@ -301,6 +305,19 @@ def _check_repo_access(request: Request, repo: str) -> None:
     auth_repo = getattr(request.state, "authenticated_repo", None)
     if auth_repo is not None and auth_repo != repo:
         raise HTTPException(status_code=403, detail="Access denied for this repo")
+
+
+async def _check_run_access(request: Request, run_id: str) -> None:
+    """Ensure the authenticated token can access this run's repo.
+
+    Returns 404 (not 403) for unauthorized access to prevent run enumeration.
+    """
+    auth_repo = getattr(request.state, "authenticated_repo", None)
+    if auth_repo is None:
+        return  # global key — skip DB query entirely
+    repo = await store.get_run_repo(run_id)
+    if repo is None or auth_repo != repo:
+        raise HTTPException(status_code=404, detail="Run not found")
 
 
 @app.get("/repos/{repo:path}/openai-key")
@@ -363,6 +380,11 @@ async def _resolve_openai_key(request: Request, repo: str | None) -> str:
 @app.post("/ask", response_model=AskResponse)
 async def ask(req: AskRequest, request: Request):
     repo = req.pr_context.repo if req.pr_context else None
+    auth_repo = getattr(request.state, "authenticated_repo", None)
+    if auth_repo is not None and not repo:
+        raise HTTPException(status_code=403, detail="Repo context required for per-repo keys")
+    if repo:
+        _check_repo_access(request, repo)
     openai_key = await _resolve_openai_key(request, repo)
     from app.request_context import openai_api_key_var
     openai_api_key_var.set(openai_key)
@@ -372,8 +394,15 @@ async def ask(req: AskRequest, request: Request):
 @app.post("/triage-run", response_model=TriageRunResponse)
 async def triage_run(req: TriageRunRequest, request: Request):
     """Accept a batch of test failures and triage each through the agent."""
-    # Check if this triage mode is enabled for the repo
+    # Access check — per-repo keys must provide repo context
     repo = req.pr_context.repo if req.pr_context else None
+    auth_repo = getattr(request.state, "authenticated_repo", None)
+    if auth_repo is not None and not repo:
+        raise HTTPException(status_code=403, detail="Repo context required for per-repo keys")
+    if repo:
+        _check_repo_access(request, repo)
+
+    # Check if this triage mode is enabled for the repo
     mode = req.triage_mode or "pre_merge"
     if repo:
         rs = await repo_settings.get_settings(repo)
@@ -665,14 +694,16 @@ def _build_result(
 
 
 @app.get("/runs", response_model=list[TriageRunSummary])
-async def list_runs():
-    """List all triage runs."""
-    return await store.list_runs()
+async def list_runs(request: Request):
+    """List triage runs. Per-repo keys only see their repo's runs."""
+    auth_repo = getattr(request.state, "authenticated_repo", None)
+    return await store.list_runs(repo_filter=auth_repo)
 
 
 @app.get("/runs/{run_id}", response_model=TriageRunResponse)
-async def get_run(run_id: str):
+async def get_run(run_id: str, request: Request):
     """Get a single triage run by ID."""
+    await _check_run_access(request, run_id)
     run = await store.get_run(run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
@@ -680,8 +711,9 @@ async def get_run(run_id: str):
 
 
 @app.patch("/runs/{run_id}/close")
-async def close_run(run_id: str):
+async def close_run(run_id: str, request: Request):
     """Mark a triage run as closed."""
+    await _check_run_access(request, run_id)
     if not await store.close_run(run_id, force=True):
         raise HTTPException(status_code=404, detail="Run not found")
     events.emit("run_closed", {"run_id": run_id})
@@ -692,8 +724,9 @@ async def close_run(run_id: str):
 
 
 @app.put("/runs/{run_id}/verdict")
-async def put_verdict(run_id: str, req: VerdictRequest):
+async def put_verdict(run_id: str, req: VerdictRequest, request: Request):
     """Store a human verdict for a failure."""
+    await _check_run_access(request, run_id)
     if req.verdict not in ("approved", "rejected"):
         raise HTTPException(status_code=400, detail="Verdict must be 'approved' or 'rejected'")
     await store.set_verdict(run_id, req.test_name, req.verdict)
@@ -701,8 +734,9 @@ async def put_verdict(run_id: str, req: VerdictRequest):
 
 
 @app.get("/runs/{run_id}/verdicts")
-async def get_verdicts(run_id: str):
+async def get_verdicts(run_id: str, request: Request):
     """Fetch all verdicts for a run."""
+    await _check_run_access(request, run_id)
     return await store.get_verdicts(run_id)
 
 
@@ -712,6 +746,7 @@ async def get_verdicts(run_id: str):
 @app.put("/runs/{run_id}/submission")
 async def put_submission(run_id: str, req: SubmissionRequest, request: Request):
     """Store a submission result (PR or issue URL) for a failure."""
+    await _check_run_access(request, run_id)
     await store.set_submission(run_id, req.test_name, req.url, req.type)
 
     # Check if all pre-merge failures are now addressed → update merge gate
@@ -743,8 +778,9 @@ async def put_submission(run_id: str, req: SubmissionRequest, request: Request):
 
 
 @app.get("/runs/{run_id}/submissions")
-async def get_submissions(run_id: str):
+async def get_submissions(run_id: str, request: Request):
     """Fetch all submissions for a run."""
+    await _check_run_access(request, run_id)
     return await store.get_submissions(run_id)
 
 
@@ -752,12 +788,13 @@ async def get_submissions(run_id: str):
 
 
 @app.get("/runs/{run_id}/known-failures")
-async def get_known_failures(run_id: str):
+async def get_known_failures(run_id: str, request: Request):
     """Find known failures for a run's test names.
 
     Returns per-test context: which PR introduced the failure and any
     existing open submissions (PRs or issues).
     """
+    await _check_run_access(request, run_id)
     return await store.get_known_failures(run_id)
 
 
@@ -765,21 +802,27 @@ async def get_known_failures(run_id: str):
 
 
 @app.post("/feedback")
-async def feedback(req: FeedbackRequest):
+async def feedback(req: FeedbackRequest, request: Request):
     """Store human verdict as an episode in Qdrant for future few-shot retrieval."""
     if req.verdict not in ("approved", "rejected"):
         raise HTTPException(status_code=400, detail="Verdict must be 'approved' or 'rejected'")
+
+    # Access check FIRST — before any data read/write (single DB call, reused for BYOK below)
+    run_repo = await store.get_run_repo(req.run_id)
+    auth_repo = getattr(request.state, "authenticated_repo", None)
+    if auth_repo is not None and (run_repo is None or auth_repo != run_repo):
+        raise HTTPException(status_code=404, detail="Run not found")
+
     result = await store.get_result(req.run_id, req.test_name)
     if not result:
         raise HTTPException(status_code=404, detail="Result not found")
 
-    # Also persist the verdict in Postgres
+    # Persist the verdict in Postgres
     await store.set_verdict(req.run_id, req.test_name, req.verdict)
 
     # Resolve BYOK key for the embedding call in store_episode.
     # If the key was deleted after classification, skip episodic memory
     # (verdict is already persisted in Postgres above).
-    run_repo = await store.get_run_repo(req.run_id)
     openai_key = None
     if run_repo:
         openai_key = await repo_settings.get_openai_key(run_repo)
@@ -803,6 +846,7 @@ async def update_baselines(req: UpdateBaselinesRequest, request: Request):
     For pre-merge runs: commits directly to the PR branch.
     For post-merge runs: creates a separate baseline PR.
     """
+    _check_repo_access(request, req.repo)
     run = await store.get_run(req.run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
@@ -865,6 +909,7 @@ async def update_baselines(req: UpdateBaselinesRequest, request: Request):
 @app.post("/create-issues", response_model=CreateIssuesResponse)
 async def create_issues(req: CreateIssuesRequest, request: Request):
     """Create GitHub issues for rejected visual regression failures."""
+    _check_repo_access(request, req.repo)
     run = await store.get_run(req.run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
@@ -940,20 +985,23 @@ async def create_issues(req: CreateIssuesRequest, request: Request):
 
 
 @app.get("/repos/{repo:path}/known-failures")
-async def list_repo_known_failures(repo: str):
+async def list_repo_known_failures(repo: str, request: Request):
     """List open known failures for a repo's Main tab health dashboard."""
+    _check_repo_access(request, repo)
     return await store.list_known_failures(repo)
 
 
 @app.get("/repos/{repo:path}/known-failures/closed")
-async def list_repo_closed_known_failures(repo: str):
+async def list_repo_closed_known_failures(repo: str, request: Request):
     """List closed known failures for a repo."""
+    _check_repo_access(request, repo)
     return await store.get_closed_known_failures(repo)
 
 
 @app.patch("/repos/{repo:path}/known-failures/{failure_id}/close")
 async def close_repo_known_failure(repo: str, failure_id: int, request: Request):
     """Close a known failure and its GitHub issue."""
+    _check_repo_access(request, repo)
     row = await store.close_known_failure(failure_id)
     if not row:
         raise HTTPException(status_code=404, detail="Known failure not found or already closed")

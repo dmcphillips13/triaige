@@ -219,13 +219,19 @@ async def get_gate_statuses(run_ids: list[str]) -> dict[str, str]:
     return result
 
 
-async def list_runs() -> list[TriageRunSummary]:
-    """List all runs, newest first."""
+async def list_runs(repo_filter: str | None = None) -> list[TriageRunSummary]:
+    """List runs, newest first. If repo_filter is set, only that repo's runs."""
     pool = get_pool()
     async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            "SELECT * FROM runs ORDER BY created_at DESC"
-        )
+        if repo_filter:
+            rows = await conn.fetch(
+                "SELECT * FROM runs WHERE repo = $1 ORDER BY created_at DESC",
+                repo_filter,
+            )
+        else:
+            rows = await conn.fetch(
+                "SELECT * FROM runs ORDER BY created_at DESC"
+            )
 
     # Compute gate statuses for open pre-merge runs
     open_pre_merge_ids = [
