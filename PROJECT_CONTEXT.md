@@ -17,11 +17,7 @@ Last updated: 2026-03-22
 
 **Critical — pick up here:**
 - [x] **Dashboard multi-tenancy (implemented)** — repo-access.ts module with 60s cached GitHub App installation lookup. Proxy validates repo from URL path, query params, and POST body. Server components validate before rendering. GET /runs response filtered. All run-scoped client calls pass repo for validation. Returns 404 to prevent enumeration. SSE event filtering is a follow-up (events leak only `{run_id, repo}`, all actions are blocked)
-  - [ ] **E2E verification (do after all critical items ship):** deploy to Render + Vercel, then test:
-    - **Multi-tenancy:** (1) `/repos` shows only user's repos, (2) manually navigate to `/repos/other-owner/other-repo/settings` → 404, (3) `/runs?repo=other-owner/other-repo` → redirect to `/repos`, (4) browser dev tools `fetch("/api/runner/repos/other-owner%2Fother-repo/settings")` → 404, (5) `fetch("/api/runner/runs")` → only accessible repos' runs, (6) `PUT /runs/{runId}/verdict?repo=other-owner/other-repo` → 404, (7) normal flow on own repos works unchanged (approve, reject, submit, close)
-    - **Rate limiting:** (8) hit an authenticated endpoint → confirm `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset` headers in response, (9) rapid-fire 6+ requests with an invalid API key → 429 after 5 (auth-failure IP limiting), (10) `/health` → no rate limit headers (exempt)
-    - **SSE:** (11) open `/events` SSE connection → confirm keepalives stream, (12) open 4 SSE connections with the same user → 4th returns 503, (13) trigger a triage run while SSE is connected → `run_created` event arrives
-    - **Full flow:** (14) full triage flow on test repo (PR → classify → approve → submit → gate pass) to confirm rate limiting and proxy changes don't break the existing flow
+  - [ ] **E2E verification (do after all pre-partner work is complete):** see `docs/e2e-test-plan.md` for full step-by-step test plan
 - [x] **Rate limiting (implemented)** — `limits` library (async moving-window) in `ApiKeyMiddleware`. Three tiers: expensive (20/min — `/triage-run`, `/ask`), mutation (30/min — `/update-baselines`, `/create-issues`, `/feedback`), general (60/min — all other). Auth failure: 5/min per IP. Dashboard proxy forwards `X-Dashboard-User` for per-user limiting. 429 + `Retry-After` + `X-RateLimit-*` headers. `/health` and `/events` exempt
   - **Follow-ups:**
   - [ ] Migrate to Redis storage when scaling to multiple Render instances
@@ -32,18 +28,10 @@ Last updated: 2026-03-22
   - **Group A — `/report-clean` hardening (runner):** Pydantic input model (`ReportCleanRequest` — validates repo, head_sha, pr_number as int|None, event), try/except around `repo_settings.get_settings()`, top-level error handler, sanitized error messages. Root cause of PR #78 500: `int(pr_number)` ValueError on non-numeric input
   - **Group C — Silent mutation fixes (dashboard):** `submitFeedback()` added `res.ok` check, `putVerdict()` caller reverts optimistic update + shows error banner, `toggleMergeGate()` shows error message, `deleteOpenAIKey()` handles non-200 responses + resets loading state
   - **Deferred — Group B (PR merge status check):** dashboard check for actual PR merge status via GitHub API. Not needed if Group A makes `/report-clean` robust. Existing stale runs can be manually closed. Revisit if stale actionable runs recur
-  - **Testing:**
-    - (15) `POST /report-clean` with `pr_number: "not-a-number"` → 422 not 500
-    - (16) `POST /report-clean` with missing fields → 422
-    - (17) `POST /report-clean` with valid payload → 200, runs close
-    - (18) Browser offline → click approve → error message shown (not silent)
-    - (19) Same for verdict, merge gate toggle, delete OpenAI key
-    - (20) Back online → actions work normally
-    - (21) Full merge flow: PR → classify → submit → gate pass → merge → `/report-clean` → runs close
-    - **Note:** Pydantic model validates types but not format (e.g., `head_sha` accepts any string, `repo` not validated as `owner/repo`). If E2E reveals downstream failures from well-typed but malformed inputs, add format validators (regex on head_sha, slash check on repo)
+  - **Testing:** see `docs/e2e-test-plan.md` for full step-by-step test plan (includes /report-clean validation, error handling, and full merge flow)
 **Essential — do before test partners:**
 - [ ] Empty repos page after overnight session — OAuth expires, shows blank page instead of redirect to sign-in
-- [ ] Render paid tier ($7/mo) — eliminate 30-second cold starts that make CI feel broken
+- [x] Render paid tier ($7/mo) — already on Starter, no cold starts
 - [ ] Error message sanitization — GitHub API errors leak internal URLs and token context to users
 - [ ] Favicon — use red plus sign from logo (default Vercel icon signals "unfinished")
 - [ ] close-pr-runs.yml merge strategy support — squash-and-merge, rebase-and-merge. Common workflow; runs won't auto-close without this
@@ -77,6 +65,7 @@ Last updated: 2026-03-22
 - [ ] Tab prominence — Closed Runs/Issues may not need equal visual weight
 - [ ] PR run detail: show previous closed runs for same PR
 - [ ] `update-snapshots.yml` not for setup CLI — dev convenience only
+- [ ] De-emphasize merge gate toggle — move to "Advanced" section or behind disclosure, add "Recommended: on" note
 - [ ] Classification regression library — collect sample app PRs with known outcomes
 - [ ] Multi-PR interaction test matrix — observe with design partners, don't build formal harness
 
