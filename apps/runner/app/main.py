@@ -95,12 +95,14 @@ class ApiKeyMiddleware(BaseHTTPMiddleware):
 
         # Check global API key first (dashboard proxy uses this)
         if settings.api_key and token == settings.api_key:
+            request.state.authenticated_repo = None  # global key — no repo restriction
             return await call_next(request)
 
         # Check per-repo API keys (CI workflows use these)
         from app.repo_settings import validate_repo_api_key
         repo = await validate_repo_api_key(token)
         if repo:
+            request.state.authenticated_repo = repo  # restrict to this repo only
             return await call_next(request)
 
         return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
@@ -290,9 +292,21 @@ async def get_repo_api_key(repo: str):
     return {"api_key": key}
 
 
+def _check_repo_access(request: Request, repo: str) -> None:
+    """Ensure the authenticated token has access to the requested repo.
+
+    Global API keys (dashboard proxy) can access any repo.
+    Per-repo API keys can only access the repo they were generated for.
+    """
+    auth_repo = getattr(request.state, "authenticated_repo", None)
+    if auth_repo is not None and auth_repo != repo:
+        raise HTTPException(status_code=403, detail="Access denied for this repo")
+
+
 @app.get("/repos/{repo:path}/openai-key")
-async def get_openai_key(repo: str):
+async def get_openai_key(repo: str, request: Request):
     """Get the masked OpenAI key for a repo, or null if not set."""
+    _check_repo_access(request, repo)
     key = await repo_settings.get_openai_key(repo)
     if not key:
         return {"masked": None}
@@ -302,9 +316,14 @@ async def get_openai_key(repo: str):
 @app.put("/repos/{repo:path}/openai-key")
 async def put_openai_key(repo: str, request: Request):
     """Validate and store an encrypted OpenAI API key for a repo."""
-    body = await request.json()
-    key = body.get("openai_api_key")
-    if not key:
+    _check_repo_access(request, repo)
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid request body")
+
+    key = body.get("openai_api_key") if isinstance(body, dict) else None
+    if not key or not isinstance(key, str):
         raise HTTPException(status_code=400, detail="openai_api_key is required")
 
     from app.clients.openai_validation import validate_openai_key
@@ -317,8 +336,9 @@ async def put_openai_key(repo: str, request: Request):
 
 
 @app.delete("/repos/{repo:path}/openai-key")
-async def delete_openai_key(repo: str):
+async def delete_openai_key(repo: str, request: Request):
     """Remove the stored OpenAI API key for a repo."""
+    _check_repo_access(request, repo)
     await repo_settings.delete_openai_key(repo)
     return {"status": "deleted"}
 

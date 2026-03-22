@@ -96,11 +96,16 @@ async def validate_repo_api_key(api_key: str) -> str | None:
 
 def _require_encryption_key() -> str:
     """Return the BYOK encryption key or raise if not configured."""
-    if not settings.byok_encryption_key:
+    key = settings.byok_encryption_key
+    if not key:
         raise RuntimeError(
             "BYOK_ENCRYPTION_KEY env var is not set — cannot encrypt/decrypt OpenAI keys"
         )
-    return settings.byok_encryption_key
+    if len(key) < 32:
+        raise RuntimeError(
+            "BYOK_ENCRYPTION_KEY is too short — must be at least 32 characters"
+        )
+    return key
 
 
 def mask_key(key: str) -> str:
