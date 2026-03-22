@@ -1,6 +1,6 @@
 # PROJECT_CONTEXT.md — Triaige (Session Handoff)
 
-Last updated: 2026-03-21
+Last updated: 2026-03-22
 
 ---
 
@@ -9,14 +9,15 @@ Last updated: 2026-03-21
 **Phase:** Pre-vacation build sprint. Transitioning from demo project to product validation. Functional test failure support complete. Vision night (2026-03-21) sharpened GTM: primary target is frustrated Percy/Chromatic customers at mid-market B2B SaaS; SaMD/compliance is a vertical expansion play. Compliance mode features (~1-2 hours) unlock enterprise value across multiple markets. See `docs/sequencing.md` for phased plan and `docs/strategy.md` for full GTM analysis.
 
 **Build priorities (in order):**
-1. ~~CLI setup (`npx triaige init`)~~ — DONE. Full onboarding tested end-to-end
-2. BYOK OpenAI key — CRITICAL. Users must never share the project owner's API key. Encrypted storage + settings UI + CLI prompt
-3. Repo setup checklist — onboarding UX. Show GitHub App / init / first run status on repo cards
-4. Manual setup path for `triaige init` — support users without `gh` CLI
-5. E2E test round 2 (BYOK + checklist) → E2E test round 3 (manual setup, no `gh`)
-6. Reliability fixes — report-clean 500, merged PR actionability, silent API failures
-7. Basic multi-tenancy — per-org data isolation
-8. Compliance mode — repo setting toggle with e-signature, audit log, PDF export
+1. ~~CLI setup (`npx triaige init`)~~ — DONE
+2. ~~BYOK OpenAI key~~ — DONE. Encrypted storage, settings UI, CLI prompt, global key fallback removed
+3. ~~Security hardening~~ — DONE. Per-repo access control on all endpoints, run-repo consistency, AGENTS.md §13.1
+4. ~~Setup banners + early return gate~~ — DONE. Repos/runs page banners, /triage-run setup_required check
+5. ~~E2E test with BYOK~~ — DONE. Full clean-slate test passed on test-triaige-onboarding PR #4
+6. Dashboard multi-tenancy — proxy must check user's GitHub App installations before forwarding
+7. Reliability fixes — report-clean 500, merged PR actionability, silent API failures
+8. Manual setup path for `triaige init` — support users without `gh` CLI
+9. Compliance mode — repo setting toggle with e-signature, audit log, PDF export
 
 ### Completed
 - [x] Project planning and scoping
@@ -177,21 +178,7 @@ Last updated: 2026-03-21
 
 **Not yet done (carry to next session):**
 
-**P0 — Security (do first):**
-- [x] **Global OpenAI key fallback removed** — `get_openai_client()`, `_get_llm()`, and `/feedback` endpoint all had silent fallback paths to the project owner's `OPENAI_API_KEY`. Fixed: both functions now raise if no BYOK key in contextvar; `/feedback` resolves BYOK key from DB before storing episode; `index_corpus.py` sets contextvar from env explicitly. See AGENTS.md §13.1 for security rules
-- [x] **Cross-repo access control on repo-path endpoints** — added `_check_repo_access` to all 6 missing repo-path endpoints (settings GET/PUT, api-key, known-failures GET/GET-closed/PATCH-close)
-- [x] **Cross-repo access control on run-based endpoints** — added `_check_run_access` helper (returns 404 to prevent enumeration) to all 10 run-based endpoints. `/feedback` hoists the check before any data read/write and reuses the DB call for BYOK resolution. `/update-baselines` and `/create-issues` use `_check_repo_access` on `req.repo`. `/ask` and `/triage-run` require per-repo keys to provide `pr_context.repo`
-- [x] **`GET /runs` filtered by authenticated repo** — per-repo keys only see their repo's runs. `store.list_runs` accepts optional `repo_filter` param
-
-- [x] **Run-repo consistency in `/update-baselines` and `/create-issues`** — both endpoints accepted `req.repo` from the body without verifying the run belonged to that repo. A user with access to two repos could use a run_id from repo-a with `repo: "repo-b"` to commit baselines or create issues on the wrong repo. Fixed: added `run.repo != req.repo` check after fetching the run
-- [x] **Temp file cleanup in `post-failures.sh`** — CI script created `/tmp/results-enriched.json` and `/tmp/triaige-payload.json` but never deleted them. On self-hosted runners, another job could read the files. Fixed: `trap cleanup EXIT` removes both files on any exit
-
-**P0 — Done this session:**
-- [x] **Setup banners on repos page and runs page** — amber "Setup required" pill on repo cards, banner with settings link on runs page. `openai_key_configured` field added to `GET /repos/{repo}/settings` response
-- [x] **Early return gate in `/triage-run`** — creates a GitHub check with `conclusion: "action_required"` and returns 200 with `status: "setup_required"` when no OpenAI key. `post-failures.sh` detects this and exits 0. Merge gate blocks with clear message
-- [x] **Empty `X-OpenAI-Key` header validation** — `.strip()` check on header value
-- [x] **`triaige init` re-run guard** — detects existing workflow file, exits with pointers to dashboard/CLI for updates
-- [x] **Full E2E test with BYOK** — complete clean-slate test on `dmcphillips13/test-triaige-onboarding` PR #4: sign in → App install → setup pill visible → configure key → pill gone → `triaige init` → PR with visual change → CI classification (expected, 90%) → PR comment + merge gate → approve → baseline committed → gate passed → run auto-closed → merge → close-pr-runs cleanup succeeded
+**Completed this session (2026-03-22 evening):** Security hardening (global key fallback removed, per-repo access control on all 25 endpoints, run-repo consistency, temp file cleanup), setup banners, early return gate, header validation, init re-run guard, full E2E test with BYOK. See session notes above for details.
 
 **P1 — Blocking for onboarding:**
 - [ ] **Dashboard multi-tenancy** — the dashboard proxy forwards all requests with the global API key, so any logged-in user can access any repo's data by crafting requests through the proxy. Fix: before forwarding, check that the logged-in user's GitHub account has access to the requested repo via their GitHub App installations. Also filter SSE events by repo. See "Basic multi-tenancy" under "New MVP functionality" for full design notes and tenancy model decision
@@ -202,8 +189,6 @@ Last updated: 2026-03-21
 - [ ] **Do NOT publish CLI to npm until self-serve is ready** — the CLI has the runner URL hardcoded. Publishing lets anyone with a GitHub account sign in, install the App, get an API key, and run triage against our infrastructure (Render, Neon DB, Qdrant). BYOK means they pay for OpenAI, but they consume our compute, storage, and Qdrant capacity with no limits. Prerequisites before publishing: dashboard multi-tenancy, rate limiting, Qdrant collection isolation per tenant, invite code or waitlist gate on API key generation. For design partners before that: share the CLI as a local checkout or private tarball, not via npm
 
 **P2 — Quality:**
-- [ ] **Classification accuracy** — dark theme PR classified as "unexpected" despite clear PR description. May be a minimal-repo context problem vs prompt problem
-- [ ] **Stale PR comment cleanup on clean pass** — `/report-clean` should delete old Triaige comments
 - [ ] **Favicon** — currently shows default Vercel icon
 - [ ] **Error message sanitization** — several endpoints return raw exception text to callers (e.g., `f"GitHub API error: {e}"`), leaking implementation details. Wrap with generic messages in production; log the full error server-side
 - [ ] **CORS method/header wildcards** — `allow_methods=["*"]` and `allow_headers=["*"]` are broader than needed. Origins are properly restricted so actual risk is low. Tighten to explicit lists: methods `GET, POST, PUT, PATCH, DELETE`; headers `Content-Type, Authorization, X-GitHub-Token, X-OpenAI-Key`
@@ -251,7 +236,7 @@ Last updated: 2026-03-21
 - [ ] **BYOK_ENCRYPTION_KEY rotation procedure** — currently no migration path. If the key changes, all stored BYOK keys become unreadable. Document: (1) decrypt all keys with old key, (2) re-encrypt with new key, or (3) accept that users re-enter keys. Add a migration script if rotation is ever needed
 
 ### Onboarding polish
-- [ ] **`triaige init` re-run guard** — detect if `.github/workflows/visual-regression.yml` exists and exit with a helpful message pointing to dashboard settings (OpenAI key), `gh secret set` (API key rotation), and GitHub branch protection settings. No `triaige update` command — init is one-shot. Baseline generation should never be offered on re-run — it resets all baselines and breaks PR comparisons
+- [x] **`triaige init` re-run guard** — detects existing workflow file, exits with pointers to dashboard settings, `gh secret set`, and GitHub branch protection settings. Init is one-shot. Baseline generation should never be offered on re-run — it resets all baselines and breaks PR comparisons
   - **Future: partial init recovery** — if workflow exists but baselines are missing (first init failed partway through), the guard currently locks the user out. Consider detecting partial state and offering to resume only the missing steps
   - **Future: `triaige update` command** — if design partners ask for it, add a selective update command (rotate secrets, update workflow template to latest version, re-run baseline generation). Don't build until there's demand
   - **Future: workflow template auto-update** — when the `post-failures.sh` template changes (like the temp file cleanup we added), existing repos don't get the update. Options: version the template and detect staleness, or publish a migration guide with each release. Not needed pre-validation

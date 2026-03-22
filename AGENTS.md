@@ -19,9 +19,9 @@ All agents (Claude Code, Codex, Cursor, etc.) should follow this document to avo
 
 ---
 
-## 1) Primary build objective (AI Makerspace Demo Day)
+## 1) Primary build objective
 
-Build a **production-ready agentic AI app** that automates visual regression testing end-to-end. The target is a polished, reliable live demo — quality over breadth.
+Build a **production-ready agentic AI app** that automates visual regression testing end-to-end. The target is a polished, reliable product for design partner validation — quality over breadth.
 
 ### Product flow
 PR opened/updated (sample app repo) → Playwright tests run → failed screenshots + results → Triaige agent classifies failures → developer reviews in dashboard → approved baselines committed to PR branch, unexpected changes filed as issues → merge gate passes once all failures addressed → PR merges. Known failures (tests already failing on main) are tracked on a health dashboard with linked GitHub issues.
@@ -33,7 +33,6 @@ Live end-to-end pipeline: open a PR on the sample app repo, Playwright runs, Tri
 A separate GitHub repo with a moderate dashboard-style web app (3–5 pages: nav, cards, tables, forms) and Playwright visual tests. PRs to this repo trigger the GitHub Actions workflow. The sample app exists solely to generate realistic visual regressions for the demo.
 
 ### Non-goals (out of scope)
-- Full multi-tenancy (multiple users/orgs)
 - Production monitoring / alerting
 
 ---
@@ -160,7 +159,7 @@ apps/runner/
 | `QDRANT_URL` | — | Yes |
 | `QDRANT_API_KEY` | — | Yes |
 | `QDRANT_COLLECTION` | `triaige_triage_memory` | No |
-| `OPENAI_API_KEY` | — | Yes |
+| `OPENAI_API_KEY` | — | No (admin scripts only — user requests use BYOK keys) |
 | `OPENAI_MODEL` | `gpt-5.4-nano` | No |
 | `OPENAI_EMBEDDINGS_MODEL` | `text-embedding-3-small` | No |
 | `OPENAI_EMBEDDINGS_DIMENSIONS` | `1536` | No |
@@ -168,7 +167,7 @@ apps/runner/
 | `LANGSMITH_API_KEY` | — | No (enables tracing) |
 | `LANGSMITH_PROJECT` | `triaige` | No |
 | `LANGCHAIN_TRACING_V2` | — | No (set to `true` to enable) |
-| `CORS_ORIGINS` | `*` | No |
+| `CORS_ORIGINS` | `http://localhost:3000` | No (production: Vercel dashboard URL) |
 
 ### Dashboard (Vercel + local)
 | Var | Default | Required |
@@ -498,6 +497,7 @@ When making changes:
 5. If uncertain, prefer adding small validation logs over complex abstractions.
 6. Stop after each step for review before committing.
 7. Add documentation to every new file (Python and TypeScript/TSX). For Python: module docstrings and one-line docstrings on public functions. For TypeScript/TSX: a top-of-file `//` comment block explaining the file's purpose, key design decisions, and how it fits into the system. For React components: document props and non-obvious behavior. Keep it concise — enough that a new reader understands the "what" and "why" without reading every line.
+8. **NEVER guess or fabricate commands, file paths, function names, or API details.** Always search the codebase first. If you don't know the entry point, read `package.json`. If you don't know the function signature, read the file. If you don't know the CLI syntax, check the existing usage. Getting it wrong erodes trust — taking 5 seconds to verify is always worth it.
 
 Commit messages: plain imperative sentences (e.g., "Add GitHub API client for PR context"). No conventional-commit prefixes. No co-authorship attribution. No references to plan steps.
 
