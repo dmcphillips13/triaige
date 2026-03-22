@@ -74,6 +74,12 @@ export function ReposList({ repos }: { repos: RepoWithStats[] }) {
                       : "No runs yet"}
                   </span>
 
+                  {!repo.openaiKeyConfigured && (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                      Setup required
+                    </span>
+                  )}
+
                   {repo.actionRequired > 0 && (
                     <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
                       {repo.actionRequired} action required

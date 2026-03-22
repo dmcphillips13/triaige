@@ -66,9 +66,11 @@ interface ClosedKnownFailure {
 export function RunsList({
   runs,
   repo,
+  openaiKeyConfigured = true,
 }: {
   runs: TriageRunSummary[];
   repo?: string;
+  openaiKeyConfigured?: boolean;
 }) {
   const [tab, setTab] = useState<Tab>(getInitialTab);
   const [liveRuns, setLiveRuns] = useState(runs);
@@ -165,8 +167,25 @@ export function RunsList({
     { key: "closed_issues" as Tab, label: "Closed Issues", count: 0, showCount: false },
   ];
 
+  const [owner, name] = (repo || "").split("/");
+
   return (
     <>
+      {!openaiKeyConfigured && repo && (
+        <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-medium text-amber-800">Setup required</p>
+          <p className="mt-1 text-xs text-amber-700">
+            An OpenAI API key is required before triage runs can classify
+            failures.{" "}
+            <Link
+              href={`/repos/${owner}/${name}/settings`}
+              className="underline"
+            >
+              Configure in settings
+            </Link>
+          </p>
+        </div>
+      )}
       <div className="mt-6 flex border-b border-zinc-200">
         {tabItems.map((t) => (
           <button

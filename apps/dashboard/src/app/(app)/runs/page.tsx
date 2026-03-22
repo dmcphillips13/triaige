@@ -6,7 +6,7 @@
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { fetchRuns } from "@/lib/api.server";
+import { fetchRuns, fetchRepoSettings } from "@/lib/api.server";
 import { RunsList } from "./runs-list";
 
 export default async function RunsPage({
@@ -20,10 +20,12 @@ export default async function RunsPage({
     redirect("/repos");
   }
 
-  let runs;
-  try {
-    runs = await fetchRuns();
-  } catch {
+  const [runsResult, settingsResult] = await Promise.allSettled([
+    fetchRuns(),
+    fetchRepoSettings(repo),
+  ]);
+
+  if (runsResult.status === "rejected") {
     return (
       <div className="mx-auto max-w-5xl px-6 py-12">
         <h1 className="text-2xl font-bold text-zinc-900">Triage Runs</h1>
@@ -33,6 +35,12 @@ export default async function RunsPage({
       </div>
     );
   }
+
+  const runs = runsResult.value;
+  const openaiKeyConfigured =
+    settingsResult.status === "fulfilled"
+      ? settingsResult.value.openai_key_configured
+      : false;
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
@@ -47,7 +55,7 @@ export default async function RunsPage({
       </h1>
       <p className="text-sm text-zinc-400">{repo}</p>
 
-      <RunsList runs={runs} repo={repo} />
+      <RunsList runs={runs} repo={repo} openaiKeyConfigured={openaiKeyConfigured} />
     </div>
   );
 }

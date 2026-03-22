@@ -202,6 +202,13 @@ HTTP_CODE=$(echo "$RESPONSE" | tail -1)
 BODY=$(echo "$RESPONSE" | sed '$d')
 
 if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+  STATUS=$(echo "$BODY" | jq -r '.status // empty')
+  if [ "$STATUS" = "setup_required" ]; then
+    echo "Triaige: OpenAI API key not configured."
+    echo "  Configure your key at the Triaige dashboard settings page"
+    echo "  or set the OPENAI_API_KEY secret in this repository."
+    exit 0
+  fi
   RUN_ID=$(echo "$BODY" | jq -r '.run_id // "unknown"')
   echo "Triage run created: $RUN_ID"
   echo "View results at the Triaige dashboard"

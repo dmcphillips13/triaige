@@ -4,7 +4,7 @@
 // runner, then computes per-repo stats (open runs, action required, last
 // activity). Clicking a card navigates to /runs?repo=owner/repo.
 
-import { fetchConnectedRepos, fetchRuns } from "@/lib/api.server";
+import { fetchConnectedRepos, fetchRuns, fetchRepoSettings } from "@/lib/api.server";
 import type { ConnectedRepo } from "@/lib/api.server";
 import type { TriageRunSummary } from "@/lib/types";
 import { ReposList } from "./repos-list";
@@ -16,6 +16,7 @@ export interface RepoWithStats {
   openRuns: number;
   actionRequired: number;
   lastActivity: string | null;
+  openaiKeyConfigured: boolean;
 }
 
 export default async function ReposPage() {
@@ -54,6 +55,18 @@ export default async function ReposPage() {
     runsByRepo.set(run.repo, existing);
   }
 
+  // Fetch settings per repo in parallel (for openai_key_configured status)
+  const settingsResults = await Promise.allSettled(
+    repos.map((repo) => fetchRepoSettings(repo.full_name))
+  );
+  const settingsByRepo = new Map<string, { openai_key_configured: boolean }>();
+  repos.forEach((repo, i) => {
+    const result = settingsResults[i];
+    if (result.status === "fulfilled") {
+      settingsByRepo.set(repo.full_name, result.value);
+    }
+  });
+
   const reposWithStats: RepoWithStats[] = repos.map((repo) => {
     const repoRuns = runsByRepo.get(repo.full_name) || [];
     const openRuns = repoRuns.filter(
@@ -66,6 +79,7 @@ export default async function ReposPage() {
       (a, b) =>
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )[0];
+    const settings = settingsByRepo.get(repo.full_name);
 
     return {
       full_name: repo.full_name,
@@ -74,6 +88,7 @@ export default async function ReposPage() {
       openRuns: openRuns.length,
       actionRequired: actionRequired.length,
       lastActivity: lastRun?.created_at || null,
+      openaiKeyConfigured: settings?.openai_key_configured ?? false,
     };
   });
 

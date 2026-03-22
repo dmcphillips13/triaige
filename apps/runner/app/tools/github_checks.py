@@ -131,6 +131,36 @@ def create_passing_check_run(
     return check_run_id
 
 
+def create_setup_required_check_run(
+    repo: str,
+    head_sha: str,
+) -> int:
+    """Create a check run that blocks merge due to missing OpenAI key configuration."""
+    client = _get_client(repo)
+
+    resp = client.post(
+        f"/repos/{repo}/check-runs",
+        json={
+            "name": "Triaige Visual Regression",
+            "head_sha": head_sha,
+            "status": "completed",
+            "conclusion": "action_required",
+            "output": {
+                "title": "Setup required",
+                "summary": (
+                    "OpenAI API key not configured. Add your key in "
+                    "Triaige dashboard settings or set the OPENAI_API_KEY "
+                    "secret in your repository."
+                ),
+            },
+        },
+    )
+    resp.raise_for_status()
+    check_run_id = resp.json()["id"]
+    logger.info("Created setup-required check run %d on %s @ %s", check_run_id, repo, head_sha[:8])
+    return check_run_id
+
+
 def update_check_run(
     repo: str,
     check_run_id: int,

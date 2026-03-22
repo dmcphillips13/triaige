@@ -105,7 +105,7 @@ export async function fetchRepoApiKey(repo: string): Promise<string> {
 /** Fetch repo settings (merge gate, triage modes). */
 export async function fetchRepoSettings(
   repo: string
-): Promise<{ pre_merge: boolean; post_merge: boolean; merge_gate: boolean }> {
+): Promise<{ pre_merge: boolean; post_merge: boolean; merge_gate: boolean; openai_key_configured: boolean }> {
   const res = await fetch(
     `${RUNNER_BASE}/repos/${encodeURIComponent(repo)}/settings`,
     {

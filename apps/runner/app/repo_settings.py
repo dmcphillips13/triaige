@@ -21,6 +21,7 @@ class RepoSettings(BaseModel):
     pre_merge: bool = True
     post_merge: bool = True
     merge_gate: bool = True
+    openai_key_configured: bool = False
 
 
 async def get_settings(repo: str) -> RepoSettings:
@@ -28,7 +29,10 @@ async def get_settings(repo: str) -> RepoSettings:
     pool = get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT pre_merge, post_merge, merge_gate FROM repo_settings WHERE repo = $1", repo
+            """SELECT pre_merge, post_merge, merge_gate,
+                      (openai_api_key_encrypted IS NOT NULL) AS has_openai_key
+               FROM repo_settings WHERE repo = $1""",
+            repo,
         )
     if not row:
         return RepoSettings()
@@ -36,6 +40,7 @@ async def get_settings(repo: str) -> RepoSettings:
         pre_merge=row["pre_merge"],
         post_merge=row["post_merge"],
         merge_gate=row["merge_gate"],
+        openai_key_configured=row["has_openai_key"],
     )
 
 

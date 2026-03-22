@@ -192,3 +192,4 @@ class TriageRunResponse(BaseModel):
     repo: str | None = None
     triage_mode: str | None = None
     closed: bool = False
+    status: str | None = None  # "setup_required" when OpenAI key is missing

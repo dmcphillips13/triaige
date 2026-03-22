@@ -41,7 +41,7 @@ from app.schemas import (
 )
 from app.repo_settings import RepoSettings
 from app.tools.github_actions import commit_baselines_to_branch, create_baseline_pr
-from app.tools.github_checks import create_check_run, create_passing_check_run, update_check_run
+from app.tools.github_checks import create_check_run, create_passing_check_run, create_setup_required_check_run, update_check_run
 from app.tools.github_issues import create_bug_issue, post_issue_comment
 from app.tools.pr_comment import post_triage_comment
 from app.settings import settings
@@ -363,8 +363,8 @@ async def delete_openai_key(repo: str, request: Request):
 async def _resolve_openai_key(request: Request, repo: str | None) -> str:
     """Resolve the OpenAI API key from header or DB. No fallback to the global key."""
     header_key = request.headers.get("X-OpenAI-Key")
-    if header_key:
-        return header_key
+    if header_key and header_key.strip():
+        return header_key.strip()
 
     if repo:
         db_key = await repo_settings.get_openai_key(repo)
@@ -564,7 +564,38 @@ async def triage_run(req: TriageRunRequest, request: Request):
         )
 
     # Resolve BYOK OpenAI key before LLM processing (header → DB → error)
-    openai_key = await _resolve_openai_key(request, repo)
+    try:
+        openai_key = await _resolve_openai_key(request, repo)
+    except HTTPException:
+        # No OpenAI key — create a check that blocks merge and return early
+        if (
+            mode == "pre_merge"
+            and req.pr_context
+            and req.pr_context.head_sha
+            and req.pr_context.repo
+        ):
+            rs = await repo_settings.get_settings(req.pr_context.repo)
+            if rs.merge_gate:
+                try:
+                    await asyncio.to_thread(
+                        create_setup_required_check_run,
+                        repo=req.pr_context.repo,
+                        head_sha=req.pr_context.head_sha,
+                    )
+                    logger.info("Created setup-required check — no OpenAI key")
+                except Exception as e:
+                    logger.warning("Failed to create setup-required check: %s", e)
+
+        return TriageRunResponse(
+            run_id="",
+            created_at="",
+            total_failures=0,
+            results=[],
+            repo=repo,
+            triage_mode=mode,
+            status="setup_required",
+        )
+
     from app.request_context import openai_api_key_var
     openai_api_key_var.set(openai_key)
 
