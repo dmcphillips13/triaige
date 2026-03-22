@@ -129,6 +129,19 @@ export function SettingsPanel({
 
   return (
     <div className="mt-8 space-y-8">
+      {/* Setup warning */}
+      {!masked && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-medium text-amber-800">
+            Setup required
+          </p>
+          <p className="mt-1 text-xs text-amber-700">
+            An OpenAI API key is required before triage runs can classify
+            failures. Add your key below to get started.
+          </p>
+        </div>
+      )}
+
       {/* API Key */}
       <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
         <h2 className="text-sm font-semibold text-zinc-900">API Key</h2>
