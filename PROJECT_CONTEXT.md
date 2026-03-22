@@ -6,311 +6,45 @@ Last updated: 2026-03-22
 
 ## Current status
 
-**Phase:** Pre-vacation build sprint. Transitioning from demo project to product validation. Functional test failure support complete. Vision night (2026-03-21) sharpened GTM: primary target is frustrated Percy/Chromatic customers at mid-market B2B SaaS; SaMD/compliance is a vertical expansion play. Compliance mode features (~1-2 hours) unlock enterprise value across multiple markets. See `docs/sequencing.md` for phased plan and `docs/strategy.md` for full GTM analysis.
+**Phase:** Pre-vacation build sprint. Transitioning from demo project to product validation. Core pipeline complete (Steps 1-28). Security hardened. BYOK mandatory. E2E tested. See `docs/sequencing.md` for phased plan and `docs/strategy.md` for full GTM analysis.
 
-**Build priorities (in order):**
-1. ~~CLI setup (`npx triaige init`)~~ — DONE
-2. ~~BYOK OpenAI key~~ — DONE. Encrypted storage, settings UI, CLI prompt, global key fallback removed
-3. ~~Security hardening~~ — DONE. Per-repo access control on all endpoints, run-repo consistency, AGENTS.md §13.1
-4. ~~Setup banners + early return gate~~ — DONE. Repos/runs page banners, /triage-run setup_required check
-5. ~~E2E test with BYOK~~ — DONE. Full clean-slate test passed on test-triaige-onboarding PR #4
-6. Dashboard multi-tenancy — proxy must check user's GitHub App installations before forwarding
-7. Reliability fixes — report-clean 500, merged PR actionability, silent API failures
-8. Manual setup path for `triaige init` — support users without `gh` CLI
-9. Compliance mode — repo setting toggle with e-signature, audit log, PDF export
+**Test repo state:**
+- `dmcphillips13/test-triaige-onboarding` — fully configured (GitHub App installed, workflows, branch protection, BYOK key, baselines). PR #4 merged with full triage flow verified
 
-### Completed
-- [x] Project planning and scoping
-- [x] Architecture decisions locked (see AGENTS.md §2)
-- [x] API contract defined (see AGENTS.md §5)
-- [x] AGENTS.md rewritten for Demo Day scope
-- [x] PROJECT_CONTEXT.md created
-- [x] Step 1: Runner scaffold (pyproject.toml, FastAPI stubs, settings, schemas)
-- [x] Step 2: Sample app + Playwright suite (separate repo)
-- [x] Step 3: Triage memory corpus (~30 docs)
-- [x] Step 4: Qdrant Cloud provisioning + indexing pipeline + dense retriever
-- [x] Step 5: GitHub API tool (read PR context)
-- [x] Step 6: LangGraph agentic workflow wired to /ask
-- [x] Step 7: Playwright result ingestion + /triage-run endpoint with persistence
-- [x] Step 8: Dashboard triage UI — display triage runs, detail view, approve/reject
-- [x] Step 9: Programmatic image diff (Pillow pixel comparison, region detection, overlay)
-- [x] Step 10: GPT-4o vision analysis (multi-modal screenshot analysis node)
-- [x] Step 11: Batch triage with failure grouping by component + pattern
-- [x] Step 12: Screenshot comparison viewer (side-by-side, swipe slider, diff overlay)
-- [x] Step 13: Human-in-the-loop + episodic memory (approve/reject → Qdrant episodes → few-shot retrieval)
-- [x] Step 14: GitHub automated actions — PR-labeled runs + "Update Baselines" PR for approved expected failures via Git Data API
-- [x] Step 15: Deploy runner to Render + dashboard to Vercel
-- [x] Step 16: GitHub App OAuth + repo linking (sign-in flow, per-repo access control, token forwarding, link a repo UI)
-- [x] Step 17: GitHub Actions workflow (merged PR in sample app → Playwright → POST /triage-run)
-- [x] Step 18: Triage mode settings + submission actions — pre-merge/post-merge checkboxes, PR comment posting, "Submit Changes" (approved → baseline update PR, rejected → GitHub issue with bug report), submission results persisted in localStorage, open/closed run tabs with close run button, pre-merge runs are read-only
+---
 
-### Up next (final week — all items are must-haves)
-- [x] Step 19: Runner-side Postgres persistence — Neon free tier, asyncpg, 5 tables (runs, failure_results, verdicts, submissions, repo_settings), swap dashboard from localStorage to API
-- [x] Step 20: Runs page redesign — Main/PR/Closed tabs; known failure annotations; submission-aware action gating
-    - **Main tab** (default): post-merge runs on main branch, fully actionable (approve/reject, submit changes, close)
-    - **PR tab**: pre-merge runs from open PRs, informational only (read-only, no actions)
-    - **Closed tab**: runs manually closed by reviewer (read-only archive)
-    - **Known failure annotations** (both Main and PR tabs): if a test has been failing since a previous merged run, show "Failing since PR #X: title" with a link to the PR that introduced the regression
-    - **Open submission links**: if an open baseline PR or GitHub issue exists for a failing test, show the link on the failure card; also include these links in the PR comment posted for pre-merge runs
-    - **Action gating on Main tab**: if a failure already has an open PR or issue, hide approve/reject buttons (prevents duplicate submissions); if it's a known failure with no open submission, allow approve/reject normally
-- [x] Step 20.1: Net-new failure filtering — only show failures not present in previous open post-merge runs; skip run creation when zero new failures; post-merge runs auto-close when all failures have submissions; pre-merge runs auto-close when superseded or when the PR merges; default both triage modes enabled
-- [x] Step 21: Actionable pre-merge workflow with merge gate — pre-merge becomes the primary workspace; approved baselines commit directly to PR branch; unexpected changes file issues; GitHub check gates merge until all net-new failures addressed; pre-existing failures (failing on main with open issue) shown but not actionable; Main tab becomes health dashboard showing open issues on failing tests; post-merge runs are diagnostic only
-- [x] Step 21.1a: Remove post-merge runs — strip triage path for push-to-main events; workflow just calls `/report-clean` for PR run cleanup; remove post-merge run creation logic
-- [x] Step 21.1b: Main tab health dashboard — replace run cards with individual failing baseline cards; each shows screenshot from when issue was filed, issue title/number/link, test name; add `known_failures` table (test_name, repo, screenshot_base64, issue_url, issue_number, filed_from_run_id); closing from UI also closes the GitHub issue
-- [x] Step 21.1c: Known failure visibility on PRs — when net-new filtering skips known failures, compare PR screenshot against stored screenshot from `known_failures` table; if different, post comment on GitHub issue noting the PR that modified it further with link; show skipped tests as non-actionable in dashboard run detail and PR comment with issue links and manual verification note
-- [x] Step 21.2: Remove "Ready to merge" PR comments — redundant since the check passing already signals this; remove gate-passed comment entirely
-- [x] Step 21.3: Fix "Baseline committed" label — submission label on pre-merge runs should say "Baseline committed" not "Baseline PR opened"
-- [x] Step 22: **DEMO CRITICAL** — Reorder failure card sections (rationale at top, image diff next, vision analysis collapsed) + improve rationale format (3 brief bullet points, fix markdown bullet rendering)
-- [x] Step 23: Classification improvements — temperature=0, git diff in Pass 1 + Pass 2, code traceability, conservative bias. Determinism verification pending (need 2 more PR #59 runs). Future: few-shot calibration, per-component analysis, mixed-scope separation.
-- [x] Step 23-UI: Dashboard visual polish — fonts (DM Sans + Lora logo PNG), layout (max-w-5xl, warm background, muted stoplight colors, card shadows + hover lift), failure cards (rationale + screenshots always visible, show details toggle, compact + fullscreen modal, swipe fix, approve/reject with tinted colors + descriptive labels + animation), nav (avatar dropdown, logo, breadcrumb back link), submit bar (fixed bottom, frosted glass), skeletons (page transitions + deferred action area), empty states, unified "Baseline committed" labels, sign-in page with logo + middleware fix, local dev → prod runner
-- [x] Step 23.8: Real-time run updates — superseded by Step 23-SSE
-- [x] Step 23.12: Fix swipe screenshot viewer — fixed alignment, compact + fullscreen modal
-- [x] Step 23.13: Make screenshot diff viewer larger — fullscreen modal with Escape to close
-- [x] Step 23.14: Add fullscreen/modal mode for screenshot comparison
-
-### Up next — 23.x follow-ups (ordered by priority)
-
-**Block A — Quick wins (dashboard polish, can do in one pass):**
-- [x] Step 23.9: All links open in new tab (target="_blank") — all external links have target="_blank" + rel="noopener noreferrer"
-- [x] Step 23.5: Persist active tab across page refreshes via URL hash/query param — hash-based tab persistence
-- [x] Step 23.4: Rename "Main" tab to "Issues", add "Closed Issues" tab for resolved known failures — 4-tab layout implemented
-- [x] Step 23.6: Main tab should work without requiring Settings setup — derives repo from runs data, falls back to localStorage
-
-**Block B — Workflow improvements (runner + dashboard changes):**
-- [x] Step 23.2: Auto-close pre-merge runs after submit — after all failures have submissions, call close endpoint from dashboard; or have runner auto-close when gate passes
-- [x] Step 23.7: PR run cards should show gate status (action required vs ready to merge) — runner returns gate status, dashboard shows badge on run card
-- [x] Step 23.16: Run card status indicator on PR tab ("All addressed" badge when all failures have submissions)
-- [x] Step 23.3: Known failure PR comment should link to open GitHub issues — PR comment shows skipped known failures with "open issue" links to GitHub issues; verified on PR #66 with issue #67
-- [x] Step 23.20: Defer GitHub issue creation until PR merges — pre-merge rejected failures record intent in `pending_issues` table; issues materialized via `/report-clean` on merge; dashboard shows "Issue will be filed on merge" in amber; pending issues filtered on re-trigger; scoped per-PR (doesn't affect other PRs). Verified end-to-end with PRs #65 and #66.
-
-- [x] Step 23.17: Collapse failure card on verdict — after approve/reject, collapse rationale + screenshots to reduce visual noise
-- [x] Step 23.18: Fix submit bar overlap — add bottom padding so the fixed "Submit Changes" bar doesn't block the last card's "Show details" link
-- [x] Step 23.19: "View full results" link in PR comment should open in new tab — use raw HTML `<a target="_blank">` since GitHub markdown doesn't support target
-- [x] Step 23.21: Disable approve/reject buttons during submit — pass `readOnly` when `submitStatus === "loading"` to lock verdict buttons mid-flight
-
-**Block C — CI/GitHub cleanup:**
-- [x] Step 23.10: Delete stale PR comments when runs are superseded — delete previous Triaige comments before posting new one (pattern-matched by content)
-- [x] Step 23.11: Hide skipped `close-pr-runs` job on PR checks — split into separate `close-pr-runs.yml` workflow triggered only on push to main
-- [x] Step 23.15: Fix GitHub OAuth session duration — store refresh token from GitHub App OAuth, auto-refresh access token when within 10 min of expiry; graceful fallback if refresh fails
-
-**Block D — Complex (split to own step):**
-- [x] Step 23.1: Known failure screenshot comparison — comparison + issue comment firing correctly; PR comment now distinguishes drift ("⚠️ visual drift detected") from unchanged known failures; issue gets "further modifies this area" comment when screenshot differs; original screenshot in known_failures preserved as permanent reference
-
-### Steps 24-25 — Repos page + settings cleanup
-- [x] Step 24: Repos landing page — `/repos` as post-login landing page with repo cards showing run stats; `/runs?repo=owner/repo` for repo-scoped runs; back links and logo point to `/repos`; skeleton loading; "Add or remove repositories" links to GitHub App installation settings
-- [x] Step 25: Settings page removed — localStorage repo selection obsolete (now URL-scoped via repos page); settings page and nav link deleted
-
-### Step 26 — SSE (complete)
-- [x] Step 26: Server-sent events for real-time dashboard updates — in-memory event bus on runner emits `run_created`/`run_closed` at all mutation points; SSE endpoint with 30s keepalive; dashboard proxy streams SSE directly; React hook with EventSource + tab-refocus reconnection; runs list and run detail pages update live
-
-### Up next
-- [x] Step 27: Bug fixes — address known issues before E2E testing
-  - [x] 27.1: Issue drift comment only fires on merge with deduplication
-  - [x] 27.2: Diff overlay uses grayscale background
-  - [x] 27.3: Issues tab shows full screenshot comparison viewer
-  - [x] 27.4: GitHub issues include PR number with clickable link
-  - [x] 27.5: Equal-width tabs
-  - [x] 27.6: Tab counts populate on initial page load (not just on tab click)
-- [x] Step 28: Rigorous E2E test — full pipeline verification (see TEST_PLAN.md)
-  - [x] 28.1: Prerequisites (deploy to Render, clean state, update baselines)
-  - [x] 28.2: Create PRs A and B on sample app
-  - [x] 28.3: Execute test steps 0-14
-  - **Fixed during E2E:**
-    - Tabs not visible when zero runs exist (page showed "No triage runs found" instead of rendering RunsList with tabs)
-  - **P0 — fixed:**
-    - Classifier no longer mentions visual changes that didn't happen — `changed_regions` from image diff injected into both devil's advocate and compose prompts; LLM now cross-references code changes against actual pixel regions
-  - **Demo note:** Merge PRs via GitHub merge button ("Create a merge commit") — this is the only merge strategy where `close-pr-runs.yml` reliably extracts the PR number
-- [ ] ~~Step 29: Demo presentation~~ — **Skipped.** Decision made 2026-03-16 to skip demo day and focus on validation + design partners. See `docs/strategy.md` for full sequencing plan and rationale
-
-### Session 2026-03-20 — Submit flow fix + model upgrade breakthrough
-- [x] **Submit → gate check → auto-close works end-to-end** — PR #76 on sample app: approved 5 failures, submitted, submissions persisted, gate passed, run auto-closed. First successful gate-pass auto-close (previous auto-closes were all via superseding mechanism)
-- **GPT-5.4-nano is a step change in classification quality** — rationale went from vague summaries (4o-mini: "color change not in PR scope") to grounded explanations (5.4-nano: "Card border radius changed — aligns with globals.css radius token update"). Functional test P0 misclassification also appears resolved. The product thesis — intent-aware triage grounded in code context — now lands visibly in the output
-
-### Session 2026-03-22 — CLI setup, per-repo API keys, settings page, onboarding test
-
-**Built:**
-- [x] **Repo setup CLI (`npx triaige init`)** — full interactive CLI at `packages/cli/`. Checks prerequisites (gh, jq, git remote, package manager), prompts for API key (masked), validates runner connection, sets GitHub secrets via `gh secret set` (stdin, never in args/files), detects Playwright config + JSON reporter, generates workflow files + post-failures.sh, generates baselines in CI (temporary workflow, wait for completion, pull, cleanup), handles branch protection (removes before baseline push, restores after), checks GitHub App access, prints validation summary. Built with tsup + @inquirer/prompts + chalk. All green checks on test-triaige-onboarding repo
-- [x] **Per-repo API keys** — `api_key` column on `repo_settings` table, auto-generated on first access (`tr_` prefix + cryptographically random token). Auth middleware accepts both global key (dashboard proxy) and per-repo keys (CI workflows). `GET /repos/{repo}/api-key` endpoint
-- [x] **Dashboard settings page** — `/repos/[owner]/[repo]/settings` route. Shows API key (copy-to-clipboard), `npx triaige init` command (copy-to-clipboard), merge gate toggle. Settings link on repo cards
-- [x] **Runner URL hardcoded in CLI** — removed runner URL prompt, hardcoded to `https://triaige-runner.onrender.com`
-- [x] **CI baseline generation** — CLI creates temporary update-snapshots workflow, pushes it, triggers via `gh workflow run`, waits with retry logic, pulls CI-generated baselines, removes temp workflow. Handles branch protection removal/restoration automatically. Shows GitHub Actions URL during wait
-- [x] **Empty run fix** — if `/triage-run` receives 0 failures after parsing, creates passing check and returns early (no empty run creation)
-- [x] **gh auth detection fix** — handles stdout/stderr correctly across gh CLI versions
-- [x] **Runner health check timeout** — 15s timeout on `/health` validation
-
-**Blocking bug (P0 — FIXED):**
-- [x] **Triage run shows 0 failures despite CI reporting 1 failure** — Root cause: `get_or_create_api_key` inserted `(repo, api_key)` without explicit boolean columns, and the DB column default for `pre_merge` was `FALSE` instead of `TRUE` (schema mismatch). The `/triage-run` endpoint hit the early return at line 292 (`if mode == "pre_merge" and not rs.pre_merge`) creating an empty run. Fix: explicit `pre_merge=TRUE, post_merge=TRUE, merge_gate=TRUE` in the INSERT + migration to fix existing rows. Confirmed via `GET /repos/.../settings` showing `pre_merge: false` before fix, `true` after
-
-### Session 2026-03-22 (evening) — Security hardening
-
-**Security audit and fixes:**
-- [x] **Global OpenAI key fallback removed** — `get_openai_client()`, `_get_llm()`, and `/feedback` all silently fell back to the project owner's key. All three paths now require BYOK contextvar. `index_corpus.py` sets contextvar from env explicitly. Security rules documented in AGENTS.md §13.1
-- [x] **Per-repo access control on all 25 endpoints** — added `_check_repo_access` to 6 repo-path endpoints, `_check_run_access` helper (404 to prevent enumeration) to 10 run-based endpoints, repo guard on `/ask` and `/triage-run`, `_check_repo_access` on `/report-clean`, `/update-baselines`, `/create-issues`. `GET /runs` filtered by authenticated repo
-- [x] **Run-repo consistency** — `/update-baselines` and `/create-issues` now verify `run.repo == req.repo` to prevent cross-repo state manipulation
-- [x] **Temp file cleanup** — `post-failures.sh` trap removes enriched JSON and payload files on exit
-- **Tenancy model decided:** Tenant = GitHub App installation. Orgs share data among members. Solo users work without requiring an org. Mirrors Vercel/Codecov/Chromatic
-
-**Second audit (post-fixes) confirmed no remaining exploitable vulnerabilities in the per-repo key path.** Remaining work: dashboard multi-tenancy (global key gives all dashboard users cross-repo access), rate limiting, SSE connection limits. All documented in "Not yet done" section above.
-
-### Session 2026-03-21 — P0 bug fix, onboarding test, BYOK, security hardening
-
-**P0 bug fixed:**
-- [x] `pre_merge` defaulting to FALSE — `get_or_create_api_key` didn't set explicit boolean columns. Migration added to fix existing rows
-
-**Onboarding test passed (Steps 1-5 of TEST_PLAN.md § New user onboarding test):**
-- Full clean-slate test: `triaige init` → PR → CI → classification → PR comment → merge gate → approve → baseline commit → gate pass → merge → cleanup
-- All working end-to-end on `dmcphillips13/test-triaige-onboarding` PR #3
-
-**BYOK OpenAI key support built:**
-- [x] Encrypted key storage (pgcrypto AES-256, `BYOK_ENCRYPTION_KEY` env var on Render)
-- [x] Per-request key resolution via contextvars (header `X-OpenAI-Key` → DB → error). **Note:** fallback to global key was present in `get_openai_client()`, `_get_llm()`, and `/feedback` until session 2026-03-22 fix
-- [x] Dashboard settings page: OpenAI key section (password input, validation, masked display, delete)
-- [x] CLI: optional OpenAI key prompt during `triaige init`, set as GitHub secret
-- [x] CI: `X-OpenAI-Key` header in workflow template and post-failures.sh
-- [x] Key validation against OpenAI `/v1/models` before storing
-- [x] Log scrubbing filter to prevent key leakage
-- [x] Settings page "Setup required" banner when no OpenAI key configured
-
-**Security hardening:**
-- [x] Cross-repo access fix — per-repo API keys can only access their own repo's BYOK endpoints (403 otherwise)
-- [x] Validation error safety — PUT endpoint catches malformed JSON, returns clean 400
-- [x] Encryption key strength — minimum 32 characters enforced on startup
-
-**Not yet done (carry to next session):**
-
-**Completed this session (2026-03-22 evening):** Security hardening (global key fallback removed, per-repo access control on all 25 endpoints, run-repo consistency, temp file cleanup), setup banners, early return gate, header validation, init re-run guard, full E2E test with BYOK. See session notes above for details.
+## What to work on next
 
 **Critical — pick up here:**
-- [ ] **Dashboard multi-tenancy** — the dashboard proxy forwards all requests with the global API key, so any logged-in user can access any repo's data by crafting requests through the proxy. Fix: before forwarding, check that the logged-in user's GitHub account has access to the requested repo via their GitHub App installations. Also filter SSE events by repo. See "Basic multi-tenancy" under "New MVP functionality" for full design notes and tenancy model decision
+- [ ] **Dashboard multi-tenancy** — the dashboard proxy forwards all requests with the global API key, so any logged-in user can access any repo's data by crafting requests through the proxy. Fix: before forwarding, check that the logged-in user's GitHub account has access to the requested repo via their GitHub App installations. Also filter SSE events by repo. See "Tenancy model" section below for design decisions
 - [ ] **Rate limiting** — no rate limiting on any endpoint. Risks: brute-forcing API keys, flooding `/triage-run` (triggers OpenAI calls billed to BYOK key + consumes Render compute), flooding `/ask`. Add middleware-level rate limiting before onboarding external users. Consider per-IP and per-API-key limits separately
 - [ ] **SSE connection limit** — `_subscribers` in `events.py` is an unbounded list with unbounded `asyncio.Queue` per subscriber. An authenticated caller (or buggy dashboard with reconnection loops) can exhaust server memory. Add a subscriber cap (e.g., 50) and bounded queue size (e.g., maxsize=100). Drop oldest subscriber when cap is reached
-- [ ] **Reliability fixes** — `/report-clean` 500 on merge (PR #78), merged PR runs staying actionable, silent API failures in `api.ts`, pgcrypto decryption error handling. See "Reliability fixes" section below for details
+- [ ] **Reliability fixes** — see details in "Reliability fixes" section below
 - **Gate: once critical items are done, evaluate publishing CLI to npm.** Prerequisites: dashboard multi-tenancy, rate limiting, Qdrant collection isolation per tenant, invite code or waitlist gate on API key generation. For design partners before that: share the CLI as a local checkout or private tarball
 
 **Then (backlog — no priority order):**
-- [ ] **Stale PR comment cleanup on clean pass** — `/report-clean` should delete old Triaige comments when re-run passes after baseline commit
-- [ ] **Classification accuracy** — dark theme PR #3 classified as "unexpected" despite clear description. May be resolved by GPT-5.4-nano. Also: functional failure classification accuracy needs confirmation with more runs
-- [ ] **Manual setup path for `triaige init`** — print instructions when `gh` CLI unavailable
-- [ ] **Empty repos page after overnight session** — OAuth token expires, shows empty page instead of redirecting to sign-in
-- [ ] **Error message sanitization** — GitHub API errors leak implementation details. Wrap with generic messages
-- [ ] **Favicon** — currently shows default Vercel icon
-- [ ] **Compliance mode** — repo setting toggle with e-signature, audit log, PDF export. ~1-2 hour build. See `docs/strategy.md` and `docs/sequencing.md`
-- [ ] **E2E verification of functional failure flow** — mixed visual + functional PR to verify card rendering, submit flow, merge gate, issue materialization
-- [ ] **Known failure card states** — re-triggered runs produce non-actionable cards incorrectly. See "Market demo polish" section for details
-- [ ] **Collapsed cards missing rationale/screenshots** — "Show details" should include these after verdict
-- [ ] **Disable actions on superseded PR runs** — banner + disable buttons when newer commit is pushed
-- [ ] **close-pr-runs.yml merge strategy support** — squash-and-merge, rebase-and-merge (currently only handles merge commits)
-- [ ] **PR cards link to GitHub PR** — title shown but not clickable
-- [ ] **Failure card sort order** — expected → uncertain → unexpected, by confidence desc
-- [ ] **Settings link on runs page** — move from repo card to runs page (per-repo action)
-- [ ] **Repos page refresh on App change** — doesn't update when a new repo is added to GitHub App
-- [ ] **Render paid tier** — $7/mo to eliminate cold starts
-- [ ] **CORS method/header wildcards** — tighten to explicit lists
-- [ ] **`/report-clean` input validation** — Pydantic model, hex/int validation
-- [ ] **GitHub token in JWT cookie** — consider JWE or server-side sessions
-- [ ] **AUTH_SECRET minimum length** — add startup validation
-- [ ] ~~**Repo setup checklist on cards**~~ — superseded by setup banners (amber pill covers the main case)
-
-**Note:** Additional items in "Market demo polish," "Go to market polish," and "Future" sections below are reference — the backlog above is the working list.
-
-**Test repo state:**
-- `dmcphillips13/test-triaige-onboarding` — fully configured after E2E test (GitHub App installed, workflows in place, branch protection with merge gate, BYOK key set via dashboard, baselines committed). PR #4 merged successfully with full triage flow
-
-### Vision night 2026-03-21 — GTM sharpening + compliance mode
-- **Primary GTM target identified:** frustrated Percy/Chromatic customers at mid-market B2B SaaS companies (10-30 engineers, complex UIs, already paying $200-500/mo for visual testing). Product substitution pitch, not category creation
-- **SaMD vertical expansion:** confirmed gap (no tool automates visual verification evidence for FDA Design History Files), but 6-12 month sales cycles and risk-averse buyers make it a secondary play. Compliance features are cheap to build and unlock value across all markets, not just SaMD
-- **Compliance mode designed:** repo setting toggle (default off) enabling e-signature modal, requirement ID tagging, immutable audit log, PDF audit export. ~1-2 hour build session
-- **Expansion paths documented:** integration test triage, performance regression triage, flaky test reclassification. All use the same pipeline with different parsers. Don't build — listen for demand in feedback calls
-- **Joined OpenRegulatory Slack** for SaMD community signal (mostly regulatory docs discussion, not automated testing)
-- **Outreach scripts written** for both developer teams and SaMD quality managers
-- See `docs/strategy.md` for full analysis and `docs/sequencing.md` for updated build priorities
-
-### Post-Demo Day — E2E findings
-- [x] **Rationale accuracy (P0):** Fixed — prompt now requires each bullet to justify the classification (what changed + why it's expected/unexpected/uncertain) and bans filler bullets. Bullet count is dynamic (1-3) instead of fixed at 3. Confabulation (phantom region references) eliminated.
-
-### New MVP functionality (build before going to market)
-- [x] **Functional test failure support** — extend triage to handle functional Playwright failures (assertion errors, navigation failures, timeouts) alongside visual regressions. Same expected/unexpected/uncertain classification. Plain English failure summaries. See `docs/functional-test-plan.md` for implementation plan and `docs/strategy.md` for design rationale
-  - **Follow-ups:**
-  - [x] **Functional failure card actions** — single "Open GH issue to track bug" button with guidance note. E2E verification: see `TEST_PLAN.md` § Functional test follow-ups
-  - [x] **Functional failure screenshot size** — constrained to `max-w-md` / `max-h-[250px]` with fullscreen modal on click
-  - [x] **Fix proxy URL encoding for test names with slashes** — move `test_name` from URL path to request body for all mutation endpoints. Also added `res.ok` checks so future API errors surface in the UI
-  - [ ] **Classification accuracy for functional failures (P0)** — appears resolved by GPT-5.4-nano upgrade (commit cf4169b). Needs a few more runs to confirm
-  - [ ] **E2E verification of functional failure flow** — create a new PR with mixed visual + functional failures to verify card rendering, submit flow, merge gate, issue materialization, and known failure tracking. See `TEST_PLAN.md` § Functional test follow-ups
-- [x] **Repo setup CLI (`npx triaige init`)** — built at `packages/cli/`. Full interactive setup with CI baseline generation. See session 2026-03-22 notes above for details
-- [ ] **Basic multi-tenancy** — per-org data isolation so two teams' runs don't mix. Required before a second team can use the product. **First step (done): per-repo API key access control on all endpoints.** Second step: dashboard multi-tenancy (see "Critical" in "Not yet done" above).
-  - **Tenancy model decision (2026-03-22): Tenant = GitHub App installation.** An org that installs the Triaige GitHub App is one tenant. All org members with repo access share runs, verdicts, and submissions — triage is a team activity. A solo user with a personal GitHub account installation is also a valid tenant (no org required). This mirrors Vercel, Codecov, and Chromatic.
-  - **Dashboard multi-tenancy (after per-repo key fix):** The dashboard proxy currently forwards all requests with the global API key, meaning any logged-in user can access any repo's data by crafting requests through the proxy. Fix: before forwarding, the proxy must check that the logged-in user's GitHub account has access to the requested repo via their GitHub App installations. This is the gate between "CI keys are isolated" and "dashboard users are isolated." Also scope SSE event filtering by repo at the same time (currently all events go to all subscribers)
-- [ ] **Compliance mode** (from vision night 2026-03-21) — repo setting toggle (default: off) that enables e-signature modal, requirement ID tagging, immutable audit log, and PDF audit export. Makes Triaige enterprise-ready for any compliance-conscious buyer (SaMD, SOX, SOC 2). ~1-2 hour session. See `docs/strategy.md` compliance section and `docs/sequencing.md` §2 for full spec
-- [x] **BYOK OpenAI key management** — encrypted storage, per-request key resolution, settings UI, CLI prompt, CI header. Global key fallback removed. See AGENTS.md §13.1 for security rules
-- [ ] Multi-repo upstream diff resolution — build if a design partner needs it, skip if they don't
-
-### Reliability fixes
-- [ ] **Investigate and fix `/report-clean` 500 on PR #78 merge** — endpoint returned Internal Server Error when PR #78 merged (2026-03-18), leaving 3 pre-merge runs open and actionable. Root cause unknown. Once identified, make the endpoint resilient so the close always succeeds
-- [ ] **Merged PR runs must not be actionable** — PR #78's run showed approve/reject buttons on the PR tab days after the PR merged. Dashboard should detect merged PRs and show the run as read-only
-- [ ] **Audit API functions for silent failures** — audit all mutation functions in `api.ts` for missing `res.ok` checks. Any mutation that doesn't surface errors is a ticking time bomb
-- [ ] **Submit flow smoke test** — automated test for runner's critical paths: submit + verdict storage, gate check, issue creation flow
-- [ ] **Handle pgcrypto decryption failures gracefully** — if `BYOK_ENCRYPTION_KEY` is rotated on Render, `pgp_sym_decrypt` throws an unhandled PostgreSQL error. Not a security issue (doesn't leak the key), but surfaces as a 500. Users would need to re-enter their OpenAI keys. Add try/except in `repo_settings.get_openai_key()` to return None with a warning log instead of crashing. Document the key rotation procedure
-- [ ] **BYOK_ENCRYPTION_KEY rotation procedure** — currently no migration path. If the key changes, all stored BYOK keys become unreadable. Document: (1) decrypt all keys with old key, (2) re-encrypt with new key, or (3) accept that users re-enter keys. Add a migration script if rotation is ever needed
-
-### Onboarding polish
-- [x] **`triaige init` re-run guard** — detects existing workflow file, exits with pointers to dashboard settings, `gh secret set`, and GitHub branch protection settings. Init is one-shot. Baseline generation should never be offered on re-run — it resets all baselines and breaks PR comparisons
-  - **Future: partial init recovery** — if workflow exists but baselines are missing (first init failed partway through), the guard currently locks the user out. Consider detecting partial state and offering to resume only the missing steps
-  - **Future: `triaige update` command** — if design partners ask for it, add a selective update command (rotate secrets, update workflow template to latest version, re-run baseline generation). Don't build until there's demand
-  - **Future: workflow template auto-update** — when the `post-failures.sh` template changes (like the temp file cleanup we added), existing repos don't get the update. Options: version the template and detect staleness, or publish a migration guide with each release. Not needed pre-validation
-- [ ] **Repos page doesn't update when a new repo is added to the GitHub App** — requires manual page refresh. Repos page is a server component; SSE doesn't cover new repo additions. Either add SSE event for repo changes or add a client-side refetch on focus
-- [x] **Empty runs created when all tests pass** — fixed: if `/triage-run` receives 0 failures after parsing, creates passing check and returns early
-- [x] **P0: Triage run shows 0 failures despite CI reporting failures** — fixed: `pre_merge` defaulting to `FALSE` in DB. See session 2026-03-22 blocking bug (resolved)
-- [ ] **Repo setup checklist on repos page** — show setup steps (GitHub App installed, first successful run received) on repo cards before runs exist. Disappears once setup is complete. Dashboard-only change
-- [ ] **Classification accuracy: intentional changes classified as unexpected** — dark theme change on test-triaige-onboarding PR #3 classified as "unexpected" (72%) despite PR title "Switch to dark theme" and description explicitly mentioning the color changes. Classifier should weigh PR description match more heavily for clearly scoped changes
-- [ ] **Delete stale PR comment on clean pass** — when `/report-clean` creates a passing check for a PR (all tests pass after baseline commit), delete any existing Triaige comments on that PR. Currently the old "action required" comment remains after the re-run passes
-- [ ] **Manual setup path for `triaige init` without `gh` CLI** — when `gh` is not available, print step-by-step manual instructions for setting repo secrets, adding workflow files, and configuring branch protection. Currently warns but doesn't provide the instructions
-- [ ] **Settings link should be on the repo-scoped runs page, not the repo card** — settings is a per-repo action and should be accessible from within the runs page (e.g., as a link/tab alongside the PR/Issues/Closed tabs), not from the repo card on the repos landing page
-
-### Market demo polish
-- [ ] **Known failure card states need fixing** — re-triggered CI runs produce non-actionable cards even when no action was taken on the previous run. Correct behavior: (1) **open GH issue exists** → card shown at bottom, non-actionable, links to the issue (informational only); (2) **pending issue (staged but not yet created)** → card shows a note that an issue is pending, but user can unselect and then approve baseline or re-stage; (3) **no action taken** → card is fully actionable. Only an opened issue makes a card non-actionable — pending is a draft decision the user can change each run
-- [ ] **Collapsed cards missing rationale and screenshots** — after a verdict (approve/reject) or on closed runs with verdicts, cards collapse and "Show details" only reveals image diff stats, vision analysis, citations, and tool calls. Rationale and screenshots are completely hidden unless the verdict is undone. Fix: "Show details" should include rationale and screenshots (screenshots collapsed by default with a toggle to reveal). Applies to both open runs post-verdict and closed run history
-- [ ] **Empty repos page after overnight session** — OAuth token expires (~8 hours) but session cookie persists, so the app shows "no repositories found" instead of redirecting to re-auth. Fix: attempt token refresh on page load before fetching repos; if refresh fails, redirect to sign-in instead of showing empty state
-- [ ] **Rationale prompt refinement** — vague bullets and cross-card disambiguation issues appear resolved by GPT-5.4-nano upgrade. PR #76 rationale references specific CSS tokens and traces code changes to visual impact per page. Confirm with more runs before closing. If issues recur, iterate on prompts rather than model upgrade
-- [ ] `close-pr-runs.yml` PR number extraction: support squash-and-merge, rebase-and-merge via button, and CLI rebase + direct push (currently only handles "Merge pull request #N" merge commits)
-- [ ] **Disable actions on superseded PR runs** — after a new commit is pushed to a PR branch, the previous run's approve/reject buttons should be disabled with a banner ("Newer commit pushed — this run is outdated"). The run is still viewable for reference but taking action on stale analysis is confusing. The run will be auto-closed when the next run completes, but actions should be blocked immediately on push
-- [ ] PR run cards should link to the GitHub PR (title shown but not clickable)
-- [ ] Failure cards should sort by classification (expected → uncertain → unexpected, each by confidence desc)
-- [ ] Upgrade Render to paid tier ($7/mo — eliminate cold starts)
-- [ ] Add favicon to dashboard — currently shows default Vercel icon. Use the red plus sign from the logo
-- [ ] **Classification regression library** — build up a library of sample app PRs with known expected outcomes (expected/unexpected/uncertain) across visual and functional failures. Use as a repeatable regression suite when changing prompts, classification logic, or adding new failure types. Start by keeping PRs created during feature work (functional test support, prompt refinements) as reference scenarios rather than creating them separately. Include edge cases over time: mixed-scope PRs, empty diffs, vague descriptions, large diffs
-- [ ] **Multi-PR interaction test matrix** — scenarios that test how the system behaves when multiple PRs overlap and affect each other's state. These will surface naturally with design partners but should be documented now so we know what to watch for:
-  - **Concurrent PRs on same component:** PR A and PR B both change the same baseline. A merges first. Does B's next run compare against A's new baseline or the old one?
-  - **Baseline staleness after merge:** PR A approves and commits a baseline. PR B was opened before A merged. B's next CI run should use A's updated baseline, not the original
-  - **Approved then superseded:** PR A approves a baseline, commits it to branch. Developer pushes another commit to A. Does the old approval get invalidated? Does the new run compare against the committed baseline or the original?
-  - **Rebase after upstream baseline change:** PR B needs to rebase after PR A merges with a baseline update. Does the rebase pick up the new baseline? Does the next CI run classify the diff correctly?
-  - **Known failure interaction:** PR A files an issue for an unexpected failure. PR B is opened and hits the same test. Does B see it as a known failure (non-actionable) or a new failure?
-  - **Merge gate with mixed state:** PR has 3 failures — 2 approved, 1 pending. Does the gate stay blocked? What if the pending failure becomes a known failure from another PR merging?
-  - Don't build a formal test harness — observe these scenarios with design partner repos and document what breaks
-
-### Go to market polish
-- ~~Security fixes — medium (error message sanitization, rate limiting, SSE subscriber cap)~~ — moved to P1/P2 above with detailed notes
-- [ ] Data migration strategy for breaking runner changes
-- [ ] Drift-on-merge comment doesn't fire when all failures are known (no triage run → no closed runs → drift block skipped) — store drift results during pre-merge triage and replay at merge time
-- [ ] Closing a GitHub issue doesn't sync to Issues tab — need webhook for `issues` closed events (Step 34)
-- [ ] Show known failures as non-actionable section at bottom of run detail (screenshot comparison, issue link, no approve/reject)
-- [ ] Issues tab: add PR link pill and issue link pill at top of known failure cards
-- [ ] Issues tab: diff overlay disabled — store overlay at filing time or recompute on the fly
-- [ ] Issues tab count doesn't update via SSE on merge — refetch known failures on `run_closed` events
-- [ ] Closed Issues tab: add screenshot comparison viewer for reference/sharing
-- [ ] Closed Runs tab: add PR link on run cards
-- [ ] Reconsider tab prominence — Closed Runs/Issues may not need equal visual weight (collapse, secondary nav, or filter)
-- [ ] PR run detail shows previous closed runs for the same PR — list of links with timestamps and summary stats for review history context
-- [ ] `update-snapshots.yml` should NOT be included in the setup CLI or repo template — it's a dev convenience for the sample app only; if included, add a confirmation input to prevent accidental runs
-- [ ] Cypress support — separate ingestion adapter for Cypress JSON report format. Classification pipeline is identical; only the report parsing differs. Build when a design partner needs it
-
-### Future (post-validation)
-- [ ] Logprob-based confidence scores — use classification token logprobs instead of LLM self-reported confidence for better calibration
-- [ ] Component ownership lookup
-- [ ] RAGAS evaluation
-- [ ] Separate test repo support — link a dedicated Playwright/baselines repo separate from the UI repo
-- [ ] Post-deployment environment testing — support scheduled test runs against SIT/UAT/prod environments (no single PR trigger). Health dashboard use case with weaker intent signal — more about tracking what's broken than classifying intent. See `project_multi_repo.md` memory for full context
-- [ ] Auto-approve baselines above confidence threshold
-- [ ] Mobile optimization for the dashboard
+- [ ] Stale PR comment cleanup on clean pass — `/report-clean` should delete old Triaige comments when re-run passes after baseline commit
+- [ ] Classification accuracy — dark theme PR #3 classified as "unexpected" despite clear description. May be resolved by GPT-5.4-nano. Also: functional failure classification accuracy needs confirmation with more runs
+- [ ] Manual setup path for `triaige init` — print instructions when `gh` CLI unavailable
+- [ ] Empty repos page after overnight session — OAuth token expires, shows empty page instead of redirecting to sign-in
+- [ ] Error message sanitization — GitHub API errors leak implementation details. Wrap with generic messages
+- [ ] Favicon — currently shows default Vercel icon
+- [ ] Compliance mode — repo setting toggle with e-signature, audit log, PDF export. ~1-2 hour build. See `docs/strategy.md` and `docs/sequencing.md`
+- [ ] E2E verification of functional failure flow — mixed visual + functional PR to verify card rendering, submit flow, merge gate, issue materialization
+- [ ] Known failure card states — re-triggered runs produce non-actionable cards incorrectly. See "Market demo polish" section
+- [ ] Collapsed cards missing rationale/screenshots — "Show details" should include these after verdict
+- [ ] Disable actions on superseded PR runs — banner + disable buttons when newer commit is pushed
+- [ ] close-pr-runs.yml merge strategy support — squash-and-merge, rebase-and-merge (currently only handles merge commits)
+- [ ] PR cards link to GitHub PR — title shown but not clickable
+- [ ] Failure card sort order — expected → uncertain → unexpected, by confidence desc
+- [ ] Settings link on runs page — move from repo card to runs page (per-repo action)
+- [ ] Repos page refresh on App change — doesn't update when a new repo is added to GitHub App
+- [ ] Render paid tier — $7/mo to eliminate cold starts
+- [ ] CORS method/header wildcards — tighten to explicit lists
+- [ ] `/report-clean` input validation — Pydantic model, hex/int validation
+- [ ] GitHub token in JWT cookie — consider JWE or server-side sessions
+- [ ] AUTH_SECRET minimum length — add startup validation
+- [ ] ~~Repo setup checklist on cards~~ — superseded by setup banners (amber pill covers the main case)
 
 ---
 
@@ -318,77 +52,156 @@ Last updated: 2026-03-22
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| LLM (text) | GPT-5.4-nano | Fast, capable reasoning model; best LangChain integration |
+| LLM (text) | GPT-5.4-nano | Fast, capable reasoning; step change in classification quality over 4o-mini |
 | LLM (vision) | GPT-4o | Vision capabilities for screenshot diff analysis |
 | Embeddings | text-embedding-3-small (1536d) | Pairs with OpenAI; one API key |
 | Vector DB | Qdrant Cloud (free tier) | Production-ready, metadata filtering, hybrid search |
 | Orchestration | LangGraph | Agentic state machine with conditional routing |
 | Runner deploy | Render (free tier) | Better Python support than Vercel |
-| Dashboard deploy | Vercel | Already scaffolded; natural fit for Next.js |
-| External tool | GitHub API (primary) | Read PR context for classification; create PRs/issues for actions |
-| Image analysis | GPT-4o vision + Pillow pixel diff | Qualitative + quantitative screenshot comparison |
-| Sample app | Separate repo, 3–5 page dashboard | Realistic visual regressions for demo |
-| Corpus | LLM-generated synthetic triage memory | ~30 docs: cases, runbooks, known changes |
-| Observability | LangSmith | Traces all agent runs automatically via LangGraph |
-| UI theme | Light theme, stoplight colors, black text | Red=unexpected, yellow=uncertain, green=expected |
-| CI trigger | GitHub Actions | Merged PR → Playwright → Triaige |
-| Memory architecture | CoALA framework (AIE9) | Semantic + episodic (core), procedural (stretch) |
-| Feedback loop | Episodic memory in Qdrant | Approved decisions become few-shot examples for future classifications |
-| Testing | Deferred to post-Demo Day | Focus dev time on features and polish |
-| Demo format | Live end-to-end pipeline | Full product flow is the definition of demo-ready |
-| Process | Step-by-step commits | Mirror Mismatch workflow (AGENTS.md §13) |
+| Dashboard deploy | Vercel | Natural fit for Next.js |
+| Tenancy model | GitHub App installation | Orgs share data; solo users work without org. See below |
+| BYOK | Mandatory, no fallback | User's OpenAI key only. Owner's key for admin scripts only. See AGENTS.md §13.1 |
+| CLI publishing | Not yet | Blocked on multi-tenancy + rate limiting. Share as local checkout for design partners |
+
+### Tenancy model (decided 2026-03-22)
+
+Tenant = GitHub App installation. An org that installs the Triaige GitHub App is one tenant. All org members with repo access share runs, verdicts, and submissions — triage is a team activity. A solo user with a personal GitHub account installation is also a valid tenant (no org required). Mirrors Vercel, Codecov, Chromatic.
+
+**Dashboard multi-tenancy implementation:** The dashboard proxy must check that the logged-in user's GitHub account has access to the requested repo via their GitHub App installations before forwarding to the runner. Currently the proxy blindly forwards everything with the global API key. This is the gate between "CI keys are isolated" and "dashboard users are isolated." Also scope SSE event filtering by repo.
 
 ---
 
-## External dependencies
+## Recent sessions
 
-| Service | Status | Notes |
-|---|---|---|
-| Qdrant Cloud | Provisioned | Collection `triaige_triage_memory`, 1536d cosine |
-| OpenAI API | Configured | GPT-5.4-nano + GPT-4o vision + text-embedding-3-small |
-| GitHub App | Configured | Triaige app with Contents + Pull Requests permissions |
-| LangSmith | Configured | Tracing enabled via LangGraph |
-| Render | Deployed | https://triaige-runner.onrender.com |
-| Vercel | Deployed | https://triaige-dashboard.vercel.app/ |
-| Sample app repo | Created | github.com/dmcphillips13/triaige-sample-app |
+### Session 2026-03-22 (evening) — Security hardening + P0 features + E2E test
 
----
+**Security (4 commits):**
+- Global OpenAI key fallback removed from `get_openai_client()`, `_get_llm()`, `/feedback`. All paths now require BYOK contextvar. Security rules in AGENTS.md §13.1
+- Per-repo access control on all 25 endpoints (`_check_repo_access`, `_check_run_access` with 404 anti-enumeration)
+- Run-repo consistency in `/update-baselines` and `/create-issues`
+- Temp file cleanup in `post-failures.sh`
+- Two post-fix audits confirmed no remaining exploitable vulnerabilities in per-repo key path
 
-## File inventory
+**P0 features:**
+- Setup banners: amber pill on repo cards, banner on runs page with settings link
+- Early return gate: `/triage-run` creates GitHub check with "Setup required" when no OpenAI key
+- `triaige init` re-run guard: detects existing workflow, exits with update pointers
+- `.strip()` on `X-OpenAI-Key` header
 
-### Exists
-| Path | Purpose |
-|---|---|
-| `AGENTS.md` | Canonical product + engineering contract |
-| `PROJECT_CONTEXT.md` | This file — session handoff |
-| `pnpm-workspace.yaml` | Monorepo workspace config |
-| `package.json` | Root scripts |
-| `.gitignore` | Ignore patterns (Python + Node) |
-| `apps/dashboard/` | Next.js scaffold with proxy route |
-| `apps/dashboard/src/app/api/runner/[...path]/route.ts` | Proxy to runner backend |
-| `apps/runner/.gitkeep` | Placeholder (will be replaced by real files) |
-| `packages/shared/` | TS shared types (unused for now) |
+**E2E test passed:** Full clean-slate BYOK flow on `test-triaige-onboarding` PR #4: sign in → App install → setup pill → configure key → init → PR → CI classification (expected, 90%) → PR comment + merge gate → approve → baseline committed → gate passed → run auto-closed → merge → cleanup succeeded
 
-### Must create (Step 1)
-| Path | Purpose |
-|---|---|
-| `apps/runner/pyproject.toml` | uv project with all deps |
-| `apps/runner/.env.example` | Documented env vars |
-| `apps/runner/app/main.py` | FastAPI app with /health and /ask stubs |
-| `apps/runner/app/schemas.py` | Pydantic models (AskRequest, AskResponse, etc.) |
-| `apps/runner/app/settings.py` | BaseSettings for env var loading |
-| Root `package.json` update | Add `start:dev` script |
+**Decisions:** Tenancy model (GitHub App installation). CLI npm publish blocked until multi-tenancy + rate limiting.
 
----
+### Session 2026-03-22 — CLI setup, per-repo API keys, settings page
 
-## Architecture reference
+- Repo setup CLI (`npx triaige init`) with CI baseline generation
+- Per-repo API keys (`tr_` prefix, auto-generated)
+- Dashboard settings page (API key, OpenAI key, merge gate toggle)
+- P0 bug: `pre_merge` defaulting to FALSE in DB (fixed with migration)
 
-This project follows the same architecture as the **Mismatch** repo:
-- Same stack: FastAPI + LangGraph + Qdrant Cloud + Next.js
-- Same deployment: Render (backend) + Vercel (frontend)
-- Same patterns: tools as pure data fetchers, deterministic formatting, graceful degradation
-- Same process: step-by-step commits, one change at a time
+### Session 2026-03-21 — BYOK, onboarding test
+
+- BYOK OpenAI key: encrypted storage (pgcrypto AES-256), per-request resolution via contextvars, settings UI, CLI prompt, CI header, key validation, log scrubbing
+- First onboarding test passed on test-triaige-onboarding PR #3
+- Cross-repo access fix on BYOK endpoints
+
+### Session 2026-03-20 — Submit flow + model upgrade
+
+- Submit → gate check → auto-close works end-to-end (PR #76 on sample app)
+- GPT-5.4-nano: step change in classification quality — grounded rationale referencing specific CSS tokens and code changes
 
 ---
 
+## Detailed reference (for backlog items)
+
+### Reliability fixes
+- [ ] **`/report-clean` 500 on PR #78 merge** — endpoint returned Internal Server Error (2026-03-18), leaving 3 pre-merge runs open and actionable. Root cause unknown
+- [ ] **Merged PR runs must not be actionable** — PR #78's run showed approve/reject buttons days after merge. Dashboard should detect merged PRs and show read-only
+- [ ] **Audit `api.ts` mutation functions for silent failures** — missing `res.ok` checks on mutations
+- [ ] **Submit flow smoke test** — automated test for runner's critical paths
+- [ ] **Handle pgcrypto decryption failures gracefully** — if `BYOK_ENCRYPTION_KEY` is rotated, `pgp_sym_decrypt` throws unhandled error. Add try/except, return None with warning log
+- [ ] **BYOK_ENCRYPTION_KEY rotation procedure** — no migration path. Document or build a migration script
+
+### Onboarding polish
+- **Init re-run guard (done)** — detects existing workflow, exits with pointers. Future follow-ups:
+  - Partial init recovery (workflow exists but baselines missing)
+  - `triaige update` command (build when demanded)
+  - Workflow template auto-update (version and detect staleness)
+- [ ] **Repos page doesn't update on App change** — requires manual refresh. Add SSE event or client-side refetch on focus
+- [ ] **Manual setup path without `gh` CLI** — print step-by-step instructions when `gh` unavailable
+- [ ] **Settings link on runs page** — move from repo card to runs page
+- [ ] **Classification accuracy** — dark theme PR #3 classified as "unexpected" (72%) despite clear description. Needs investigation
+
+### New MVP functionality
+- [ ] **Basic multi-tenancy** — first step (done): per-repo API key access control. Second step: dashboard multi-tenancy (see "Critical" above)
+- [ ] **Functional failure follow-ups** — classification accuracy confirmation, E2E verification of mixed visual + functional flow
+- [ ] **Compliance mode** — repo setting toggle (default off) with e-signature modal, requirement ID tagging, immutable audit log, PDF audit export. ~1-2 hours. See `docs/strategy.md`
+- [ ] **Multi-repo upstream diff resolution** — build if a design partner needs it
+
+### Market demo polish
+- [ ] **Known failure card states** — re-triggered CI runs produce non-actionable cards incorrectly. Correct behavior: open GH issue → non-actionable; pending issue → changeable; no action → fully actionable
+- [ ] **Collapsed cards missing rationale/screenshots** — "Show details" after verdict should include rationale and screenshots
+- [ ] **Empty repos page after overnight session** — OAuth expires, shows empty instead of redirect to sign-in
+- [ ] **Rationale prompt refinement** — may be resolved by GPT-5.4-nano. Confirm with more runs
+- [ ] **close-pr-runs.yml** — support squash-and-merge, rebase-and-merge (currently only merge commits)
+- [ ] **Disable actions on superseded PR runs** — banner + disable buttons on newer push
+- [ ] PR cards link to GitHub PR
+- [ ] Failure card sort order (expected → uncertain → unexpected by confidence desc)
+- [ ] Render paid tier ($7/mo — eliminate cold starts)
+- [ ] Favicon — use red plus sign from logo
+- [ ] **Classification regression library** — collect sample app PRs with known outcomes as repeatable regression suite
+- [ ] **Multi-PR interaction test matrix** — scenarios for design partner phase:
+  - Concurrent PRs on same component (baseline staleness after merge)
+  - Approved then superseded (new commit after baseline commit)
+  - Rebase after upstream baseline change
+  - Known failure interaction across PRs
+  - Merge gate with mixed state (2 approved, 1 pending)
+  - Observe with design partners, don't build formal harness
+
+### Go to market polish
+- [ ] Data migration strategy for breaking runner changes
+- [ ] Drift-on-merge comment doesn't fire when all failures are known
+- [ ] Closing a GitHub issue doesn't sync to Issues tab (need webhook)
+- [ ] Show known failures as non-actionable section at bottom of run detail
+- [ ] Issues tab: PR link pill and issue link pill
+- [ ] Issues tab: diff overlay disabled
+- [ ] Issues tab count doesn't update via SSE on merge
+- [ ] Closed Issues tab: screenshot comparison viewer
+- [ ] Closed Runs tab: PR link on cards
+- [ ] Tab prominence — Closed Runs/Issues may not need equal visual weight
+- [ ] PR run detail: show previous closed runs for same PR
+- [ ] `update-snapshots.yml` not for setup CLI — dev convenience only
+- [ ] Cypress support — build when a design partner needs it
+
+### Future (post-validation)
+- [ ] Logprob-based confidence scores
+- [ ] Component ownership lookup
+- [ ] RAGAS evaluation
+- [ ] Separate test repo support
+- [ ] Post-deployment environment testing (SIT/UAT/prod)
+- [ ] Auto-approve baselines above confidence threshold
+- [ ] Mobile optimization
+
 ---
+
+## Build history
+
+Steps 1-28 complete. Full build history in git. Key milestones:
+- Steps 1-7: Runner scaffold, sample app, corpus, Qdrant, GitHub API, LangGraph, /triage-run
+- Steps 8-14: Dashboard UI, image diff, vision, batch triage, screenshot viewer, episodic memory, GitHub actions
+- Steps 15-18: Render/Vercel deploy, GitHub App OAuth, GitHub Actions workflow, triage mode settings
+- Steps 19-21: Postgres persistence, runs redesign, merge gate, pre-merge workflow
+- Steps 22-23: Failure card UX, classification improvements, dashboard polish
+- Steps 24-26: Repos page, settings, SSE
+- Steps 27-28: Bug fixes, rigorous E2E test on sample app
+
+### Vision night 2026-03-21
+- Primary GTM: frustrated Percy/Chromatic customers at mid-market B2B SaaS
+- SaMD vertical expansion: confirmed gap, but slow sales cycles — secondary play
+- Compliance mode designed, expansion paths documented
+- See `docs/strategy.md` for full analysis
+
+### Important notes
+- **Demo day skipped** — decision 2026-03-16, focus on validation + design partners
+- **Merge PRs via merge button** — "Create a merge commit" is the only strategy where `close-pr-runs.yml` reliably extracts the PR number (until merge strategy support is added)
+- **Runs auto-close when all failures are submitted** — not on merge. The merge gate passing and run closing happen at the same time, triggered by the last submission
