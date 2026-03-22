@@ -163,6 +163,15 @@ async def get_run_pr_number(run_id: str) -> int | None:
         )
 
 
+async def get_run_repo(run_id: str) -> str | None:
+    """Get the repo for a run."""
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        return await conn.fetchval(
+            "SELECT repo FROM runs WHERE run_id = $1", run_id
+        )
+
+
 async def close_run(run_id: str, force: bool = False) -> bool:
     """Mark a run as closed. Returns True if found."""
     pool = get_pool()

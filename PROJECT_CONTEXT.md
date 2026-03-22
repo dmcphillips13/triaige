@@ -151,7 +151,7 @@ Last updated: 2026-03-21
 
 **BYOK OpenAI key support built:**
 - [x] Encrypted key storage (pgcrypto AES-256, `BYOK_ENCRYPTION_KEY` env var on Render)
-- [x] Per-request key resolution via contextvars (header `X-OpenAI-Key` → DB → error, NO fallback to project owner's key)
+- [x] Per-request key resolution via contextvars (header `X-OpenAI-Key` → DB → error). **Note:** fallback to global key was present in `get_openai_client()`, `_get_llm()`, and `/feedback` until session 2026-03-22 fix
 - [x] Dashboard settings page: OpenAI key section (password input, validation, masked display, delete)
 - [x] CLI: optional OpenAI key prompt during `triaige init`, set as GitHub secret
 - [x] CI: `X-OpenAI-Key` header in workflow template and post-failures.sh
@@ -165,14 +165,22 @@ Last updated: 2026-03-21
 - [x] Encryption key strength — minimum 32 characters enforced on startup
 
 **Not yet done (carry to next session):**
-- [ ] **Setup banners on repos page and runs page** — settings page has the "Setup required" banner, but repos page cards and runs page need it too. Discussed extending `GET /repos/{repo}/settings` to include `openai_key_configured: boolean` to avoid redundant API calls. Needs careful design — don't just agree with everything, think through the UX and data flow independently
-- [ ] **Early return gate in `/triage-run`** — currently returns 400 when no OpenAI key is found, which causes CI to exit with error. Should return early with a clear non-error response (`status: "not_configured"`) and update `post-failures.sh` to handle it gracefully. No run created, no confusing empty runs
+
+**P0 — Security (do first):**
+- [x] **Global OpenAI key fallback removed** — `get_openai_client()`, `_get_llm()`, and `/feedback` endpoint all had silent fallback paths to the project owner's `OPENAI_API_KEY`. Fixed: both functions now raise if no BYOK key in contextvar; `/feedback` resolves BYOK key from DB before storing episode; `index_corpus.py` sets contextvar from env explicitly. See AGENTS.md §13.1 for security rules
+- [ ] **Setup banners on repos page and runs page** — settings page has the "Setup required" banner, but repos page cards and runs page need it too. Add `openai_key_configured: boolean` to `GET /repos/{repo}/settings` response. Repos page: subtle amber pill on cards. Runs page: banner at top
+- [ ] **Early return gate in `/triage-run`** — currently returns 400 when no OpenAI key is found, which causes CI to exit with error. Should create a GitHub check with `conclusion: "action_required"` and summary explaining the missing key (merge gate blocks), return 200 with `status: "setup_required"`, and `post-failures.sh` detects this and exits 0 with a warning (CI workflow green, merge still blocked by check)
+- [ ] **Empty `X-OpenAI-Key` header validation** — `_resolve_openai_key` correctly treats empty string as falsy, but `post-failures.sh` sends `${OPENAI_API_KEY:-}` which is empty when the secret is unset. Verified safe (empty string is falsy in Python). Add explicit `.strip()` check as defense-in-depth
+
+**P1 — Blocking for onboarding:**
 - [ ] **Full E2E test with BYOK** — test repo has been stripped clean (GitHub App removed, workflows removed, branch protection removed, DB cleaned). Ready for a full onboarding test from sign-out through to merged PR, verifying BYOK works end-to-end
 - [ ] **Manual setup path for `triaige init`** — print instructions when `gh` CLI unavailable. Then E2E test without `gh`
+- [ ] **Repo setup checklist on repo cards** — show setup steps (GitHub App, init, OpenAI key, first run) on repo cards, disappears when all complete
+
+**P2 — Quality:**
 - [ ] **Classification accuracy** — dark theme PR classified as "unexpected" despite clear PR description. May be a minimal-repo context problem vs prompt problem
 - [ ] **Stale PR comment cleanup on clean pass** — `/report-clean` should delete old Triaige comments
 - [ ] **Favicon** — currently shows default Vercel icon
-- [ ] **Repo setup checklist on repo cards** — show setup steps (GitHub App, init, OpenAI key, first run) on repo cards, disappears when all complete
 
 **Test repo state:**
 - `dmcphillips13/test-triaige-onboarding` — fully stripped for E2E test (GitHub App removed, no workflows, no branch protection, DB cleaned including repo_settings row)

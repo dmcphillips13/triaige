@@ -776,8 +776,21 @@ async def feedback(req: FeedbackRequest):
     # Also persist the verdict in Postgres
     await store.set_verdict(req.run_id, req.test_name, req.verdict)
 
-    point_id = await asyncio.to_thread(store_episode, result, req.verdict, req.run_id)
-    return {"status": "stored", "point_id": point_id}
+    # Resolve BYOK key for the embedding call in store_episode.
+    # If the key was deleted after classification, skip episodic memory
+    # (verdict is already persisted in Postgres above).
+    run_repo = await store.get_run_repo(req.run_id)
+    openai_key = None
+    if run_repo:
+        openai_key = await repo_settings.get_openai_key(run_repo)
+    if openai_key:
+        from app.request_context import openai_api_key_var
+        openai_api_key_var.set(openai_key)
+        point_id = await asyncio.to_thread(store_episode, result, req.verdict, req.run_id)
+        return {"status": "stored", "point_id": point_id}
+
+    logger.warning("No OpenAI key for %s — verdict saved but episode not stored", run_repo)
+    return {"status": "verdict_saved", "point_id": None}
 
 
 # --- GitHub actions ---

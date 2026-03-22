@@ -1,9 +1,9 @@
 """OpenAI API client for embeddings and vision.
 
-Uses a lazy singleton for the project key (shared embeddings infrastructure).
-For BYOK requests, returns a per-request client using the user's key from
-contextvars — the key is never included in prompts or model inputs, only in
-the Authorization header to OpenAI's API.
+All user-facing calls require a BYOK key set in request context via
+contextvars. The project owner's global key is never used for user requests.
+Admin scripts (e.g. index_corpus.py) must set the contextvar explicitly
+from their own environment before calling any functions in this module.
 """
 
 from openai import OpenAI
@@ -11,19 +11,20 @@ from openai import OpenAI
 from app.request_context import openai_api_key_var
 from app.settings import settings
 
-_client: OpenAI | None = None
-
 
 def get_openai_client() -> OpenAI:
-    """Return an OpenAI client, using the BYOK key if set."""
-    byok_key = openai_api_key_var.get()
-    if byok_key:
-        return OpenAI(api_key=byok_key)
+    """Return an OpenAI client using the BYOK key from request context.
 
-    global _client
-    if _client is None:
-        _client = OpenAI(api_key=settings.openai_api_key)
-    return _client
+    Raises RuntimeError if no BYOK key is set. This ensures user requests
+    never silently fall back to the project owner's global API key.
+    Admin scripts (e.g. index_corpus.py) must set the contextvar explicitly.
+    """
+    byok_key = openai_api_key_var.get()
+    if not byok_key:
+        raise RuntimeError(
+            "OpenAI API key required. Set it in dashboard settings or pass X-OpenAI-Key header."
+        )
+    return OpenAI(api_key=byok_key)
 
 
 def embed_texts(texts: list[str]) -> list[list[float]]:

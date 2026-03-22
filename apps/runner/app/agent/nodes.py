@@ -24,7 +24,11 @@ logger = logging.getLogger(__name__)
 
 
 def _get_llm() -> ChatOpenAI:
-    api_key = openai_api_key_var.get() or settings.openai_api_key
+    api_key = openai_api_key_var.get()
+    if not api_key:
+        raise RuntimeError(
+            "OpenAI API key required. Set it in dashboard settings or pass X-OpenAI-Key header."
+        )
     return ChatOpenAI(
         model=settings.openai_model,
         api_key=api_key,

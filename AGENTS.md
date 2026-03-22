@@ -503,6 +503,33 @@ Commit messages: plain imperative sentences (e.g., "Add GitHub API client for PR
 
 ---
 
+## 13.1) Security rules
+
+These rules are non-negotiable. Violating them is a P0 bug.
+
+### BYOK (Bring Your Own Key)
+- The project owner's `OPENAI_API_KEY` env var must **never** be used for user requests. It exists only for admin scripts (e.g., `index_corpus.py`).
+- All user-facing OpenAI calls (classification, vision, embeddings during triage or feedback) must use the BYOK key from the request context (`openai_api_key_var` contextvar).
+- `get_openai_client()` and `_get_llm()` raise `RuntimeError` if no BYOK key is in context. There is no silent fallback.
+- Admin scripts must explicitly set the contextvar from `os.environ["OPENAI_API_KEY"]` before calling any OpenAI functions.
+- Any new code path that calls OpenAI must verify BYOK key resolution happens upstream. If adding a new endpoint that triggers LLM or embedding calls, resolve the key and set the contextvar before invoking those functions.
+
+### API key isolation
+- Per-repo API keys (`tr_` prefix) authenticate CI requests. A repo's key can only access that repo's data and BYOK endpoints (enforced by `_check_repo_access`).
+- The global `API_KEY` authenticates the dashboard proxy. It has broader access but is server-side only (never exposed to browsers).
+
+### Encrypted storage
+- User-provided OpenAI keys are encrypted at rest with pgcrypto AES-256 (`pgp_sym_encrypt`/`pgp_sym_decrypt`).
+- The encryption key (`BYOK_ENCRYPTION_KEY`) is a Render env var, separate from the database. Minimum 32 characters.
+- Keys are never logged (redacted by `_KeyRedactingFilter`), never included in prompts or model inputs, and never returned in full from any API endpoint (masked display only: `sk-...xxxx`).
+
+### Before shipping any endpoint or code path
+- Audit for key leakage: does any new code reference `settings.openai_api_key` directly? It should not, outside of admin scripts.
+- Audit for missing auth: does the endpoint check `Authorization` header? Per-repo endpoints must also check `_check_repo_access`.
+- Audit for fallback paths: does any failure mode silently degrade to using the global key? It must not.
+
+---
+
 ## 14) Build steps
 
 1. Runner scaffold: `pyproject.toml`, FastAPI with stub `/health` and `/ask`, settings, schemas

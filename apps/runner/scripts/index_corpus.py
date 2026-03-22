@@ -2,12 +2,26 @@
 
 Usage:
     cd apps/runner && uv run python scripts/index_corpus.py
+
+Requires OPENAI_API_KEY in the environment (admin script, not user-facing).
 """
 
+import os
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+# Set the contextvar before importing any app modules that use it.
+# get_openai_client() requires a BYOK key in context — admin scripts
+# provide it from the environment.
+from app.request_context import openai_api_key_var
+
+_admin_key = os.environ.get("OPENAI_API_KEY")
+if not _admin_key:
+    print("Error: OPENAI_API_KEY environment variable is required")
+    sys.exit(1)
+openai_api_key_var.set(_admin_key)
 
 from qdrant_client.models import PointStruct
 
