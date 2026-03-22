@@ -140,11 +140,42 @@ Last updated: 2026-03-21
 **Blocking bug (P0 — FIXED):**
 - [x] **Triage run shows 0 failures despite CI reporting 1 failure** — Root cause: `get_or_create_api_key` inserted `(repo, api_key)` without explicit boolean columns, and the DB column default for `pre_merge` was `FALSE` instead of `TRUE` (schema mismatch). The `/triage-run` endpoint hit the early return at line 292 (`if mode == "pre_merge" and not rs.pre_merge`) creating an empty run. Fix: explicit `pre_merge=TRUE, post_merge=TRUE, merge_gate=TRUE` in the INSERT + migration to fix existing rows. Confirmed via `GET /repos/.../settings` showing `pre_merge: false` before fix, `true` after
 
+### Session 2026-03-21 — P0 bug fix, onboarding test, BYOK, security hardening
+
+**P0 bug fixed:**
+- [x] `pre_merge` defaulting to FALSE — `get_or_create_api_key` didn't set explicit boolean columns. Migration added to fix existing rows
+
+**Onboarding test passed (Steps 1-5 of TEST_PLAN.md § New user onboarding test):**
+- Full clean-slate test: `triaige init` → PR → CI → classification → PR comment → merge gate → approve → baseline commit → gate pass → merge → cleanup
+- All working end-to-end on `dmcphillips13/test-triaige-onboarding` PR #3
+
+**BYOK OpenAI key support built:**
+- [x] Encrypted key storage (pgcrypto AES-256, `BYOK_ENCRYPTION_KEY` env var on Render)
+- [x] Per-request key resolution via contextvars (header `X-OpenAI-Key` → DB → error, NO fallback to project owner's key)
+- [x] Dashboard settings page: OpenAI key section (password input, validation, masked display, delete)
+- [x] CLI: optional OpenAI key prompt during `triaige init`, set as GitHub secret
+- [x] CI: `X-OpenAI-Key` header in workflow template and post-failures.sh
+- [x] Key validation against OpenAI `/v1/models` before storing
+- [x] Log scrubbing filter to prevent key leakage
+- [x] Settings page "Setup required" banner when no OpenAI key configured
+
+**Security hardening:**
+- [x] Cross-repo access fix — per-repo API keys can only access their own repo's BYOK endpoints (403 otherwise)
+- [x] Validation error safety — PUT endpoint catches malformed JSON, returns clean 400
+- [x] Encryption key strength — minimum 32 characters enforced on startup
+
+**Not yet done (carry to next session):**
+- [ ] **Setup banners on repos page and runs page** — settings page has the "Setup required" banner, but repos page cards and runs page need it too. Discussed extending `GET /repos/{repo}/settings` to include `openai_key_configured: boolean` to avoid redundant API calls. Needs careful design — don't just agree with everything, think through the UX and data flow independently
+- [ ] **Early return gate in `/triage-run`** — currently returns 400 when no OpenAI key is found, which causes CI to exit with error. Should return early with a clear non-error response (`status: "not_configured"`) and update `post-failures.sh` to handle it gracefully. No run created, no confusing empty runs
+- [ ] **Full E2E test with BYOK** — test repo has been stripped clean (GitHub App removed, workflows removed, branch protection removed, DB cleaned). Ready for a full onboarding test from sign-out through to merged PR, verifying BYOK works end-to-end
+- [ ] **Manual setup path for `triaige init`** — print instructions when `gh` CLI unavailable. Then E2E test without `gh`
+- [ ] **Classification accuracy** — dark theme PR classified as "unexpected" despite clear PR description. May be a minimal-repo context problem vs prompt problem
+- [ ] **Stale PR comment cleanup on clean pass** — `/report-clean` should delete old Triaige comments
+- [ ] **Favicon** — currently shows default Vercel icon
+- [ ] **Repo setup checklist on repo cards** — show setup steps (GitHub App, init, OpenAI key, first run) on repo cards, disappears when all complete
+
 **Test repo state:**
-- `dmcphillips13/test-triaige-onboarding` — fresh Next.js app with 1 Playwright visual test
-- Fully re-configured via `triaige init` from clean slate (workflows removed, branch protection removed, then re-ran init)
-- PR #3 open (`dark-theme` branch) — dark theme CSS change. CI ran, failure classified, PR comment posted, merge gate blocking. Full pipeline working end-to-end
-- Onboarding test Steps 1-4 complete (TEST_PLAN.md § New user onboarding test). Step 5 (triage in dashboard) in progress
+- `dmcphillips13/test-triaige-onboarding` — fully stripped for E2E test (GitHub App removed, no workflows, no branch protection, DB cleaned including repo_settings row)
 
 ### Vision night 2026-03-21 — GTM sharpening + compliance mode
 - **Primary GTM target identified:** frustrated Percy/Chromatic customers at mid-market B2B SaaS companies (10-30 engineers, complex UIs, already paying $200-500/mo for visual testing). Product substitution pitch, not category creation
@@ -217,6 +248,7 @@ Last updated: 2026-03-21
 - [ ] PR run cards should link to the GitHub PR (title shown but not clickable)
 - [ ] Failure cards should sort by classification (expected → uncertain → unexpected, each by confidence desc)
 - [ ] Upgrade Render to paid tier ($7/mo — eliminate cold starts)
+- [ ] Add favicon to dashboard — currently shows default Vercel icon. Use the red plus sign from the logo
 - [ ] **Classification regression library** — build up a library of sample app PRs with known expected outcomes (expected/unexpected/uncertain) across visual and functional failures. Use as a repeatable regression suite when changing prompts, classification logic, or adding new failure types. Start by keeping PRs created during feature work (functional test support, prompt refinements) as reference scenarios rather than creating them separately. Include edge cases over time: mixed-scope PRs, empty diffs, vague descriptions, large diffs
 
 ### Go to market polish
