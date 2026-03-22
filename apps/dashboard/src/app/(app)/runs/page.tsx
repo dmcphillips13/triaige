@@ -7,6 +7,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { fetchRuns, fetchRepoSettings } from "@/lib/api.server";
+import { assertRepoAccess } from "@/lib/repo-access";
 import { RunsList } from "./runs-list";
 
 export default async function RunsPage({
@@ -17,6 +18,12 @@ export default async function RunsPage({
   const { repo } = await searchParams;
 
   if (!repo) {
+    redirect("/repos");
+  }
+
+  try {
+    await assertRepoAccess(repo);
+  } catch {
     redirect("/repos");
   }
 

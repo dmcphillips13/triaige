@@ -5,6 +5,8 @@
 // activity). Clicking a card navigates to /runs?repo=owner/repo.
 
 import { fetchConnectedRepos, fetchRuns, fetchRepoSettings } from "@/lib/api.server";
+import { getSession } from "@/lib/auth";
+import { populateRepoCache } from "@/lib/repo-access";
 import type { ConnectedRepo } from "@/lib/api.server";
 import type { TriageRunSummary } from "@/lib/types";
 import { ReposList } from "./repos-list";
@@ -32,6 +34,17 @@ export default async function ReposPage() {
       repos = await fetchConnectedRepos();
     } catch {
       error = true;
+    }
+  }
+
+  // Populate the repo access cache so proxy calls don't need a GitHub API round-trip
+  if (repos.length > 0) {
+    const session = await getSession();
+    if (session) {
+      populateRepoCache(
+        session.user_login,
+        new Set(repos.map((r) => r.full_name))
+      );
     }
   }
 

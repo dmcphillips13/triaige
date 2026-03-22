@@ -70,15 +70,15 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
   // Load verdicts, submissions, and known failures from the API on mount
   useEffect(() => {
     Promise.all([
-      fetchVerdicts(run.run_id).then((v) => {
+      fetchVerdicts(run.run_id, run.repo || "").then((v) => {
         const mapped: Record<string, HumanVerdict> = {};
         for (const r of run.results) {
           mapped[r.test_name] = (v[r.test_name] as HumanVerdict) ?? null;
         }
         setVerdicts(mapped);
       }),
-      fetchSubmissions(run.run_id).then(setSubmitted),
-      fetchKnownFailures(run.run_id).then(setKnownFailures),
+      fetchSubmissions(run.run_id, run.repo || "").then(setSubmitted),
+      fetchKnownFailures(run.run_id, run.repo || "").then(setKnownFailures),
     ]).finally(() => setActionsLoaded(true));
   }, [run]);
 
@@ -86,11 +86,11 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
     (testName: string, verdict: HumanVerdict) => {
       setVerdicts((prev) => ({ ...prev, [testName]: verdict }));
       if (verdict) {
-        putVerdict(run.run_id, testName, verdict).catch(() => {});
-        submitFeedback(run.run_id, testName, verdict).catch(() => {});
+        putVerdict(run.run_id, testName, verdict, run.repo || "").catch(() => {});
+        submitFeedback(run.run_id, testName, verdict, run.repo || "").catch(() => {});
       }
     },
-    [run.run_id]
+    [run.run_id, run.repo]
   );
 
   const isPreMerge = run.triage_mode === "pre_merge";
@@ -189,7 +189,7 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
       // Store submissions sequentially — each putSubmission triggers a gate
       // check on the server, so all must be stored before any can auto-close
       for (const [testName, sub] of Object.entries(newSubmitted)) {
-        await putSubmission(run.run_id, testName, sub.url, sub.type);
+        await putSubmission(run.run_id, testName, sub.url, sub.type, run.repo || "");
       }
 
       setSubmitted((prev) => ({ ...prev, ...newSubmitted }));

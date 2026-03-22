@@ -28,12 +28,13 @@ export async function fetchRuns(): Promise<
 export async function submitFeedback(
   runId: string,
   testName: string,
-  verdict: "approved" | "rejected"
+  verdict: "approved" | "rejected",
+  repo: string
 ): Promise<void> {
   await fetch("/api/runner/feedback", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ run_id: runId, test_name: testName, verdict }),
+    body: JSON.stringify({ run_id: runId, test_name: testName, verdict, repo }),
   });
 }
 
@@ -41,9 +42,10 @@ export async function submitFeedback(
 export async function putVerdict(
   runId: string,
   testName: string,
-  verdict: "approved" | "rejected"
+  verdict: "approved" | "rejected",
+  repo: string
 ): Promise<void> {
-  const res = await fetch(`/api/runner/runs/${runId}/verdict`, {
+  const res = await fetch(`/api/runner/runs/${runId}/verdict?repo=${encodeURIComponent(repo)}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ test_name: testName, verdict }),
@@ -55,9 +57,10 @@ export async function putVerdict(
 
 /** Fetch all verdicts for a run from Postgres. */
 export async function fetchVerdicts(
-  runId: string
+  runId: string,
+  repo: string
 ): Promise<Record<string, string>> {
-  const res = await fetch(`/api/runner/runs/${runId}/verdicts`);
+  const res = await fetch(`/api/runner/runs/${runId}/verdicts?repo=${encodeURIComponent(repo)}`);
   if (!res.ok) return {};
   return res.json();
 }
@@ -67,9 +70,10 @@ export async function putSubmission(
   runId: string,
   testName: string,
   url: string,
-  type: "pr" | "issue"
+  type: "pr" | "issue",
+  repo: string
 ): Promise<void> {
-  const res = await fetch(`/api/runner/runs/${runId}/submission`, {
+  const res = await fetch(`/api/runner/runs/${runId}/submission?repo=${encodeURIComponent(repo)}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ test_name: testName, url, type }),
@@ -81,16 +85,18 @@ export async function putSubmission(
 
 /** Fetch all submissions for a run from Postgres. */
 export async function fetchSubmissions(
-  runId: string
+  runId: string,
+  repo: string
 ): Promise<Record<string, SubmissionResult>> {
-  const res = await fetch(`/api/runner/runs/${runId}/submissions`);
+  const res = await fetch(`/api/runner/runs/${runId}/submissions?repo=${encodeURIComponent(repo)}`);
   if (!res.ok) return {};
   return res.json();
 }
 
 /** Fetch known failure context for a run (failing since, open submissions). */
 export async function fetchKnownFailures(
-  runId: string
+  runId: string,
+  repo: string
 ): Promise<
   Record<
     string,
@@ -105,7 +111,7 @@ export async function fetchKnownFailures(
     }
   >
 > {
-  const res = await fetch(`/api/runner/runs/${runId}/known-failures`);
+  const res = await fetch(`/api/runner/runs/${runId}/known-failures?repo=${encodeURIComponent(repo)}`);
   if (!res.ok) return {};
   return res.json();
 }
@@ -129,8 +135,8 @@ export async function updateBaselines(
 }
 
 /** Mark a triage run as closed. */
-export async function closeRun(runId: string): Promise<void> {
-  const res = await fetch(`/api/runner/runs/${runId}/close`, {
+export async function closeRun(runId: string, repo: string): Promise<void> {
+  const res = await fetch(`/api/runner/runs/${runId}/close?repo=${encodeURIComponent(repo)}`, {
     method: "PATCH",
   });
   if (!res.ok) {

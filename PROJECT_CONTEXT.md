@@ -17,6 +17,7 @@ Last updated: 2026-03-22
 
 **Critical — pick up here:**
 - [ ] **Dashboard multi-tenancy** — the dashboard proxy forwards all requests with the global API key, so any logged-in user can access any repo's data by crafting requests through the proxy. Fix: before forwarding, check that the logged-in user's GitHub account has access to the requested repo via their GitHub App installations. Also filter SSE events by repo. See "Tenancy model" section below for design decisions
+  - [ ] **Verification after implementation:** deploy to Vercel, then test: (1) `/repos` shows only user's repos, (2) manually navigate to `/repos/other-owner/other-repo/settings` → 404, (3) `/runs?repo=other-owner/other-repo` → redirect to `/repos`, (4) browser dev tools `fetch("/api/runner/repos/other-owner%2Fother-repo/settings")` → 404, (5) `fetch("/api/runner/runs")` → only accessible repos' runs, (6) `PUT /runs/{runId}/verdict?repo=other-owner/other-repo` → 404, (7) normal flow on own repos works unchanged (approve, reject, submit, close), (8) `npx tsc --noEmit` clean
 - [ ] **Rate limiting** — no rate limiting on any endpoint. Risks: brute-forcing API keys, flooding `/triage-run` (triggers OpenAI calls billed to BYOK key + consumes Render compute), flooding `/ask`. Add middleware-level rate limiting before onboarding external users. Consider per-IP and per-API-key limits separately
 - [ ] **SSE connection limit** — `_subscribers` in `events.py` is an unbounded list with unbounded `asyncio.Queue` per subscriber. An authenticated caller (or buggy dashboard with reconnection loops) can exhaust server memory. Add a subscriber cap (e.g., 50) and bounded queue size (e.g., maxsize=100). Drop oldest subscriber when cap is reached
 - [ ] **Reliability fixes** — see details in "Reliability fixes" section below
@@ -45,6 +46,8 @@ Last updated: 2026-03-22
 - [ ] GitHub token in JWT cookie — consider JWE or server-side sessions
 - [ ] AUTH_SECRET minimum length — add startup validation
 - [ ] ~~Repo setup checklist on cards~~ — superseded by setup banners (amber pill covers the main case)
+- [ ] SSE event filtering by tenant — TransformStream in proxy to drop events for repos the user can't access. Low priority (events only contain `{run_id, repo}`, all actions validated)
+- [ ] Qdrant collection isolation per tenant — episodic memories currently shared across tenants. Not exploitable but cleaner with per-tenant filtering
 
 ---
 
@@ -67,7 +70,34 @@ Last updated: 2026-03-22
 
 Tenant = GitHub App installation. An org that installs the Triaige GitHub App is one tenant. All org members with repo access share runs, verdicts, and submissions — triage is a team activity. A solo user with a personal GitHub account installation is also a valid tenant (no org required). Mirrors Vercel, Codecov, Chromatic.
 
-**Dashboard multi-tenancy implementation:** The dashboard proxy must check that the logged-in user's GitHub account has access to the requested repo via their GitHub App installations before forwarding to the runner. Currently the proxy blindly forwards everything with the global API key. This is the gate between "CI keys are isolated" and "dashboard users are isolated." Also scope SSE event filtering by repo.
+**Dashboard multi-tenancy implementation:** The dashboard proxy must check that the logged-in user's GitHub account has access to the requested repo via their GitHub App installations before forwarding to the runner. Currently the proxy blindly forwards everything with the global API key. This is the gate between "CI keys are isolated" and "dashboard users are isolated."
+
+**Access path coverage (every way a user can access data through the dashboard):**
+
+| Path | Data exposed | Protection |
+|---|---|---|
+| `/repos` page | Repo list | Safe — uses user's GitHub token, returns only their installations |
+| `/runs?repo=X` page | Runs for repo X | `assertRepoAccess(repo)` in server component |
+| `/runs/{runId}` page | Run detail, screenshots, rationale | Post-fetch check: `run.repo` against accessible repos |
+| `/repos/owner/repo/settings` page | API key, masked OpenAI key | `assertRepoAccess(fullName)` in server component |
+| `GET /api/runner/runs` | All runs list | Proxy filters response to accessible repos only |
+| `GET /api/runner/runs/{runId}` | Run detail | `repo` query param required, validated in proxy |
+| `GET /api/runner/runs/{runId}/verdicts` | Verdicts | Same |
+| `GET /api/runner/runs/{runId}/submissions` | Submissions | Same |
+| `GET /api/runner/runs/{runId}/known-failures` | Known failure context | Same |
+| `PUT /api/runner/runs/{runId}/verdict` | Write verdict | Same |
+| `PUT /api/runner/runs/{runId}/submission` | Write submission | Same |
+| `PATCH /api/runner/runs/{runId}/close` | Close run | Same |
+| `POST /api/runner/feedback` | Write episodic memory | `repo` in body, validated in proxy |
+| `GET/PUT/DELETE /api/runner/repos/X/*` | Settings, keys, known failures | Repo from URL path, validated in proxy |
+| `POST /api/runner/update-baselines` | Commit to PR branch | `repo` from body, validated in proxy |
+| `POST /api/runner/create-issues` | Create GitHub issues | Same |
+| `GET /api/runner/events` (SSE) | Event stream `{run_id, repo}` | **Follow-up** — user sees event names but can't act on them (all actions validated) |
+| `GET /api/runner/health` | `{"status": "ok"}` | No repo data |
+
+**Follow-up after multi-tenancy ships:**
+- [ ] **SSE event filtering** — filter the event stream per-user using a TransformStream in the proxy. Low priority since events only contain `{run_id, repo}` (no screenshots, no failure data) and all API calls are validated
+- [ ] **Qdrant collection isolation** — episodic memories from different tenants currently mix in the same Qdrant collection. Not exploitable (memories are retrieved by similarity, not by tenant), but isolation is cleaner. Consider per-tenant collection or metadata filtering
 
 ---
 

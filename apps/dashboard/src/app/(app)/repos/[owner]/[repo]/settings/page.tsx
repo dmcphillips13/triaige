@@ -4,11 +4,13 @@
 // during onboarding. The merge gate toggle controls whether the GitHub check
 // blocks merges until all failures are addressed.
 
+import { notFound } from "next/navigation";
 import {
   fetchRepoApiKey,
   fetchRepoOpenAIKey,
   fetchRepoSettings,
 } from "@/lib/api.server";
+import { assertRepoAccess } from "@/lib/repo-access";
 import { SettingsPanel } from "./settings-panel";
 
 interface Props {
@@ -18,6 +20,12 @@ interface Props {
 export default async function RepoSettingsPage({ params }: Props) {
   const { owner, repo } = await params;
   const fullName = `${owner}/${repo}`;
+
+  try {
+    await assertRepoAccess(fullName);
+  } catch {
+    notFound();
+  }
 
   let apiKey = "";
   let mergeGate = true;
