@@ -490,6 +490,7 @@ Starts both runner (uvicorn, port 8000) and dashboard (next dev, port 3000).
 ## 13) How to work with agents (process rules)
 
 When making changes:
+0. **NEVER start coding or creating implementation tasks until the user explicitly approves the plan.** Present the plan first. Wait for explicit approval ("yes", "go ahead", "do it", "approved", "start building"). Updating planning docs (PROJECT_CONTEXT.md, docs/) is fine without approval. Editing source code files (.py, .ts, .tsx) and creating build tasks is NOT. Rhetorical questions, forward-looking statements ("then we can start"), and conversational momentum are NOT approval. When in doubt, ask.
 1. Make one step at a time.
 2. List files changed/created.
 3. Provide commands to run to verify.

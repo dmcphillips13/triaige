@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse, StreamingResponse
 
-from app import events, repo_settings, store
+from app import events, rate_limit, repo_settings, store
 from app.agent.graph import run_graph
 from app.db import close_db, init_db
 from app.episodic import store_episode
@@ -30,6 +30,7 @@ from app.schemas import (
     CreateIssuesRequest,
     CreateIssuesResponse,
     FeedbackRequest,
+    ReportCleanRequest,
     TriageFailureResult,
     TriageRunRequest,
     TriageRunResponse,
@@ -89,6 +90,14 @@ class ApiKeyMiddleware(BaseHTTPMiddleware):
 
         auth = request.headers.get("Authorization", "")
         if not auth.startswith("Bearer "):
+            # Rate limit auth failures by IP to prevent brute-forcing
+            auth_allowed = await rate_limit.check_auth_failure_rate(request)
+            if not auth_allowed:
+                return JSONResponse(
+                    status_code=429,
+                    content={"error": "rate_limit_exceeded", "message": "Too many failed auth attempts. Try again later."},
+                    headers={"Retry-After": "60"},
+                )
             return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
 
         token = auth[7:]  # Strip "Bearer "
@@ -96,16 +105,46 @@ class ApiKeyMiddleware(BaseHTTPMiddleware):
         # Check global API key first (dashboard proxy uses this)
         if settings.api_key and token == settings.api_key:
             request.state.authenticated_repo = None  # global key — no repo restriction
-            return await call_next(request)
+            return await self._check_rate_and_proceed(request, call_next)
 
         # Check per-repo API keys (CI workflows use these)
         from app.repo_settings import validate_repo_api_key
         repo = await validate_repo_api_key(token)
         if repo:
             request.state.authenticated_repo = repo  # restrict to this repo only
-            return await call_next(request)
+            return await self._check_rate_and_proceed(request, call_next)
 
+        # Invalid token — rate limit by IP
+        auth_allowed = await rate_limit.check_auth_failure_rate(request)
+        if not auth_allowed:
+            return JSONResponse(
+                status_code=429,
+                content={"error": "rate_limit_exceeded", "message": "Too many failed auth attempts. Try again later."},
+                headers={"Retry-After": "60"},
+            )
         return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
+
+    async def _check_rate_and_proceed(self, request: Request, call_next):
+        """Check rate limit for an authenticated request, then proceed or reject."""
+        allowed, limit, remaining, reset_time = await rate_limit.check_rate_limit(request)
+
+        if not allowed:
+            headers = rate_limit.rate_limit_headers(limit, remaining, reset_time)
+            return JSONResponse(
+                status_code=429,
+                content={"error": "rate_limit_exceeded", "message": "Too many requests. Try again later."},
+                headers=headers,
+            )
+
+        response = await call_next(request)
+
+        # Add rate limit headers to successful responses
+        if limit > 0:
+            headers = rate_limit.rate_limit_headers(limit, remaining, reset_time)
+            for key, value in headers.items():
+                response.headers[key] = value
+
+        return response
 
 
 app.add_middleware(ApiKeyMiddleware)
@@ -126,22 +165,41 @@ async def health():
 
 
 @app.get("/events")
-async def sse_events():
-    """SSE endpoint — streams run_created/run_closed events to dashboard."""
+async def sse_events(request: Request):
+    """SSE endpoint — streams run_created/run_closed events to dashboard.
+
+    Enforces global subscriber cap (200), per-user limit (3), bounded
+    queues (50), and max connection lifetime (1 hour).
+    """
+    user_id = request.headers.get("X-Dashboard-User")
+    sub = events.subscribe(user_id=user_id)
+    if sub is None:
+        return JSONResponse(
+            status_code=503,
+            content={"error": "SSE connection limit reached. Try again later."},
+            headers={"Retry-After": "10"},
+        )
 
     async def stream():
-        q = events.subscribe()
         try:
             while True:
+                # Check max lifetime
+                if events.is_expired(sub):
+                    logger.info("SSE connection expired (user=%s)", user_id or "anonymous")
+                    break
+                # Check if marked for disconnect (queue was full)
+                if sub.disconnected:
+                    logger.info("SSE client disconnected due to full queue (user=%s)", user_id or "anonymous")
+                    break
                 try:
-                    msg = await asyncio.wait_for(q.get(), timeout=30)
+                    msg = await asyncio.wait_for(sub.queue.get(), timeout=15)
                     yield events.format_sse(msg["event"], msg["data"])
                 except asyncio.TimeoutError:
                     yield ": keepalive\n\n"
         except asyncio.CancelledError:
             pass
         finally:
-            events.unsubscribe(q)
+            events.unsubscribe(sub)
 
     return StreamingResponse(
         stream(),
@@ -154,124 +212,128 @@ async def sse_events():
 
 
 @app.post("/report-clean")
-async def report_clean(request: Request):
+async def report_clean(req: ReportCleanRequest, request: Request):
     """Report that all visual tests passed — creates a passing check run.
 
     Also auto-closes pre-merge runs when a PR merges and all tests pass
     (no post-merge triage run is created in this case).
     """
-    body = await request.json()
-    repo = body.get("repo")
-    head_sha = body.get("head_sha")
-    pr_number = body.get("pr_number")
-    event = body.get("event")
-    if not repo or not head_sha:
-        raise HTTPException(status_code=400, detail="repo and head_sha are required")
-    _check_repo_access(request, repo)
-
-    # Auto-close pre-merge runs when a PR merges with all tests passing
-    if event == "push" and pr_number:
-        closed_ids = await store.auto_close_pre_merge_runs(repo, int(pr_number))
-        if closed_ids:
-            logger.info("Auto-closed %d pre-merge run(s) on clean merge of PR #%s", len(closed_ids), pr_number)
-            for cid in closed_ids:
-                events.emit("run_closed", {"run_id": cid, "repo": repo})
-
-        # Materialize deferred issues — create GitHub issues + known_failures
-        pending = await store.get_pending_issues_for_pr(repo, int(pr_number))
-        for pi in pending:
-            try:
-                issue_url = await asyncio.to_thread(
-                    create_bug_issue,
-                    repo=pi["repo"],
-                    run_id=pi["run_id"],
-                    test_name=pi["test_name"],
-                    classification=pi["classification"],
-                    confidence=pi["confidence"],
-                    rationale=pi["rationale"],
-                    github_token=None,
-                    pr_number=pi.get("pr_number"),
-                )
-                issue_number = int(issue_url.rstrip("/").split("/")[-1])
-                # Fetch baseline screenshot from the original run's failure results
-                pi_result = await store.get_result(pi["run_id"], pi["test_name"])
-                pi_baseline = pi_result.screenshot_baseline if pi_result else None
-                await store.add_known_failure(
-                    repo=pi["repo"],
-                    test_name=pi["test_name"],
-                    issue_url=issue_url,
-                    issue_number=issue_number,
-                    screenshot_base64=pi["screenshot_base64"],
-                    filed_from_run_id=pi["run_id"],
-                    screenshot_baseline=pi_baseline,
-                )
-                await store.mark_pending_issue_materialized(pi["id"], issue_url)
-                await store.update_submission_url(pi["run_id"], pi["test_name"], issue_url)
-                logger.info("Materialized deferred issue for %s → %s", pi["test_name"], issue_url)
-            except Exception as e:
-                logger.warning("Failed to materialize pending issue for %s: %s", pi["test_name"], e)
-
-        # --- Drift detection on merge ---
-        # For existing known failures, compare stored screenshot against the
-        # actual screenshot from the pre-merge run that just merged. If the
-        # merged PR changed a known-broken area, post a notice on the issue.
-        if closed_ids:
-            known_failures = await store.list_known_failures(repo)
-            for kf in known_failures:
-                try:
-                    # Find the actual screenshot from the closed run
-                    for cid in closed_ids:
-                        result = await store.get_result(cid, kf["test_name"])
-                        if result and result.screenshot_actual:
-                            stored = kf.get("screenshot_base64")
-                            if stored and stored != result.screenshot_actual:
-                                # Deduplicate: check if we already posted for this PR
-                                from app.tools.github_checks import _get_client
-                                def _check_and_post(kf_issue=kf["issue_number"], kf_test=kf["test_name"]):
-                                    client = _get_client(repo)
-                                    existing = client.get(
-                                        f"/repos/{repo}/issues/{kf_issue}/comments",
-                                        params={"per_page": 100},
-                                    )
-                                    existing.raise_for_status()
-                                    marker = f"PR #{pr_number}"
-                                    if any(marker in c.get("body", "") for c in existing.json()):
-                                        return False  # Already posted for this PR
-                                    pr_url = f"https://github.com/{repo}/pull/{pr_number}"
-                                    comment = (
-                                        f"**Note:** PR #{pr_number} ([view]({pr_url})) "
-                                        f"further modifies this area. The visual appearance has changed "
-                                        f"since this issue was filed. Please verify manually."
-                                    )
-                                    client.post(
-                                        f"/repos/{repo}/issues/{kf_issue}/comments",
-                                        json={"body": comment},
-                                    )
-                                    return True
-                                posted = await asyncio.to_thread(_check_and_post)
-                                if posted:
-                                    logger.info(
-                                        "Posted merge drift notice on issue #%d for %s (PR #%s)",
-                                        kf["issue_number"], kf["test_name"], pr_number,
-                                    )
-                            break  # Only need one run's screenshot per test
-                except Exception as e:
-                    logger.warning(
-                        "Failed drift check for %s on merge: %s", kf["test_name"], e,
-                    )
-
-    rs = await repo_settings.get_settings(repo)
-    if not rs.merge_gate:
-        return {"status": "ok", "reason": "merge_gate disabled, runs closed"}
+    _check_repo_access(request, req.repo)
 
     try:
-        check_run_id = await asyncio.to_thread(
-            create_passing_check_run, repo=repo, head_sha=head_sha,
-        )
-        return {"status": "ok", "check_run_id": check_run_id}
+        # Auto-close pre-merge runs when a PR merges with all tests passing
+        if req.event == "push" and req.pr_number:
+            closed_ids = await store.auto_close_pre_merge_runs(req.repo, req.pr_number)
+            if closed_ids:
+                logger.info("Auto-closed %d pre-merge run(s) on clean merge of PR #%s", len(closed_ids), req.pr_number)
+                for cid in closed_ids:
+                    events.emit("run_closed", {"run_id": cid, "repo": req.repo})
+
+            # Materialize deferred issues — create GitHub issues + known_failures
+            pending = await store.get_pending_issues_for_pr(req.repo, req.pr_number)
+            for pi in pending:
+                try:
+                    issue_url = await asyncio.to_thread(
+                        create_bug_issue,
+                        repo=pi["repo"],
+                        run_id=pi["run_id"],
+                        test_name=pi["test_name"],
+                        classification=pi["classification"],
+                        confidence=pi["confidence"],
+                        rationale=pi["rationale"],
+                        github_token=None,
+                        pr_number=pi.get("pr_number"),
+                    )
+                    issue_number = int(issue_url.rstrip("/").split("/")[-1])
+                    # Fetch baseline screenshot from the original run's failure results
+                    pi_result = await store.get_result(pi["run_id"], pi["test_name"])
+                    pi_baseline = pi_result.screenshot_baseline if pi_result else None
+                    await store.add_known_failure(
+                        repo=pi["repo"],
+                        test_name=pi["test_name"],
+                        issue_url=issue_url,
+                        issue_number=issue_number,
+                        screenshot_base64=pi["screenshot_base64"],
+                        filed_from_run_id=pi["run_id"],
+                        screenshot_baseline=pi_baseline,
+                    )
+                    await store.mark_pending_issue_materialized(pi["id"], issue_url)
+                    await store.update_submission_url(pi["run_id"], pi["test_name"], issue_url)
+                    logger.info("Materialized deferred issue for %s → %s", pi["test_name"], issue_url)
+                except Exception as e:
+                    logger.warning("Failed to materialize pending issue for %s: %s", pi["test_name"], e)
+
+            # --- Drift detection on merge ---
+            # For existing known failures, compare stored screenshot against the
+            # actual screenshot from the pre-merge run that just merged. If the
+            # merged PR changed a known-broken area, post a notice on the issue.
+            if closed_ids:
+                known_failures = await store.list_known_failures(req.repo)
+                for kf in known_failures:
+                    try:
+                        for cid in closed_ids:
+                            result = await store.get_result(cid, kf["test_name"])
+                            if result and result.screenshot_actual:
+                                stored = kf.get("screenshot_base64")
+                                if stored and stored != result.screenshot_actual:
+                                    from app.tools.github_checks import _get_client
+                                    def _check_and_post(kf_issue=kf["issue_number"], kf_test=kf["test_name"]):
+                                        client = _get_client(req.repo)
+                                        existing = client.get(
+                                            f"/repos/{req.repo}/issues/{kf_issue}/comments",
+                                            params={"per_page": 100},
+                                        )
+                                        existing.raise_for_status()
+                                        marker = f"PR #{req.pr_number}"
+                                        if any(marker in c.get("body", "") for c in existing.json()):
+                                            return False
+                                        pr_url = f"https://github.com/{req.repo}/pull/{req.pr_number}"
+                                        comment = (
+                                            f"**Note:** PR #{req.pr_number} ([view]({pr_url})) "
+                                            f"further modifies this area. The visual appearance has changed "
+                                            f"since this issue was filed. Please verify manually."
+                                        )
+                                        client.post(
+                                            f"/repos/{req.repo}/issues/{kf_issue}/comments",
+                                            json={"body": comment},
+                                        )
+                                        return True
+                                    posted = await asyncio.to_thread(_check_and_post)
+                                    if posted:
+                                        logger.info(
+                                            "Posted merge drift notice on issue #%d for %s (PR #%s)",
+                                            kf["issue_number"], kf["test_name"], req.pr_number,
+                                        )
+                                break
+                    except Exception as e:
+                        logger.warning(
+                            "Failed drift check for %s on merge: %s", kf["test_name"], e,
+                        )
+
+        # Create passing check run if merge gate is enabled
+        try:
+            rs = await repo_settings.get_settings(req.repo)
+        except Exception as e:
+            logger.warning("Failed to fetch repo settings for %s: %s", req.repo, e)
+            return {"status": "ok", "reason": "runs closed, settings fetch failed"}
+
+        if not rs.merge_gate:
+            return {"status": "ok", "reason": "merge_gate disabled, runs closed"}
+
+        try:
+            check_run_id = await asyncio.to_thread(
+                create_passing_check_run, repo=req.repo, head_sha=req.head_sha,
+            )
+            return {"status": "ok", "check_run_id": check_run_id}
+        except Exception as e:
+            logger.error("Failed to create passing check run for %s: %s", req.repo, e)
+            raise HTTPException(status_code=502, detail="Failed to create GitHub check run")
+
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions as-is
     except Exception as e:
-        logger.warning("Failed to create passing check run: %s", e)
-        raise HTTPException(status_code=502, detail=f"GitHub API error: {e}")
+        logger.error("Unexpected error in /report-clean for %s: %s", req.repo, e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/repos/{repo:path}/settings", response_model=RepoSettings)

@@ -46,6 +46,7 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
     "idle" | "loading" | "done" | "error"
   >("idle");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [verdictError, setVerdictError] = useState<string | null>(null);
   const [isClosed, setIsClosed] = useState(run.closed ?? false);
   const [submitted, setSubmitted] = useState<Record<string, SubmissionResult>>(
     {}
@@ -84,13 +85,21 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
 
   const handleVerdict = useCallback(
     (testName: string, verdict: HumanVerdict) => {
+      const prevVerdict = verdicts[testName];
       setVerdicts((prev) => ({ ...prev, [testName]: verdict }));
+      setVerdictError(null);
       if (verdict) {
-        putVerdict(run.run_id, testName, verdict, run.repo || "").catch(() => {});
-        submitFeedback(run.run_id, testName, verdict, run.repo || "").catch(() => {});
+        putVerdict(run.run_id, testName, verdict, run.repo || "").catch((e) => {
+          console.error("Failed to store verdict:", e);
+          setVerdicts((prev) => ({ ...prev, [testName]: prevVerdict }));
+          setVerdictError(`Failed to save verdict for "${testName}". Please try again.`);
+        });
+        submitFeedback(run.run_id, testName, verdict, run.repo || "").catch((e) => {
+          console.error("Failed to submit feedback:", e);
+        });
       }
     },
-    [run.run_id, run.repo]
+    [run.run_id, run.repo, verdicts]
   );
 
   const isPreMerge = run.triage_mode === "pre_merge";
@@ -270,6 +279,12 @@ export function RunDetail({ run }: { run: TriageRunResponse }) {
       {isClosed && (
         <div className="mt-6 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-center">
           <p className="text-sm text-zinc-500">This run has been closed.</p>
+        </div>
+      )}
+
+      {verdictError && (
+        <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-3">
+          <p className="text-sm text-rose-700">{verdictError}</p>
         </div>
       )}
 

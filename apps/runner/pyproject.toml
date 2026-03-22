@@ -18,4 +18,5 @@ dependencies = [
   "httpx",
   "asyncpg",
   "pyjwt[crypto]>=2.12.0",
+  "limits>=4.0",
 ]

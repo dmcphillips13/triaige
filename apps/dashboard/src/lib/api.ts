@@ -31,11 +31,14 @@ export async function submitFeedback(
   verdict: "approved" | "rejected",
   repo: string
 ): Promise<void> {
-  await fetch("/api/runner/feedback", {
+  const res = await fetch("/api/runner/feedback", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ run_id: runId, test_name: testName, verdict, repo }),
   });
+  if (!res.ok) {
+    throw new Error(`Failed to submit feedback: ${res.status}`);
+  }
 }
 
 /** Store a human verdict for a failure in Postgres. */

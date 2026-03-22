@@ -48,6 +48,7 @@ export function SettingsPanel({
     "idle" | "saving" | "success" | "error"
   >("idle");
   const [keyError, setKeyError] = useState("");
+  const [gateError, setGateError] = useState("");
 
   const initCommand = `npx triaige init`;
 
@@ -55,6 +56,7 @@ export function SettingsPanel({
     const newValue = !gate;
     setGate(newValue);
     setSaving(true);
+    setGateError("");
 
     try {
       const res = await fetch(
@@ -70,10 +72,12 @@ export function SettingsPanel({
         }
       );
       if (!res.ok) {
-        setGate(!newValue); // revert on failure
+        setGate(!newValue);
+        setGateError("Failed to update merge gate setting. Please try again.");
       }
     } catch {
       setGate(!newValue);
+      setGateError("Connection error. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -112,6 +116,7 @@ export function SettingsPanel({
 
   async function deleteOpenAIKey() {
     setKeyStatus("saving");
+    setKeyError("");
     try {
       const res = await fetch(
         `/api/runner/repos/${encodeURIComponent(repo)}/openai-key`,
@@ -120,10 +125,13 @@ export function SettingsPanel({
       if (res.ok) {
         setMasked(null);
         setKeyStatus("idle");
+      } else {
+        setKeyStatus("error");
+        setKeyError("Failed to delete key. Please try again.");
       }
     } catch {
       setKeyStatus("error");
-      setKeyError("Failed to delete key");
+      setKeyError("Connection error. Please try again.");
     }
   }
 
@@ -263,6 +271,9 @@ export function SettingsPanel({
             />
           </button>
         </div>
+        {gateError && (
+          <p className="mt-2 text-xs text-red-600">{gateError}</p>
+        )}
       </section>
     </div>
   );

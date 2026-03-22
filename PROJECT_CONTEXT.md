@@ -17,10 +17,30 @@ Last updated: 2026-03-22
 
 **Critical — pick up here:**
 - [x] **Dashboard multi-tenancy (implemented)** — repo-access.ts module with 60s cached GitHub App installation lookup. Proxy validates repo from URL path, query params, and POST body. Server components validate before rendering. GET /runs response filtered. All run-scoped client calls pass repo for validation. Returns 404 to prevent enumeration. SSE event filtering is a follow-up (events leak only `{run_id, repo}`, all actions are blocked)
-  - [ ] **E2E verification (do next):** deploy to Vercel, then test: (1) `/repos` shows only user's repos, (2) manually navigate to `/repos/other-owner/other-repo/settings` → 404, (3) `/runs?repo=other-owner/other-repo` → redirect to `/repos`, (4) browser dev tools `fetch("/api/runner/repos/other-owner%2Fother-repo/settings")` → 404, (5) `fetch("/api/runner/runs")` → only accessible repos' runs, (6) `PUT /runs/{runId}/verdict?repo=other-owner/other-repo` → 404, (7) normal flow on own repos works unchanged (approve, reject, submit, close), (8) also run the full triage flow on test repo (PR → classify → approve → submit → gate pass) to confirm the repo query params don't break the existing flow
-- [ ] **Rate limiting** — no rate limiting on any endpoint. Risks: brute-forcing API keys, flooding `/triage-run` (triggers OpenAI calls billed to BYOK key + consumes Render compute), flooding `/ask`. Add middleware-level rate limiting before onboarding external users. Consider per-IP and per-API-key limits separately
-- [ ] **SSE connection limit** — `_subscribers` in `events.py` is an unbounded list with unbounded `asyncio.Queue` per subscriber. An authenticated caller (or buggy dashboard with reconnection loops) can exhaust server memory. Add a subscriber cap (e.g., 50) and bounded queue size (e.g., maxsize=100). Drop oldest subscriber when cap is reached
-- [ ] **Reliability fixes** — see details in "Reliability fixes" section below
+  - [ ] **E2E verification (do after all critical items ship):** deploy to Render + Vercel, then test:
+    - **Multi-tenancy:** (1) `/repos` shows only user's repos, (2) manually navigate to `/repos/other-owner/other-repo/settings` → 404, (3) `/runs?repo=other-owner/other-repo` → redirect to `/repos`, (4) browser dev tools `fetch("/api/runner/repos/other-owner%2Fother-repo/settings")` → 404, (5) `fetch("/api/runner/runs")` → only accessible repos' runs, (6) `PUT /runs/{runId}/verdict?repo=other-owner/other-repo` → 404, (7) normal flow on own repos works unchanged (approve, reject, submit, close)
+    - **Rate limiting:** (8) hit an authenticated endpoint → confirm `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset` headers in response, (9) rapid-fire 6+ requests with an invalid API key → 429 after 5 (auth-failure IP limiting), (10) `/health` → no rate limit headers (exempt)
+    - **SSE:** (11) open `/events` SSE connection → confirm keepalives stream, (12) open 4 SSE connections with the same user → 4th returns 503, (13) trigger a triage run while SSE is connected → `run_created` event arrives
+    - **Full flow:** (14) full triage flow on test repo (PR → classify → approve → submit → gate pass) to confirm rate limiting and proxy changes don't break the existing flow
+- [x] **Rate limiting (implemented)** — `limits` library (async moving-window) in `ApiKeyMiddleware`. Three tiers: expensive (20/min — `/triage-run`, `/ask`), mutation (30/min — `/update-baselines`, `/create-issues`, `/feedback`), general (60/min — all other). Auth failure: 5/min per IP. Dashboard proxy forwards `X-Dashboard-User` for per-user limiting. 429 + `Retry-After` + `X-RateLimit-*` headers. `/health` and `/events` exempt
+  - **Follow-ups:**
+  - [ ] Migrate to Redis storage when scaling to multiple Render instances
+  - [ ] Tune rate limit values based on real usage data from design partners
+  - [ ] Add Cloudflare edge-level rate limiting rules if volumetric attacks become a concern
+- [x] **SSE connection hardening (implemented)** — global cap 200, per-user limit 3, bounded queue (maxsize=50), disconnect on full, max lifetime 1hr
+- [x] **Reliability fixes (implemented)** — two groups in one pass:
+  - **Group A — `/report-clean` hardening (runner):** Pydantic input model (`ReportCleanRequest` — validates repo, head_sha, pr_number as int|None, event), try/except around `repo_settings.get_settings()`, top-level error handler, sanitized error messages. Root cause of PR #78 500: `int(pr_number)` ValueError on non-numeric input
+  - **Group C — Silent mutation fixes (dashboard):** `submitFeedback()` added `res.ok` check, `putVerdict()` caller reverts optimistic update + shows error banner, `toggleMergeGate()` shows error message, `deleteOpenAIKey()` handles non-200 responses + resets loading state
+  - **Deferred — Group B (PR merge status check):** dashboard check for actual PR merge status via GitHub API. Not needed if Group A makes `/report-clean` robust. Existing stale runs can be manually closed. Revisit if stale actionable runs recur
+  - **Testing:**
+    - (15) `POST /report-clean` with `pr_number: "not-a-number"` → 422 not 500
+    - (16) `POST /report-clean` with missing fields → 422
+    - (17) `POST /report-clean` with valid payload → 200, runs close
+    - (18) Browser offline → click approve → error message shown (not silent)
+    - (19) Same for verdict, merge gate toggle, delete OpenAI key
+    - (20) Back online → actions work normally
+    - (21) Full merge flow: PR → classify → submit → gate pass → merge → `/report-clean` → runs close
+    - **Note:** Pydantic model validates types but not format (e.g., `head_sha` accepts any string, `repo` not validated as `owner/repo`). If E2E reveals downstream failures from well-typed but malformed inputs, add format validators (regex on head_sha, slash check on repo)
 - **Gate: once critical items are done, evaluate publishing CLI to npm.** Prerequisites: dashboard multi-tenancy, rate limiting, Qdrant collection isolation per tenant, invite code or waitlist gate on API key generation. For design partners before that: share the CLI as a local checkout or private tarball
 
 **Then (backlog — no priority order):**
@@ -42,12 +62,13 @@ Last updated: 2026-03-22
 - [ ] Repos page refresh on App change — doesn't update when a new repo is added to GitHub App
 - [ ] Render paid tier — $7/mo to eliminate cold starts
 - [ ] CORS method/header wildcards — tighten to explicit lists
-- [ ] `/report-clean` input validation — Pydantic model, hex/int validation
 - [ ] GitHub token in JWT cookie — consider JWE or server-side sessions
 - [ ] AUTH_SECRET minimum length — add startup validation
 - [ ] ~~Repo setup checklist on cards~~ — superseded by setup banners (amber pill covers the main case)
 - [ ] SSE event filtering by tenant — TransformStream in proxy to drop events for repos the user can't access. Low priority (events only contain `{run_id, repo}`, all actions validated)
 - [ ] Qdrant collection isolation per tenant — episodic memories currently shared across tenants. Not exploitable but cleaner with per-tenant filtering
+- [ ] Handle pgcrypto decryption failures gracefully — if `BYOK_ENCRYPTION_KEY` is rotated, `pgp_sym_decrypt` throws unhandled error. Add try/except, return None with warning log. Not a blocker (rotation is an admin action, fix is re-entering the key)
+- [ ] BYOK_ENCRYPTION_KEY rotation procedure — no migration path. Document or build a migration script when needed
 
 ---
 
@@ -103,6 +124,25 @@ Tenant = GitHub App installation. An org that installs the Triaige GitHub App is
 
 ## Recent sessions
 
+### Session 2026-03-22 (night) — Rate limiting, SSE hardening, reliability fixes
+
+**Rate limiting:**
+- `limits` library (async moving-window) integrated into `ApiKeyMiddleware`
+- Three tiers: expensive (20/min), mutation (30/min), general (60/min) + auth-failure IP limiting (5/min)
+- Dashboard proxy forwards `X-Dashboard-User` header for per-user rate limiting
+- Standard 429 responses with `X-RateLimit-*` headers
+
+**SSE connection hardening:**
+- Global cap 200, per-user limit 3, bounded queue (maxsize=50)
+- Disconnect on full (EventSource auto-reconnects), max lifetime 1hr
+- `Subscriber` class replaces bare `asyncio.Queue`
+
+**Reliability fixes:**
+- `/report-clean` hardened: Pydantic input model eliminates `int(pr_number)` ValueError (root cause of PR #78 500), try/except on `repo_settings.get_settings()`, top-level error handler
+- Dashboard silent mutations fixed: `submitFeedback()` error check, `putVerdict()` caller reverts on failure + shows error, `toggleMergeGate()` error message, `deleteOpenAIKey()` handles non-200
+
+**Next:** E2E verification of all critical items (21-point checklist in critical section above)
+
 ### Session 2026-03-22 (evening) — Security hardening + P0 features + E2E test
 
 **Security (4 commits):**
@@ -145,12 +185,10 @@ Tenant = GitHub App installation. An org that installs the Triaige GitHub App is
 ## Detailed reference (for backlog items)
 
 ### Reliability fixes
-- [ ] **`/report-clean` 500 on PR #78 merge** — endpoint returned Internal Server Error (2026-03-18), leaving 3 pre-merge runs open and actionable. Root cause unknown
-- [ ] **Merged PR runs must not be actionable** — PR #78's run showed approve/reject buttons days after merge. Dashboard should detect merged PRs and show read-only
-- [ ] **Audit `api.ts` mutation functions for silent failures** — missing `res.ok` checks on mutations
+- [x] **`/report-clean` 500 on PR #78 merge (fixed)** — root cause: `int(pr_number)` ValueError. Fix: `ReportCleanRequest` Pydantic model, try/except on settings fetch, top-level error handler
+- [x] **Merged PR runs actionability (mitigated)** — dashboard gates on `run.closed` only. Fix path A (done): `/report-clean` hardened so runs reliably close. Fix path B (deferred): dashboard GitHub API merge status check — revisit if stale runs recur
+- [x] **Silent mutation failures in dashboard (fixed)** — all 4 functions now surface errors: `submitFeedback()` checks `res.ok`, `putVerdict()` reverts + shows banner, `toggleMergeGate()` shows error, `deleteOpenAIKey()` handles non-200
 - [ ] **Submit flow smoke test** — automated test for runner's critical paths
-- [ ] **Handle pgcrypto decryption failures gracefully** — if `BYOK_ENCRYPTION_KEY` is rotated, `pgp_sym_decrypt` throws unhandled error. Add try/except, return None with warning log
-- [ ] **BYOK_ENCRYPTION_KEY rotation procedure** — no migration path. Document or build a migration script
 
 ### Onboarding polish
 - **Init re-run guard (done)** — detects existing workflow, exits with pointers. Future follow-ups:

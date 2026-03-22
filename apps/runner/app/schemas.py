@@ -150,6 +150,15 @@ class CreateIssuesResponse(BaseModel):
     issues: list[dict]  # [{"test_name": str, "issue_url": str}]
 
 
+class ReportCleanRequest(BaseModel):
+    """Request body for /report-clean — reports all tests passing after merge."""
+
+    repo: str
+    head_sha: str
+    pr_number: int | None = None
+    event: str | None = None
+
+
 class VerdictRequest(BaseModel):
     """Human verdict on a single failure."""
 

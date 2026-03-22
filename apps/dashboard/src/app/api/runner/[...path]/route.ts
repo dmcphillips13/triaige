@@ -111,6 +111,9 @@ async function proxyRequest(request: NextRequest, segments: string[]) {
   if (session?.github_token) {
     headers.set('X-GitHub-Token', session.github_token);
   }
+  if (session?.user_login) {
+    headers.set('X-Dashboard-User', session.user_login);
+  }
 
   const init: RequestInit = {
     method: request.method,
