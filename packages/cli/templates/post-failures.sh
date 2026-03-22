@@ -16,6 +16,10 @@
 
 set -euo pipefail
 
+# Clean up temp files on exit (screenshots + payload should not persist on shared runners)
+cleanup() { rm -f /tmp/results-enriched.json /tmp/triaige-payload.json; }
+trap cleanup EXIT
+
 RESULTS_FILE="${1:-test-results/results.json}"
 
 if [ ! -f "$RESULTS_FILE" ]; then

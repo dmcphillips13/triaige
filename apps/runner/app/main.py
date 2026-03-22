@@ -850,6 +850,8 @@ async def update_baselines(req: UpdateBaselinesRequest, request: Request):
     run = await store.get_run(req.run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
+    if run.repo != req.repo:
+        raise HTTPException(status_code=404, detail="Run not found")
 
     # Collect approved failures that have both screenshot_actual and snapshot_path
     baselines: list[dict] = []
@@ -912,6 +914,8 @@ async def create_issues(req: CreateIssuesRequest, request: Request):
     _check_repo_access(request, req.repo)
     run = await store.get_run(req.run_id)
     if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+    if run.repo != req.repo:
         raise HTTPException(status_code=404, detail="Run not found")
 
     github_token = request.headers.get("X-GitHub-Token")

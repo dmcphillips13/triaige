@@ -140,6 +140,17 @@ Last updated: 2026-03-21
 **Blocking bug (P0 — FIXED):**
 - [x] **Triage run shows 0 failures despite CI reporting 1 failure** — Root cause: `get_or_create_api_key` inserted `(repo, api_key)` without explicit boolean columns, and the DB column default for `pre_merge` was `FALSE` instead of `TRUE` (schema mismatch). The `/triage-run` endpoint hit the early return at line 292 (`if mode == "pre_merge" and not rs.pre_merge`) creating an empty run. Fix: explicit `pre_merge=TRUE, post_merge=TRUE, merge_gate=TRUE` in the INSERT + migration to fix existing rows. Confirmed via `GET /repos/.../settings` showing `pre_merge: false` before fix, `true` after
 
+### Session 2026-03-22 (evening) — Security hardening
+
+**Security audit and fixes:**
+- [x] **Global OpenAI key fallback removed** — `get_openai_client()`, `_get_llm()`, and `/feedback` all silently fell back to the project owner's key. All three paths now require BYOK contextvar. `index_corpus.py` sets contextvar from env explicitly. Security rules documented in AGENTS.md §13.1
+- [x] **Per-repo access control on all 25 endpoints** — added `_check_repo_access` to 6 repo-path endpoints, `_check_run_access` helper (404 to prevent enumeration) to 10 run-based endpoints, repo guard on `/ask` and `/triage-run`, `_check_repo_access` on `/report-clean`, `/update-baselines`, `/create-issues`. `GET /runs` filtered by authenticated repo
+- [x] **Run-repo consistency** — `/update-baselines` and `/create-issues` now verify `run.repo == req.repo` to prevent cross-repo state manipulation
+- [x] **Temp file cleanup** — `post-failures.sh` trap removes enriched JSON and payload files on exit
+- **Tenancy model decided:** Tenant = GitHub App installation. Orgs share data among members. Solo users work without requiring an org. Mirrors Vercel/Codecov/Chromatic
+
+**Second audit (post-fixes) confirmed no remaining exploitable vulnerabilities in the per-repo key path.** Remaining work: dashboard multi-tenancy (global key gives all dashboard users cross-repo access), rate limiting, SSE connection limits. All documented in "Not yet done" section above.
+
 ### Session 2026-03-21 — P0 bug fix, onboarding test, BYOK, security hardening
 
 **P0 bug fixed:**
@@ -172,55 +183,16 @@ Last updated: 2026-03-21
 - [x] **Cross-repo access control on run-based endpoints** — added `_check_run_access` helper (returns 404 to prevent enumeration) to all 10 run-based endpoints. `/feedback` hoists the check before any data read/write and reuses the DB call for BYOK resolution. `/update-baselines` and `/create-issues` use `_check_repo_access` on `req.repo`. `/ask` and `/triage-run` require per-repo keys to provide `pr_context.repo`
 - [x] **`GET /runs` filtered by authenticated repo** — per-repo keys only see their repo's runs. `store.list_runs` accepts optional `repo_filter` param
 
-**P0 — Security (cross-repo access control implementation notes):**
+- [x] **Run-repo consistency in `/update-baselines` and `/create-issues`** — both endpoints accepted `req.repo` from the body without verifying the run belonged to that repo. A user with access to two repos could use a run_id from repo-a with `repo: "repo-b"` to commit baselines or create issues on the wrong repo. Fixed: added `run.repo != req.repo` check after fetching the run
+- [x] **Temp file cleanup in `post-failures.sh`** — CI script created `/tmp/results-enriched.json` and `/tmp/triaige-payload.json` but never deleted them. On self-hosted runners, another job could read the files. Fixed: `trap cleanup EXIT` removes both files on any exit
 
-The fix pattern is consistent. Two categories:
-
-**(A) Repo-path endpoints — add `_check_repo_access` call:**
-The function already exists at `main.py:295-303`. It compares `request.state.authenticated_repo` (set by `ApiKeyMiddleware`) against the requested repo. If the middleware authenticated via the global key, `authenticated_repo` is `None` (unrestricted). If via a per-repo key, it's the repo name — mismatch raises 403. Add the `request: Request` parameter to each endpoint handler and call `_check_repo_access(request, repo)` at the top.
-
-Endpoints to fix (all in `main.py`):
-- `GET /repos/{repo:path}/settings` (line ~276) — add `request: Request` param, add `_check_repo_access`
-- `PUT /repos/{repo:path}/settings` (line ~282) — same
-- `GET /repos/{repo:path}/api-key` (line ~288) — same. **Extra risk:** this endpoint generates/returns a repo's API key. A compromised per-repo key from one repo could read another repo's key
-- `GET /repos/{repo:path}/known-failures` (line ~942) — same
-- `GET /repos/{repo:path}/known-failures/closed` (line ~948) — same
-- `PATCH /repos/{repo:path}/known-failures/{failure_id}/close` (line ~954) — same, and this is a write operation
-
-Already correct (have `_check_repo_access`): `GET/PUT/DELETE /repos/{repo:path}/openai-key`
-
-**(B) Run-based endpoints — look up run's repo, then check access:**
-These don't have a repo in the URL. Need to: (1) look up the run's repo via `store.get_run_repo(run_id)`, (2) call `_check_repo_access(request, repo)`. The `get_run_repo` function was added in this session. Consider a helper like:
-```python
-async def _check_run_access(request: Request, run_id: str) -> str:
-    """Validate the caller can access this run. Returns the run's repo."""
-    repo = await store.get_run_repo(run_id)
-    if not repo:
-        raise HTTPException(404, "Run not found")
-    _check_repo_access(request, repo)
-    return repo
-```
-
-Endpoints to fix (all in `main.py`):
-- `GET /runs/{run_id}` (line ~674)
-- `PATCH /runs/{run_id}/close` (line ~682)
-- `PUT /runs/{run_id}/verdict` (line ~694)
-- `GET /runs/{run_id}/verdicts` (line ~703)
-- `PUT /runs/{run_id}/submission` (line ~712)
-- `GET /runs/{run_id}/submissions` (line ~745)
-- `GET /runs/{run_id}/known-failures` (line ~754)
-- `POST /feedback` (line ~767) — uses `req.run_id` from body, not URL
-- `POST /update-baselines` (line ~799) — **highest risk**, commits to PR branch
-- `POST /create-issues` (line ~865) — **high risk**, creates GitHub issues
-
-**(C) `GET /runs` — filter by authenticated repo:**
-When `request.state.authenticated_repo` is set (per-repo key), pass the repo to `store.list_runs(repo=...)` and filter the SQL query. When None (global key), return all.
-
+**P0 — Next to build:**
 - [ ] **Setup banners on repos page and runs page** — settings page has the "Setup required" banner, but repos page cards and runs page need it too. Add `openai_key_configured: boolean` to `GET /repos/{repo}/settings` response. Repos page: subtle amber pill on cards. Runs page: banner at top
 - [ ] **Early return gate in `/triage-run`** — currently returns 400 when no OpenAI key is found, which causes CI to exit with error. Should create a GitHub check with `conclusion: "action_required"` and summary explaining the missing key (merge gate blocks), return 200 with `status: "setup_required"`, and `post-failures.sh` detects this and exits 0 with a warning (CI workflow green, merge still blocked by check). Check creation uses GitHub App installation token (not OpenAI key), so it works without BYOK. Requires `head_sha` and `repo` from `pr_context` — if missing, fall back to current 400 behavior
 - [ ] **Empty `X-OpenAI-Key` header validation** — `_resolve_openai_key` correctly treats empty string as falsy, but `post-failures.sh` sends `${OPENAI_API_KEY:-}` which is empty when the secret is unset. Verified safe (empty string is falsy in Python). Add explicit `.strip()` check as defense-in-depth
 
 **P1 — Blocking for onboarding:**
+- [ ] **Dashboard multi-tenancy** — the dashboard proxy forwards all requests with the global API key, so any logged-in user can access any repo's data by crafting requests through the proxy. Fix: before forwarding, check that the logged-in user's GitHub account has access to the requested repo via their GitHub App installations. Also filter SSE events by repo. See "Basic multi-tenancy" under "New MVP functionality" for full design notes and tenancy model decision
 - [ ] **Full E2E test with BYOK** — test repo has been stripped clean (GitHub App removed, workflows removed, branch protection removed, DB cleaned). Ready for a full onboarding test from sign-out through to merged PR, verifying BYOK works end-to-end
 - [ ] **Manual setup path for `triaige init`** — print instructions when `gh` CLI unavailable. Then E2E test without `gh`
 - [ ] **Repo setup checklist on repo cards** — show setup steps (GitHub App, init, OpenAI key, first run) on repo cards, disappears when all complete
@@ -234,6 +206,8 @@ When `request.state.authenticated_repo` is set (per-repo key), pass the repo to 
 - [ ] **Error message sanitization** — several endpoints return raw exception text to callers (e.g., `f"GitHub API error: {e}"`), leaking implementation details. Wrap with generic messages in production; log the full error server-side
 - [ ] **CORS method/header wildcards** — `allow_methods=["*"]` and `allow_headers=["*"]` are broader than needed. Origins are properly restricted so actual risk is low. Tighten to explicit lists: methods `GET, POST, PUT, PATCH, DELETE`; headers `Content-Type, Authorization, X-GitHub-Token, X-OpenAI-Key`
 - [ ] **`/report-clean` input validation** — accepts raw JSON body without Pydantic model. `head_sha` not validated as hex, `pr_number` not validated as int. Values go to parameterized SQL so injection risk is nil, but defense-in-depth says validate at the boundary
+- [ ] **GitHub token readable from JWT cookie** — JWT is signed (HS256) but not encrypted. The payload (containing `github_token` and `refresh_token`) is base64-readable by anyone with access to the cookie. HTTP-only + secure + sameSite protects against most browser attacks, but a compromised machine could extract the token. Fix: use JWE (encrypted JWT) or move tokens to a server-side session store and keep only a session ID in the cookie. `apps/dashboard/src/lib/auth.ts` lines 18-26
+- [ ] **AUTH_SECRET minimum length not enforced** — `auth.ts` line 28 checks if `AUTH_SECRET` exists but doesn't enforce minimum length. A weak secret could be brute-forced. Add `secret.length >= 32` validation at startup
 
 **Test repo state:**
 - `dmcphillips13/test-triaige-onboarding` — fully stripped for E2E test (GitHub App removed, no workflows, no branch protection, DB cleaned including repo_settings row)
@@ -263,7 +237,7 @@ When `request.state.authenticated_repo` is set (per-repo key), pass the repo to 
   - **Tenancy model decision (2026-03-22): Tenant = GitHub App installation.** An org that installs the Triaige GitHub App is one tenant. All org members with repo access share runs, verdicts, and submissions — triage is a team activity. A solo user with a personal GitHub account installation is also a valid tenant (no org required). This mirrors Vercel, Codecov, and Chromatic.
   - **Dashboard multi-tenancy (after per-repo key fix):** The dashboard proxy currently forwards all requests with the global API key, meaning any logged-in user can access any repo's data by crafting requests through the proxy. Fix: before forwarding, the proxy must check that the logged-in user's GitHub account has access to the requested repo via their GitHub App installations. This is the gate between "CI keys are isolated" and "dashboard users are isolated." Also scope SSE event filtering by repo at the same time (currently all events go to all subscribers)
 - [ ] **Compliance mode** (from vision night 2026-03-21) — repo setting toggle (default: off) that enables e-signature modal, requirement ID tagging, immutable audit log, and PDF audit export. Makes Triaige enterprise-ready for any compliance-conscious buyer (SaMD, SOX, SOC 2). ~1-2 hour session. See `docs/strategy.md` compliance section and `docs/sequencing.md` §2 for full spec
-- [ ] **BYOK OpenAI key management (CRITICAL — build now)** — users must provide their own OpenAI API key. NEVER share the project owner's key with other users. Key stored encrypted at rest in `repo_settings` using pgcrypto AES-256. Encryption key as Render env var (separate from DB). Editable on dashboard settings page (masked display `sk-...xxxx`). Key validated against OpenAI on save. CI can also pass key via `X-OpenAI-Key` header (takes precedence over DB-stored key). No key = no classification (no fallback to shared key). See implementation plan below
+- [x] **BYOK OpenAI key management** — encrypted storage, per-request key resolution, settings UI, CLI prompt, CI header. Global key fallback removed. See AGENTS.md §13.1 for security rules
 - [ ] Multi-repo upstream diff resolution — build if a design partner needs it, skip if they don't
 
 ### Reliability fixes
@@ -271,6 +245,8 @@ When `request.state.authenticated_repo` is set (per-repo key), pass the repo to 
 - [ ] **Merged PR runs must not be actionable** — PR #78's run showed approve/reject buttons on the PR tab days after the PR merged. Dashboard should detect merged PRs and show the run as read-only
 - [ ] **Audit API functions for silent failures** — audit all mutation functions in `api.ts` for missing `res.ok` checks. Any mutation that doesn't surface errors is a ticking time bomb
 - [ ] **Submit flow smoke test** — automated test for runner's critical paths: submit + verdict storage, gate check, issue creation flow
+- [ ] **Handle pgcrypto decryption failures gracefully** — if `BYOK_ENCRYPTION_KEY` is rotated on Render, `pgp_sym_decrypt` throws an unhandled PostgreSQL error. Not a security issue (doesn't leak the key), but surfaces as a 500. Users would need to re-enter their OpenAI keys. Add try/except in `repo_settings.get_openai_key()` to return None with a warning log instead of crashing. Document the key rotation procedure
+- [ ] **BYOK_ENCRYPTION_KEY rotation procedure** — currently no migration path. If the key changes, all stored BYOK keys become unreadable. Document: (1) decrypt all keys with old key, (2) re-encrypt with new key, or (3) accept that users re-enter keys. Add a migration script if rotation is ever needed
 
 ### Onboarding polish
 - [ ] **Repos page doesn't update when a new repo is added to the GitHub App** — requires manual page refresh. Repos page is a server component; SSE doesn't cover new repo additions. Either add SSE event for repo changes or add a client-side refetch on focus
@@ -281,25 +257,6 @@ When `request.state.authenticated_repo` is set (per-repo key), pass the repo to 
 - [ ] **Delete stale PR comment on clean pass** — when `/report-clean` creates a passing check for a PR (all tests pass after baseline commit), delete any existing Triaige comments on that PR. Currently the old "action required" comment remains after the re-run passes
 - [ ] **Manual setup path for `triaige init` without `gh` CLI** — when `gh` is not available, print step-by-step manual instructions for setting repo secrets, adding workflow files, and configuring branch protection. Currently warns but doesn't provide the instructions
 - [ ] **Settings link should be on the repo-scoped runs page, not the repo card** — settings is a per-repo action and should be accessible from within the runs page (e.g., as a link/tab alongside the PR/Issues/Closed tabs), not from the repo card on the repos landing page
-
-### BYOK implementation plan
-
-**Security requirements:**
-- AES-256 encryption at rest via pgcrypto `pgp_sym_encrypt`/`pgp_sym_decrypt`
-- Encryption key stored as Render env var (`BYOK_ENCRYPTION_KEY`), separate from DB
-- Masked display on dashboard settings (`sk-...xxxx`), never show full key after save
-- Validate key against OpenAI models endpoint before storing
-- Key never appears in application logs
-- No fallback to shared key — no key = no classification (return error)
-- CI can pass key via `X-OpenAI-Key` header (takes precedence over DB)
-
-**Implementation steps:**
-1. **DB**: Enable pgcrypto extension, add `openai_api_key_encrypted BYTEA` column to `repo_settings`
-2. **Runner**: Add encrypt/decrypt helpers, `PUT /repos/{repo}/openai-key` endpoint (validates → encrypts → stores), `GET` returns masked version only. Update agent graph to read per-repo key (header first, then DB, then error)
-3. **Dashboard settings page**: Add OpenAI key field (password input, save button, masked display after save, delete button)
-4. **CLI (`triaige init`)**: Prompt for OpenAI key, set as GitHub secret `TRIAIGE_OPENAI_KEY`, update workflow template to pass as `X-OpenAI-Key` header
-5. **Setup checklist**: Add "OpenAI key configured" as a checklist item on repo cards
-6. **Remove global OpenAI key usage**: Runner must NEVER use the global `OPENAI_API_KEY` env var for user requests. Global key only for internal operations (if any)
 
 ### Market demo polish
 - [ ] **Known failure card states need fixing** — re-triggered CI runs produce non-actionable cards even when no action was taken on the previous run. Correct behavior: (1) **open GH issue exists** → card shown at bottom, non-actionable, links to the issue (informational only); (2) **pending issue (staged but not yet created)** → card shows a note that an issue is pending, but user can unselect and then approve baseline or re-stage; (3) **no action taken** → card is fully actionable. Only an opened issue makes a card non-actionable — pending is a draft decision the user can change each run
