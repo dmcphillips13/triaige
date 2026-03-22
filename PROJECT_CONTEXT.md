@@ -186,18 +186,20 @@ Last updated: 2026-03-21
 - [x] **Run-repo consistency in `/update-baselines` and `/create-issues`** — both endpoints accepted `req.repo` from the body without verifying the run belonged to that repo. A user with access to two repos could use a run_id from repo-a with `repo: "repo-b"` to commit baselines or create issues on the wrong repo. Fixed: added `run.repo != req.repo` check after fetching the run
 - [x] **Temp file cleanup in `post-failures.sh`** — CI script created `/tmp/results-enriched.json` and `/tmp/triaige-payload.json` but never deleted them. On self-hosted runners, another job could read the files. Fixed: `trap cleanup EXIT` removes both files on any exit
 
-**P0 — Next to build:**
-- [ ] **Setup banners on repos page and runs page** — settings page has the "Setup required" banner, but repos page cards and runs page need it too. Add `openai_key_configured: boolean` to `GET /repos/{repo}/settings` response. Repos page: subtle amber pill on cards. Runs page: banner at top
-- [ ] **Early return gate in `/triage-run`** — currently returns 400 when no OpenAI key is found, which causes CI to exit with error. Should create a GitHub check with `conclusion: "action_required"` and summary explaining the missing key (merge gate blocks), return 200 with `status: "setup_required"`, and `post-failures.sh` detects this and exits 0 with a warning (CI workflow green, merge still blocked by check). Check creation uses GitHub App installation token (not OpenAI key), so it works without BYOK. Requires `head_sha` and `repo` from `pr_context` — if missing, fall back to current 400 behavior
-- [ ] **Empty `X-OpenAI-Key` header validation** — `_resolve_openai_key` correctly treats empty string as falsy, but `post-failures.sh` sends `${OPENAI_API_KEY:-}` which is empty when the secret is unset. Verified safe (empty string is falsy in Python). Add explicit `.strip()` check as defense-in-depth
+**P0 — Done this session:**
+- [x] **Setup banners on repos page and runs page** — amber "Setup required" pill on repo cards, banner with settings link on runs page. `openai_key_configured` field added to `GET /repos/{repo}/settings` response
+- [x] **Early return gate in `/triage-run`** — creates a GitHub check with `conclusion: "action_required"` and returns 200 with `status: "setup_required"` when no OpenAI key. `post-failures.sh` detects this and exits 0. Merge gate blocks with clear message
+- [x] **Empty `X-OpenAI-Key` header validation** — `.strip()` check on header value
+- [x] **`triaige init` re-run guard** — detects existing workflow file, exits with pointers to dashboard/CLI for updates
+- [x] **Full E2E test with BYOK** — complete clean-slate test on `dmcphillips13/test-triaige-onboarding` PR #4: sign in → App install → setup pill visible → configure key → pill gone → `triaige init` → PR with visual change → CI classification (expected, 90%) → PR comment + merge gate → approve → baseline committed → gate passed → run auto-closed → merge → close-pr-runs cleanup succeeded
 
 **P1 — Blocking for onboarding:**
 - [ ] **Dashboard multi-tenancy** — the dashboard proxy forwards all requests with the global API key, so any logged-in user can access any repo's data by crafting requests through the proxy. Fix: before forwarding, check that the logged-in user's GitHub account has access to the requested repo via their GitHub App installations. Also filter SSE events by repo. See "Basic multi-tenancy" under "New MVP functionality" for full design notes and tenancy model decision
-- [ ] **Full E2E test with BYOK** — test repo has been stripped clean (GitHub App removed, workflows removed, branch protection removed, DB cleaned). Ready for a full onboarding test from sign-out through to merged PR, verifying BYOK works end-to-end
 - [ ] **Manual setup path for `triaige init`** — print instructions when `gh` CLI unavailable. Then E2E test without `gh`
 - [ ] **Repo setup checklist on repo cards** — show setup steps (GitHub App, init, OpenAI key, first run) on repo cards, disappears when all complete
 - [ ] **Rate limiting** — no rate limiting on any endpoint. Risks: brute-forcing API keys, flooding `/triage-run` (triggers OpenAI calls billed to BYOK key + consumes Render compute), flooding `/ask`. Add middleware-level rate limiting before onboarding external users. Consider per-IP and per-API-key limits separately
 - [ ] **SSE connection limit** — `_subscribers` in `events.py` is an unbounded list with unbounded `asyncio.Queue` per subscriber. An authenticated caller (or buggy dashboard with reconnection loops) can exhaust server memory. Add a subscriber cap (e.g., 50) and bounded queue size (e.g., maxsize=100). Drop oldest subscriber when cap is reached
+- [ ] **Do NOT publish CLI to npm until self-serve is ready** — the CLI has the runner URL hardcoded. Publishing lets anyone with a GitHub account sign in, install the App, get an API key, and run triage against our infrastructure (Render, Neon DB, Qdrant). BYOK means they pay for OpenAI, but they consume our compute, storage, and Qdrant capacity with no limits. Prerequisites before publishing: dashboard multi-tenancy, rate limiting, Qdrant collection isolation per tenant, invite code or waitlist gate on API key generation. For design partners before that: share the CLI as a local checkout or private tarball, not via npm
 
 **P2 — Quality:**
 - [ ] **Classification accuracy** — dark theme PR classified as "unexpected" despite clear PR description. May be a minimal-repo context problem vs prompt problem
@@ -210,7 +212,7 @@ Last updated: 2026-03-21
 - [ ] **AUTH_SECRET minimum length not enforced** — `auth.ts` line 28 checks if `AUTH_SECRET` exists but doesn't enforce minimum length. A weak secret could be brute-forced. Add `secret.length >= 32` validation at startup
 
 **Test repo state:**
-- `dmcphillips13/test-triaige-onboarding` — fully stripped for E2E test (GitHub App removed, no workflows, no branch protection, DB cleaned including repo_settings row)
+- `dmcphillips13/test-triaige-onboarding` — fully configured after E2E test (GitHub App installed, workflows in place, branch protection with merge gate, BYOK key set via dashboard, baselines committed). PR #4 merged successfully with full triage flow
 
 ### Vision night 2026-03-21 — GTM sharpening + compliance mode
 - **Primary GTM target identified:** frustrated Percy/Chromatic customers at mid-market B2B SaaS companies (10-30 engineers, complex UIs, already paying $200-500/mo for visual testing). Product substitution pitch, not category creation
@@ -274,6 +276,14 @@ Last updated: 2026-03-21
 - [ ] Upgrade Render to paid tier ($7/mo — eliminate cold starts)
 - [ ] Add favicon to dashboard — currently shows default Vercel icon. Use the red plus sign from the logo
 - [ ] **Classification regression library** — build up a library of sample app PRs with known expected outcomes (expected/unexpected/uncertain) across visual and functional failures. Use as a repeatable regression suite when changing prompts, classification logic, or adding new failure types. Start by keeping PRs created during feature work (functional test support, prompt refinements) as reference scenarios rather than creating them separately. Include edge cases over time: mixed-scope PRs, empty diffs, vague descriptions, large diffs
+- [ ] **Multi-PR interaction test matrix** — scenarios that test how the system behaves when multiple PRs overlap and affect each other's state. These will surface naturally with design partners but should be documented now so we know what to watch for:
+  - **Concurrent PRs on same component:** PR A and PR B both change the same baseline. A merges first. Does B's next run compare against A's new baseline or the old one?
+  - **Baseline staleness after merge:** PR A approves and commits a baseline. PR B was opened before A merged. B's next CI run should use A's updated baseline, not the original
+  - **Approved then superseded:** PR A approves a baseline, commits it to branch. Developer pushes another commit to A. Does the old approval get invalidated? Does the new run compare against the committed baseline or the original?
+  - **Rebase after upstream baseline change:** PR B needs to rebase after PR A merges with a baseline update. Does the rebase pick up the new baseline? Does the next CI run classify the diff correctly?
+  - **Known failure interaction:** PR A files an issue for an unexpected failure. PR B is opened and hits the same test. Does B see it as a known failure (non-actionable) or a new failure?
+  - **Merge gate with mixed state:** PR has 3 failures — 2 approved, 1 pending. Does the gate stay blocked? What if the pending failure becomes a known failure from another PR merging?
+  - Don't build a formal test harness — observe these scenarios with design partner repos and document what breaks
 
 ### Go to market polish
 - ~~Security fixes — medium (error message sanitization, rate limiting, SSE subscriber cap)~~ — moved to P1/P2 above with detailed notes
