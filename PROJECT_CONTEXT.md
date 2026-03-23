@@ -1,6 +1,6 @@
 # PROJECT_CONTEXT.md — Triaige (Session Handoff)
 
-Last updated: 2026-03-22
+Last updated: 2026-03-23
 
 ---
 
@@ -181,6 +181,48 @@ Tenant = GitHub App installation. An org that installs the Triaige GitHub App is
 **Confirmed:** Render already on Starter tier ($7/mo), no cold starts.
 
 **Next:** Error message sanitization (3 instances in main.py, plan ready — awaiting approval to build), then favicon, close-pr-runs.yml squash/rebase support, classification accuracy confirmation, CLI npm publish. Full E2E verification after all pre-partner work is complete.
+
+### Session 2026-03-23 — Security hardening, Essential + Important items
+
+**Process improvements:**
+- Strengthened agent verification rules: AGENTS.md rules 9 (verify before planning) and 10 (mandatory security audit checklist with visible output)
+- New memory files: verify-before-planning, honesty-over-confidence
+- Security audit checklist requires: search entire vulnerability class, trace end-to-end, check related patterns, present what was found AND ruled out
+
+**Error message sanitization (4 instances, not 3):**
+- Sanitized `HTTPException` detail fields in `/update-baselines` (2 instances), `/create-issues`, and `known-failures/{id}/close` response body
+- All leaked Python exception text (httpx URLs, token context) replaced with generic messages
+- Full details logged server-side only. Verified proxy passthrough reaches browser (route.ts line 174)
+
+**Favicon:**
+- Red plus sign exported from Figma, transparent background, 16/32/48px sizes
+- Replaced default Vercel triangle
+
+**Merge strategy support:**
+- `close-pr-runs.yml` and `post-failures.sh` now support squash-and-merge (regex) and rebase-and-merge (GitHub API fallback)
+- `resolve_pr_number()` helper function in post-failures.sh eliminates duplication across 3 call sites
+- Verified: GitHub API `commits/{sha}/pulls` works for all 3 strategies (tested against real commits)
+
+**Qdrant tenant isolation:**
+- Episodes tagged with `repo` on storage, filtered by `repo` on retrieval
+- No repo context = no episodes returned (defense in depth, not all episodes)
+- `repo` payload index created at app startup via `ensure_collection()` in lifespan hook
+- Verified against live Qdrant: index creation, idempotency, filter exclusion of untagged points
+
+**Known failure state sync:**
+- `/triage-run` now verifies linked GitHub issues are still open before filtering failures as "known"
+- Auto-closes stale `known_failures` rows where the issue was closed externally on GitHub
+- Fails open: GitHub API unavailability doesn't break triage
+- Uses single GitHub App installation token for all checks (no per-issue token overhead)
+
+**Collapsed cards fix:**
+- Removed `!verdict` gate that hid rationale, screenshots, and error details after approve/reject
+- Users can now review full analysis after voting
+
+**E2E test plan updated:**
+- Added verification steps for: known failure state sync, merge strategy support, Qdrant tenant isolation, error message sanitization
+
+**Next:** Manual setup path without `gh` CLI, then functional failure follow-ups, then Nice-to-have items, then full E2E verification pass.
 
 ### Session 2026-03-22 (evening) — Security hardening + P0 features + E2E test
 
