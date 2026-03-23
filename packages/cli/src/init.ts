@@ -245,6 +245,14 @@ export async function init(): Promise<void> {
         `  ${chalk.yellow("!")} Could not push workflow files — commit and push manually`
       );
     }
+  } else {
+    console.log();
+    console.log(chalk.yellow("Commit and push the generated files manually:"));
+    console.log();
+    console.log(`  ${chalk.cyan("git add .github/workflows/ scripts/")}`);
+    console.log(`  ${chalk.cyan('git commit -m "Add Triaige CI integration"')}`);
+    console.log(`  ${chalk.cyan("git push")}`);
+    console.log();
   }
 
   // Step 9: Generate baselines in CI (optional but recommended)
@@ -271,6 +279,15 @@ export async function init(): Promise<void> {
         )
       );
     }
+  } else if (playwrightResult.configPath) {
+    console.log();
+    console.log(chalk.yellow("Generate initial baselines before your first PR:"));
+    console.log();
+    console.log(`  Option 1: Run the "Update Snapshots" workflow from GitHub Actions`);
+    console.log(`  Option 2: Generate locally and commit:`);
+    console.log(`    ${chalk.cyan("npx playwright test --update-snapshots")}`);
+    console.log(`    ${chalk.cyan("git add -A && git commit -m 'Add baseline screenshots' && git push")}`);
+    console.log();
   }
 
   // Step 10: Branch protection (after baselines, so pushes aren't blocked)
@@ -293,6 +310,15 @@ export async function init(): Promise<void> {
     } else {
       console.log(chalk.dim("  Skipped branch protection setup"));
     }
+  } else {
+    console.log();
+    console.log(chalk.yellow("To enable the merge gate, set up branch protection manually:"));
+    console.log();
+    console.log("  Go to your repo → Settings → Branches → Add branch protection rule");
+    console.log(`  Branch name pattern: ${chalk.cyan("main")}`);
+    console.log(`  Check: ${chalk.cyan("Require status checks to pass before merging")}`);
+    console.log(`  Add required check: ${chalk.cyan("Triaige Visual Regression")}`);
+    console.log();
   }
 
   // Step 11: Check GitHub App via runner
