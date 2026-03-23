@@ -35,28 +35,27 @@ Last updated: 2026-03-23
 - [x] Error message sanitization — 4 instances in main.py where exception text (GitHub API URLs) leaked to callers via HTTPException detail and response body. Replaced with generic messages, details logged server-side
 - [x] Favicon — red plus sign from logo, exported from Figma, transparent background
 - [x] close-pr-runs.yml merge strategy support — squash-and-merge (regex), rebase-and-merge (GitHub API fallback). Helper function in post-failures.sh eliminates duplication
-- [ ] Classification accuracy + rationale quality — confirm GPT-5.4-nano resolved dark theme misclassification (PR #3, 72% "unexpected"). Test before investing time
-- [ ] **Publish CLI to npm** — polished `npx triaige init` experience for partners. Prerequisites: Qdrant collection isolation (below) and invite/waitlist gate on API key generation
-
-**Important — should do before partners, survivable if not:**
 - [x] Known failure card states — sync GitHub issue state during /triage-run; auto-close stale known failures where the GitHub issue was closed externally; fails open if GitHub API unavailable
 - [x] Collapsed cards missing rationale/screenshots — removed !verdict gate that hid rationale and screenshots after approve/reject
 - [x] Manual setup path without `gh` CLI — added manual instructions for commit/push, baseline generation, and branch protection when `gh` is unavailable
 - [x] Qdrant collection isolation per tenant — episodes now tagged with repo and filtered on retrieval. No repo = no episodes (defense in depth). Existing untagged episodes excluded by filter, will age out. Repo payload index created at startup
 - [ ] Invite code or waitlist gate on API key generation — CLI publish prerequisite. Prevents open access to the platform via npm
-- [ ] Functional failure follow-ups — classification accuracy for functional tests + E2E verification of mixed visual + functional flow (card rendering, submit, merge gate, issue materialization)
+- [ ] **Publish CLI to npm** — polished `npx triaige init` experience for partners. Prerequisites: Qdrant collection isolation (done) and invite/waitlist gate (above)
+- [ ] **E2E verification** — classification accuracy (visual + functional), rationale quality, mixed visual + functional flow (card rendering, submit, merge gate, issue materialization). See `docs/e2e-test-plan.md` for full test plan
 
-**Nice-to-have — polish that helps but not critical:**
+**Build before presenting — UX polish:**
 - [ ] Disable actions on superseded PR runs — banner + disable buttons when newer commit pushed
 - [ ] PR cards link to GitHub PR — title shown but not clickable
 - [ ] Failure card sort order — expected → uncertain → unexpected by confidence desc
+- [ ] Closing a GitHub issue doesn't sync to Issues tab (need webhook)
+
+**Build before presenting — minor polish:**
 - [ ] Settings link on runs page — move from repo card to runs page
 - [ ] Repos page doesn't update on App change — requires manual refresh
 - [ ] Stale PR comment cleanup on clean pass — old Triaige comments linger after baseline commit
 - [ ] Show known failures as non-actionable section at bottom of run detail
 - [ ] Data migration strategy for breaking runner changes — needed if schema changes during a trial
 - [ ] Drift-on-merge comment doesn't fire when all failures are known
-- [ ] Closing a GitHub issue doesn't sync to Issues tab (need webhook)
 - [ ] Issues tab: PR link pill and issue link pill
 - [ ] Issues tab: diff overlay disabled
 - [ ] Issues tab count doesn't update via SSE on merge
@@ -98,7 +97,7 @@ Last updated: 2026-03-23
 - [ ] Auto-approve baselines above confidence threshold
 - [ ] Mobile optimization
 
-**Gate: E2E verification of all critical items (21-point checklist above), then work through Essential → Important → Nice-to-have before onboarding test partners**
+**Gate: Full E2E verification pass (docs/e2e-test-plan.md), then work through all tiers before onboarding test partners**
 
 ---
 
