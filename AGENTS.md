@@ -499,7 +499,12 @@ When making changes:
 6. Stop after each step for review before committing.
 7. Add documentation to every new file (Python and TypeScript/TSX). For Python: module docstrings and one-line docstrings on public functions. For TypeScript/TSX: a top-of-file `//` comment block explaining the file's purpose, key design decisions, and how it fits into the system. For React components: document props and non-obvious behavior. Keep it concise — enough that a new reader understands the "what" and "why" without reading every line.
 8. **NEVER guess or fabricate commands, file paths, function names, or API details.** Always search the codebase first. If you don't know the entry point, read `package.json`. If you don't know the function signature, read the file. If you don't know the CLI syntax, check the existing usage. Getting it wrong erodes trust — taking 5 seconds to verify is always worth it. When uncertain, say "I'm not sure, let me check" — a confident wrong answer is far worse than an honest verification.
-9. **Verify before planning.** Before presenting any plan, read the actual code you intend to change. Confirm line numbers, function signatures, and current behavior against the live codebase — never rely on memory or prior session notes alone. For security work, verify the vulnerability exists by reading the code path end-to-end. A plan based on stale assumptions is a wrong plan.
+9. **Verify before planning.** Before presenting any plan, read the actual code you intend to change. Confirm line numbers, function signatures, and current behavior against the live codebase — never rely on memory or prior session notes alone. A plan based on stale assumptions is a wrong plan.
+10. **Security audit checklist (mandatory for security/sensitive changes).** For any change involving security, data leakage, auth, or sensitive information, complete ALL of the following and present the results visibly in the plan:
+    - **Search for the entire vulnerability class** — don't just verify known instances. Grep for every pattern that could match. List the searches you ran.
+    - **Trace each instance end-to-end** — confirm whether it reaches an external caller (check proxies, middleware, response construction). Show the chain.
+    - **Check for related patterns** — look for near-misses and variants. List what you checked and ruled out, and why.
+    - **Present what you found AND what you ruled out** — the ruled-out list lets the reviewer verify your coverage without re-doing the search.
 
 Commit messages: plain imperative sentences (e.g., "Add GitHub API client for PR context"). No conventional-commit prefixes. No co-authorship attribution. No references to plan steps.
 
