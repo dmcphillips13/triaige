@@ -336,22 +336,30 @@ async def get_existing_failure_test_names(repo: str) -> set[str]:
     return {row["test_name"] for row in rows}
 
 
-async def get_existing_failures_with_issues(repo: str) -> dict[str, str]:
-    """Get test names with their issue URLs for open known failures.
+async def get_existing_failures_with_issues(repo: str) -> dict[str, dict]:
+    """Get test names with their issue details for open known failures.
 
-    Returns {test_name: issue_url} for the most recent known failure per test.
+    Returns {test_name: {"id": int, "issue_url": str, "issue_number": int}}
+    for the most recent known failure per test.
     """
     pool = get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            """SELECT DISTINCT ON (test_name) test_name, issue_url
+            """SELECT DISTINCT ON (test_name) id, test_name, issue_url, issue_number
                FROM known_failures
                WHERE repo = $1
                  AND closed_at IS NULL
                ORDER BY test_name, created_at DESC""",
             repo,
         )
-    return {row["test_name"]: row["issue_url"] for row in rows}
+    return {
+        row["test_name"]: {
+            "id": row["id"],
+            "issue_url": row["issue_url"],
+            "issue_number": row["issue_number"],
+        }
+        for row in rows
+    }
 
 
 

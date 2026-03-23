@@ -441,6 +441,35 @@ async def _resolve_openai_key(request: Request, repo: str | None) -> str:
     )
 
 
+async def _sync_known_failure_states(repo: str, existing: dict[str, dict]) -> dict[str, dict]:
+    """Verify known failure issues are still open on GitHub. Auto-close stale entries.
+
+    Fails open: if the GitHub API is unavailable, returns the original dict unchanged.
+    """
+    if not existing:
+        return existing
+    try:
+        from app.tools.github_checks import _get_client
+        client = await asyncio.to_thread(_get_client, repo)
+        stale_tests = []
+        for test_name, info in existing.items():
+            try:
+                resp = client.get(f"/repos/{repo}/issues/{info['issue_number']}")
+                if resp.status_code != 200 or resp.json().get("state") != "open":
+                    stale_tests.append(test_name)
+                    await store.close_known_failure(info["id"])
+                    logger.info("Auto-closed stale known failure: %s (issue #%s %s)",
+                                test_name, info["issue_number"],
+                                "not found" if resp.status_code != 200 else "closed")
+            except Exception as e:
+                logger.warning("Failed to check issue #%s for %s: %s", info["issue_number"], test_name, e)
+        for t in stale_tests:
+            del existing[t]
+    except Exception as e:
+        logger.warning("Skipping known failure sync for %s: %s", repo, e)
+    return existing
+
+
 @app.post("/ask", response_model=AskResponse)
 async def ask(req: AskRequest, request: Request):
     repo = req.pr_context.repo if req.pr_context else None
@@ -523,6 +552,8 @@ async def triage_run(req: TriageRunRequest, request: Request):
     if repo:
         existing = await store.get_existing_failures_with_issues(repo)
         if existing:
+            # Verify issues are still open on GitHub; auto-close stale entries
+            existing = await _sync_known_failure_states(repo, existing)
             skipped_requests = [
                 r for r in ask_requests
                 if extract_test_name(r) in existing
@@ -537,7 +568,7 @@ async def triage_run(req: TriageRunRequest, request: Request):
                 skipped_known.append({
                     "test_name": test_name,
                     "screenshot": screenshot,
-                    "issue_url": existing.get(test_name),
+                    "issue_url": existing.get(test_name, {}).get("issue_url"),
                 })
 
     # --- Skip failures with pending (deferred) issues on the same PR ---

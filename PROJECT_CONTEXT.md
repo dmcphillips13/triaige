@@ -39,7 +39,7 @@ Last updated: 2026-03-22
 - [ ] **Publish CLI to npm** — polished `npx triaige init` experience for partners. Prerequisites: Qdrant collection isolation (below) and invite/waitlist gate on API key generation
 
 **Important — should do before partners, survivable if not:**
-- [ ] Known failure card states — re-triggered CI runs produce non-actionable cards incorrectly
+- [x] Known failure card states — sync GitHub issue state during /triage-run; auto-close stale known failures where the GitHub issue was closed externally; fails open if GitHub API unavailable
 - [ ] Collapsed cards missing rationale/screenshots — "Show details" after verdict shows incomplete info
 - [ ] Manual setup path without `gh` CLI — print step-by-step instructions when `gh` unavailable
 - [x] Qdrant collection isolation per tenant — episodes now tagged with repo and filtered on retrieval. No repo = no episodes (defense in depth). Existing untagged episodes excluded by filter, will age out. Repo payload index created at startup
