@@ -57,6 +57,9 @@ export async function fetchConnectedRepos(): Promise<ConnectedRepo[]> {
       headers: { Authorization: `Bearer ${session.github_token}` },
     }
   );
+  if (installRes.status === 401) {
+    throw new Error("GitHub authentication expired");
+  }
   if (!installRes.ok) return repos;
   const { installations } = await installRes.json();
 

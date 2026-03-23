@@ -30,7 +30,7 @@ Last updated: 2026-03-22
   - **Deferred — Group B (PR merge status check):** dashboard check for actual PR merge status via GitHub API. Not needed if Group A makes `/report-clean` robust. Existing stale runs can be manually closed. Revisit if stale actionable runs recur
   - **Testing:** see `docs/e2e-test-plan.md` for full step-by-step test plan (includes /report-clean validation, error handling, and full merge flow)
 **Essential — do before test partners:**
-- [ ] Empty repos page after overnight session — OAuth expires, shows blank page instead of redirect to sign-in
+- [x] Empty repos page after overnight session (fixed) — three-layer fix: getSession() returns null on dead token (clears cookie), app layout redirects to sign-in when session is null, fetchConnectedRepos() throws on 401 instead of returning empty array
 - [x] Render paid tier ($7/mo) — already on Starter, no cold starts
 - [ ] Error message sanitization — GitHub API errors leak internal URLs and token context to users
 - [ ] Favicon — use red plus sign from logo (default Vercel icon signals "unfinished")

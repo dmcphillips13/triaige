@@ -117,7 +117,12 @@ export async function getSession(): Promise<Session | null> {
           user_avatar: session.user_avatar,
         };
       }
-      // Refresh failed — return existing session, it may still work
+      // Refresh failed — if the token is past expiry, the session is dead
+      if (Date.now() > expiresAt) {
+        await clearSession();
+        return null;
+      }
+      // Token not yet expired, return existing session (may still work briefly)
     }
 
     return session;
