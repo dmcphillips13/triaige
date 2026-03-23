@@ -32,6 +32,7 @@ def store_episode(
     result: TriageFailureResult,
     verdict: str,
     run_id: str,
+    repo: str | None = None,
 ) -> str:
     """Build an episode from a triage result + human verdict, embed, and upsert.
 
@@ -74,6 +75,8 @@ def store_episode(
         "original_rationale": res.rationale,
         "chunk_index": 0,
     }
+    if repo:
+        payload["repo"] = repo
 
     vector = embed_texts([text])[0]
 

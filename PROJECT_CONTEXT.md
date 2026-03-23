@@ -42,7 +42,7 @@ Last updated: 2026-03-22
 - [ ] Known failure card states — re-triggered CI runs produce non-actionable cards incorrectly
 - [ ] Collapsed cards missing rationale/screenshots — "Show details" after verdict shows incomplete info
 - [ ] Manual setup path without `gh` CLI — print step-by-step instructions when `gh` unavailable
-- [ ] Qdrant collection isolation per tenant — episodic memories mix across tenants. Not exploitable but sloppy. CLI publish prerequisite
+- [x] Qdrant collection isolation per tenant — episodes now tagged with repo and filtered on retrieval. No repo = no episodes (defense in depth). Existing untagged episodes excluded by filter, will age out. Repo payload index created at startup
 - [ ] Invite code or waitlist gate on API key generation — CLI publish prerequisite. Prevents open access to the platform via npm
 - [ ] Functional failure follow-ups — classification accuracy for functional tests + E2E verification of mixed visual + functional flow (card rendering, submit, merge gate, issue materialization)
 

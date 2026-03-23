@@ -48,7 +48,7 @@ def ensure_collection(collection: str | None = None) -> None:
             ),
         )
     # Ensure payload indexes exist for filtered search
-    for field in ("doc_type", "component"):
+    for field in ("doc_type", "component", "repo"):
         client.create_payload_index(
             collection_name=collection,
             field_name=field,
@@ -78,9 +78,10 @@ def search(
     top_k: int = 5,
     doc_type: str | None = None,
     component: str | None = None,
+    repo: str | None = None,
     collection: str | None = None,
 ) -> list[RetrievedDocument]:
-    """Dense cosine search with optional doc_type/component filters."""
+    """Dense cosine search with optional doc_type/component/repo filters."""
     collection = collection or settings.qdrant_collection
     client = get_qdrant_client()
 
@@ -89,6 +90,8 @@ def search(
         conditions.append(FieldCondition(key="doc_type", match=MatchValue(value=doc_type)))
     if component:
         conditions.append(FieldCondition(key="component", match=MatchValue(value=component)))
+    if repo:
+        conditions.append(FieldCondition(key="repo", match=MatchValue(value=repo)))
     query_filter = Filter(must=conditions) if conditions else None
 
     results = client.query_points(

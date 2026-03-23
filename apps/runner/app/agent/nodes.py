@@ -235,11 +235,19 @@ def retrieve_episodes(state: AgentState) -> dict:
     if not query_vector:
         return {"episode_docs": []}
 
+    # Tenant isolation: only retrieve episodes for the requesting repo.
+    # If no repo context, skip episode retrieval to avoid cross-tenant leakage.
+    pr = state.get("pr_context")
+    repo = pr.repo if pr else None
+    if not repo:
+        return {"episode_docs": []}
+
     try:
         docs = qdrant_store.search(
             query_vector=query_vector,
             top_k=3,
             doc_type="episode",
+            repo=repo,
         )
         return {"episode_docs": docs}
     except Exception as e:

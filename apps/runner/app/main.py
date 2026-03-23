@@ -68,6 +68,8 @@ logging.getLogger().addFilter(_KeyRedactingFilter())
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    from app.retrieval.qdrant_store import ensure_collection
+    await asyncio.to_thread(ensure_collection)
     yield
     await close_db()
 
@@ -922,7 +924,7 @@ async def feedback(req: FeedbackRequest, request: Request):
     if openai_key:
         from app.request_context import openai_api_key_var
         openai_api_key_var.set(openai_key)
-        point_id = await asyncio.to_thread(store_episode, result, req.verdict, req.run_id)
+        point_id = await asyncio.to_thread(store_episode, result, req.verdict, req.run_id, run_repo)
         return {"status": "stored", "point_id": point_id}
 
     logger.warning("No OpenAI key for %s — verdict saved but episode not stored", run_repo)
