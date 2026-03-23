@@ -18,14 +18,18 @@ jobs:
           TRIAIGE_API_KEY: ${{ secrets.TRIAIGE_API_KEY }}
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Extract PR number from merge commit message (squash/merge commits)
+          # Extract PR number — supports merge commits, squash-and-merge, and rebase-and-merge
           MERGE_MSG=$(git log -1 --format="%s" HEAD)
           PR_NUMBER=""
+          # 1. Merge commit: "Merge pull request #42 from ..."
           if [[ "$MERGE_MSG" =~ Merge\ pull\ request\ \#([0-9]+) ]]; then
             PR_NUMBER="${BASH_REMATCH[1]}"
           fi
-
-          # Fallback: query GitHub API for associated PR (rebase/fast-forward merges)
+          # 2. Squash-and-merge: "PR title (#42)"
+          if [ -z "$PR_NUMBER" ] && [[ "$MERGE_MSG" =~ \(#([0-9]+)\) ]]; then
+            PR_NUMBER="${BASH_REMATCH[1]}"
+          fi
+          # 3. Rebase-and-merge (no PR in message): query GitHub API
           if [ -z "$PR_NUMBER" ]; then
             PR_NUMBER=$(gh api repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls --jq '.[0].number' 2>/dev/null || true)
           fi

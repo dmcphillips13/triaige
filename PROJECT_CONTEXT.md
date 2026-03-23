@@ -34,7 +34,7 @@ Last updated: 2026-03-22
 - [x] Render paid tier ($7/mo) — already on Starter, no cold starts
 - [x] Error message sanitization — 4 instances in main.py where exception text (GitHub API URLs) leaked to callers via HTTPException detail and response body. Replaced with generic messages, details logged server-side
 - [x] Favicon — red plus sign from logo, exported from Figma, transparent background
-- [ ] close-pr-runs.yml merge strategy support — squash-and-merge, rebase-and-merge. Common workflow; runs won't auto-close without this
+- [x] close-pr-runs.yml merge strategy support — squash-and-merge (regex), rebase-and-merge (GitHub API fallback). Helper function in post-failures.sh eliminates duplication
 - [ ] Classification accuracy + rationale quality — confirm GPT-5.4-nano resolved dark theme misclassification (PR #3, 72% "unexpected"). Test before investing time
 - [ ] **Publish CLI to npm** — polished `npx triaige init` experience for partners. Prerequisites: Qdrant collection isolation (below) and invite/waitlist gate on API key generation
 

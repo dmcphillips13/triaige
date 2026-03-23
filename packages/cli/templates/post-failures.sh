@@ -20,6 +20,25 @@ set -euo pipefail
 cleanup() { rm -f /tmp/results-enriched.json /tmp/triaige-payload.json; }
 trap cleanup EXIT
 
+# Resolve PR number from a commit — supports merge commits, squash-and-merge,
+# and rebase-and-merge. Uses commit message regex first, then GitHub API fallback.
+# Usage: PR_NUM=$(resolve_pr_number "$COMMIT_SHA")
+resolve_pr_number() {
+  local sha="$1"
+  local msg
+  msg=$(git log -1 --format="%s" "$sha" 2>/dev/null || echo "")
+  # 1. Merge commit: "Merge pull request #42 from ..."
+  if [[ "$msg" =~ Merge\ pull\ request\ \#([0-9]+) ]]; then
+    echo "${BASH_REMATCH[1]}"; return
+  fi
+  # 2. Squash-and-merge: "PR title (#42)"
+  if [[ "$msg" =~ \(#([0-9]+)\) ]]; then
+    echo "${BASH_REMATCH[1]}"; return
+  fi
+  # 3. Rebase-and-merge (no PR in message): query GitHub API
+  gh api "repos/${GITHUB_REPOSITORY}/commits/${sha}/pulls" --jq '.[0].number' 2>/dev/null || true
+}
+
 RESULTS_FILE="${1:-test-results/results.json}"
 
 if [ ! -f "$RESULTS_FILE" ]; then
@@ -42,13 +61,10 @@ if [ "$UNEXPECTED" -eq 0 ]; then
     fi
   fi
 
-  # For push-to-main events, extract PR number from merge commit message
+  # For push-to-main events, extract PR number (merge, squash, or rebase)
   CLEAN_EVENT="${GITHUB_EVENT_NAME:-}"
   if [ "$CLEAN_EVENT" = "push" ] && [ -z "$CLEAN_PR_NUMBER" ]; then
-    MERGE_MSG=$(git log -1 --format="%s" "$GITHUB_SHA" 2>/dev/null || echo "")
-    if [[ "$MERGE_MSG" =~ Merge\ pull\ request\ \#([0-9]+) ]]; then
-      CLEAN_PR_NUMBER="${BASH_REMATCH[1]}"
-    fi
+    CLEAN_PR_NUMBER=$(resolve_pr_number "$GITHUB_SHA")
   fi
 
   curl -s -X POST "${TRIAIGE_RUNNER_URL}/report-clean" \
@@ -64,11 +80,7 @@ fi
 if [ "${GITHUB_EVENT_NAME:-}" = "push" ]; then
   echo "Push to main with $UNEXPECTED failure(s) — closing pre-merge runs only"
 
-  MERGE_MSG=$(git log -1 --format="%s" "$GITHUB_SHA" 2>/dev/null || echo "")
-  PUSH_PR_NUMBER=""
-  if [[ "$MERGE_MSG" =~ Merge\ pull\ request\ \#([0-9]+) ]]; then
-    PUSH_PR_NUMBER="${BASH_REMATCH[1]}"
-  fi
+  PUSH_PR_NUMBER=$(resolve_pr_number "$GITHUB_SHA")
 
   curl -s -X POST "${TRIAIGE_RUNNER_URL}/report-clean" \
     -H "Content-Type: application/json" \
@@ -117,9 +129,9 @@ PR_TITLE=""
 CHANGED_FILES="[]"
 COMMIT_MESSAGES="[]"
 
-# Try to extract PR number from merge commit if not provided via env var
-if [ -z "$PR_NUMBER" ] && [[ "$COMMIT_MSG" =~ Merge\ pull\ request\ \#([0-9]+) ]]; then
-  PR_NUMBER="${BASH_REMATCH[1]}"
+# Try to extract PR number if not provided via env var (merge, squash, or rebase)
+if [ -z "$PR_NUMBER" ]; then
+  PR_NUMBER=$(resolve_pr_number "$GITHUB_SHA")
 fi
 
 if [ -n "$PR_NUMBER" ]; then
