@@ -193,75 +193,71 @@ export function FailureCard({
         return null;
       })()}
 
-      {/* Rationale + screenshots — collapse when verdict is selected */}
-      {!verdict && (
-        <>
-          <div className="border-t border-zinc-100 px-4 py-3">
+      {/* Rationale + screenshots — always visible so users can review after verdict */}
+      <div className="border-t border-zinc-100 px-4 py-3">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+          Rationale
+        </h4>
+        <MarkdownContent text={res.rationale} />
+      </div>
+
+      {/* Error details for functional failures */}
+      {isFunctional && res.error_message && (
+        <div className="border-t border-zinc-100 px-4 py-3">
+          <button
+            onClick={() => setErrorExpanded(!errorExpanded)}
+            className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-zinc-400 hover:text-zinc-600"
+          >
+            {errorExpanded ? (
+              <ChevronDown className="h-3 w-3" />
+            ) : (
+              <ChevronRight className="h-3 w-3" />
+            )}
+            Error Details
+          </button>
+          {errorExpanded && (
+            <pre className="mt-2 overflow-x-auto rounded bg-zinc-50 p-3 text-xs text-zinc-700 font-mono whitespace-pre-wrap">
+              {res.error_message}
+            </pre>
+          )}
+        </div>
+      )}
+
+      {/* Failure screenshot for functional tests (single image, no comparison) */}
+      {isFunctional && !result.screenshot_baseline && result.screenshot_actual && (
+        <div className="border-t border-zinc-100 px-4 py-4">
+          <div className="flex items-center justify-between">
             <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-              Rationale
+              Failure Screenshot
             </h4>
-            <MarkdownContent text={res.rationale} />
+            <button
+              onClick={() => setScreenshotFullscreen(true)}
+              className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-600 transition-colors"
+            >
+              <Maximize2 className="h-3 w-3" />
+              Expand
+            </button>
           </div>
+          <div className="mt-2 max-w-md">
+            <img
+              src={`data:image/png;base64,${result.screenshot_actual}`}
+              alt="Failure screenshot"
+              className="max-h-[250px] w-full object-contain rounded border border-zinc-200 cursor-pointer"
+              onClick={() => setScreenshotFullscreen(true)}
+            />
+          </div>
+        </div>
+      )}
 
-          {/* Error details for functional failures */}
-          {isFunctional && res.error_message && (
-            <div className="border-t border-zinc-100 px-4 py-3">
-              <button
-                onClick={() => setErrorExpanded(!errorExpanded)}
-                className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-zinc-400 hover:text-zinc-600"
-              >
-                {errorExpanded ? (
-                  <ChevronDown className="h-3 w-3" />
-                ) : (
-                  <ChevronRight className="h-3 w-3" />
-                )}
-                Error Details
-              </button>
-              {errorExpanded && (
-                <pre className="mt-2 overflow-x-auto rounded bg-zinc-50 p-3 text-xs text-zinc-700 font-mono whitespace-pre-wrap">
-                  {res.error_message}
-                </pre>
-              )}
-            </div>
-          )}
-
-          {/* Failure screenshot for functional tests (single image, no comparison) */}
-          {isFunctional && !result.screenshot_baseline && result.screenshot_actual && (
-            <div className="border-t border-zinc-100 px-4 py-4">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                  Failure Screenshot
-                </h4>
-                <button
-                  onClick={() => setScreenshotFullscreen(true)}
-                  className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-600 transition-colors"
-                >
-                  <Maximize2 className="h-3 w-3" />
-                  Expand
-                </button>
-              </div>
-              <div className="mt-2 max-w-md">
-                <img
-                  src={`data:image/png;base64,${result.screenshot_actual}`}
-                  alt="Failure screenshot"
-                  className="max-h-[250px] w-full object-contain rounded border border-zinc-200 cursor-pointer"
-                  onClick={() => setScreenshotFullscreen(true)}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Screenshot comparison for visual tests */}
-          {!isFunctional && result.screenshot_baseline && result.screenshot_actual && (
-            <div className="border-t border-zinc-100 px-4 py-4">
-              <ScreenshotViewer
-                baseline={result.screenshot_baseline}
-                actual={result.screenshot_actual}
-                diffOverlay={res.image_diff?.diff_overlay_base64}
-              />
-            </div>
-          )}
-        </>
+      {/* Screenshot comparison for visual tests */}
+      {!isFunctional && result.screenshot_baseline && result.screenshot_actual && (
+        <div className="border-t border-zinc-100 px-4 py-4">
+          <ScreenshotViewer
+            baseline={result.screenshot_baseline}
+            actual={result.screenshot_actual}
+            diffOverlay={res.image_diff?.diff_overlay_base64}
+          />
+        </div>
       )}
 
       {/* Show/hide details toggle */}

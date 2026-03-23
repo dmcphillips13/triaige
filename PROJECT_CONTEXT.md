@@ -40,7 +40,7 @@ Last updated: 2026-03-22
 
 **Important — should do before partners, survivable if not:**
 - [x] Known failure card states — sync GitHub issue state during /triage-run; auto-close stale known failures where the GitHub issue was closed externally; fails open if GitHub API unavailable
-- [ ] Collapsed cards missing rationale/screenshots — "Show details" after verdict shows incomplete info
+- [x] Collapsed cards missing rationale/screenshots — removed !verdict gate that hid rationale and screenshots after approve/reject
 - [ ] Manual setup path without `gh` CLI — print step-by-step instructions when `gh` unavailable
 - [x] Qdrant collection isolation per tenant — episodes now tagged with repo and filtered on retrieval. No repo = no episodes (defense in depth). Existing untagged episodes excluded by filter, will age out. Repo payload index created at startup
 - [ ] Invite code or waitlist gate on API key generation — CLI publish prerequisite. Prevents open access to the platform via npm
