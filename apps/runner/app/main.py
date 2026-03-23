@@ -995,9 +995,11 @@ async def update_baselines(req: UpdateBaselinesRequest, request: Request):
                 github_token=github_token,
             )
     except RuntimeError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error("Baseline update failed (RuntimeError): %s", e)
+        raise HTTPException(status_code=400, detail="Baseline update failed")
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"GitHub API error: {e}")
+        logger.error("GitHub API error in /update-baselines: %s", e)
+        raise HTTPException(status_code=502, detail="Failed to update baselines via GitHub")
     return UpdateBaselinesResponse(pr_url=pr_url)
 
 
@@ -1072,8 +1074,8 @@ async def create_issues(req: CreateIssuesRequest, request: Request):
                     logger.warning("Failed to record known failure for %s: %s", name, e)
 
             except Exception as e:
-                logger.warning("Failed to create issue for %s: %s", name, e)
-                raise HTTPException(status_code=502, detail=f"GitHub API error for {name}: {e}")
+                logger.error("Failed to create issue for %s: %s", name, e)
+                raise HTTPException(status_code=502, detail="Failed to create GitHub issue")
 
     return CreateIssuesResponse(issues=issues)
 
@@ -1116,7 +1118,7 @@ async def close_repo_known_failure(repo: str, failure_id: int, request: Request)
             resp.raise_for_status()
             logger.info("Closed GitHub issue #%s on %s", row["issue_number"], repo)
         except Exception as e:
-            issue_error = str(e)
+            issue_error = "Failed to close GitHub issue"
             logger.warning("Failed to close GitHub issue #%s: %s", row["issue_number"], e)
 
     return {"status": "closed", "id": failure_id, "issue_error": issue_error}

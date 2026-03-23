@@ -32,7 +32,7 @@ Last updated: 2026-03-22
 **Essential — do before test partners:**
 - [x] Empty repos page after overnight session (fixed) — three-layer fix: getSession() returns null on dead token (clears cookie), app layout redirects to sign-in when session is null, fetchConnectedRepos() throws on 401 instead of returning empty array
 - [x] Render paid tier ($7/mo) — already on Starter, no cold starts
-- [ ] Error message sanitization — GitHub API errors leak internal URLs and token context to users
+- [x] Error message sanitization — 4 instances in main.py where exception text (GitHub API URLs) leaked to callers via HTTPException detail and response body. Replaced with generic messages, details logged server-side
 - [ ] Favicon — use red plus sign from logo (default Vercel icon signals "unfinished")
 - [ ] close-pr-runs.yml merge strategy support — squash-and-merge, rebase-and-merge. Common workflow; runs won't auto-close without this
 - [ ] Classification accuracy + rationale quality — confirm GPT-5.4-nano resolved dark theme misclassification (PR #3, 72% "unexpected"). Test before investing time
