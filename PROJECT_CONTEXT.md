@@ -97,7 +97,12 @@ Last updated: 2026-03-23
 - [ ] Auto-approve baselines above confidence threshold
 - [ ] Mobile optimization
 
-**Gate: Full E2E verification pass (docs/e2e-test-plan.md), then work through all tiers before onboarding test partners**
+**Pre-presentation checklist (do after all tiers, before first outreach):**
+- [ ] **Classification accuracy on a non-sample repo** — test on at least one repo that isn't purpose-built for Triaige. Messy PR descriptions, real component changes, third-party dependencies. Cold-start accuracy needs to be good enough that a partner doesn't give up in week one
+- [ ] **Design pass** — focused visual polish session. Spacing, empty states, loading transitions, overall feel. First impressions are visual — a quality manager or engineering lead will judge credibility from polish. The calm aesthetic and DM Sans are good foundations but the UI still reads as developer-built
+- [ ] **"What happens when it's wrong" demo story** — rehearse: misclassification → human corrects → episodic memory learns → next time it gets it right. This is the strongest argument for the product and the first thing skeptics will ask about
+- [ ] **First-run experience** — when a partner first connects their repo, they see an empty runs page. Should feel guided, not empty. Setup banners help but the moment between "init complete" and "first PR run" needs to feel intentional
+- [ ] **Full E2E verification pass** (docs/e2e-test-plan.md) — 16+ sections, ~80+ checkpoints
 
 ---
 
