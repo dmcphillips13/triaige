@@ -6,7 +6,7 @@ Last updated: 2026-03-22
 
 ## Current status
 
-**Phase:** Pre-vacation build sprint. Transitioning from demo project to product validation. Core pipeline complete (Steps 1-28). Security hardened. BYOK mandatory. E2E tested. See `docs/sequencing.md` for phased plan and `docs/strategy.md` for full GTM analysis.
+**Phase:** Pre-vacation build sprint — working through Essential items for test partner readiness. Core pipeline complete (Steps 1-28). Security hardened (rate limiting, SSE caps, BYOK mandatory, multi-tenancy, per-repo access control). See `docs/sequencing.md` for phased plan, `docs/strategy.md` for GTM, `docs/e2e-test-plan.md` for comprehensive test plan.
 
 **Test repo state:**
 - `dmcphillips13/test-triaige-onboarding` — fully configured (GitHub App installed, workflows, branch protection, BYOK key, baselines). PR #4 merged with full triage flow verified
@@ -154,7 +154,7 @@ Tenant = GitHub App installation. An org that installs the Triaige GitHub App is
 
 ## Recent sessions
 
-### Session 2026-03-22 (night) — Rate limiting, SSE hardening, reliability fixes
+### Session 2026-03-22 (night) — Infrastructure hardening, reliability, OAuth fix, test plan
 
 **Rate limiting:**
 - `limits` library (async moving-window) integrated into `ApiKeyMiddleware`
@@ -171,7 +171,16 @@ Tenant = GitHub App installation. An org that installs the Triaige GitHub App is
 - `/report-clean` hardened: Pydantic input model eliminates `int(pr_number)` ValueError (root cause of PR #78 500), try/except on `repo_settings.get_settings()`, top-level error handler
 - Dashboard silent mutations fixed: `submitFeedback()` error check, `putVerdict()` caller reverts on failure + shows error, `toggleMergeGate()` error message, `deleteOpenAIKey()` handles non-200
 
-**Next:** E2E verification of all critical items (21-point checklist in critical section above)
+**OAuth session expiry fix:**
+- `getSession()` now returns null (clears cookie) when GitHub token is expired and refresh fails — previously returned dead session causing blank repos page
+- App layout checks session on every authenticated page load, redirects to `/sign-in` if null — protects all pages in one place
+- `fetchConnectedRepos()` throws on GitHub 401 instead of silently returning empty array
+
+**Backlog restructured:** prioritized into Essential / Important / Nice-to-have / Backlog / Future tiers for test partner readiness. Comprehensive E2E test plan created (`docs/e2e-test-plan.md`) with 16 sections and ~80 checkpoints including multi-PR edge cases.
+
+**Confirmed:** Render already on Starter tier ($7/mo), no cold starts.
+
+**Next:** Error message sanitization (3 instances in main.py, plan ready — awaiting approval to build), then favicon, close-pr-runs.yml squash/rebase support, classification accuracy confirmation, CLI npm publish. Full E2E verification after all pre-partner work is complete.
 
 ### Session 2026-03-22 (evening) — Security hardening + P0 features + E2E test
 
