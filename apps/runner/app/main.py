@@ -68,8 +68,11 @@ logging.getLogger().addFilter(_KeyRedactingFilter())
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
-    from app.retrieval.qdrant_store import ensure_collection
-    await asyncio.to_thread(ensure_collection)
+    try:
+        from app.retrieval.qdrant_store import ensure_collection
+        await asyncio.to_thread(ensure_collection)
+    except Exception as e:
+        logger.warning("Qdrant collection setup failed (non-fatal): %s", e)
     yield
     await close_db()
 
