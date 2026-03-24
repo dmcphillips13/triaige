@@ -39,7 +39,12 @@ Last updated: 2026-03-23
 - [x] Collapsed cards missing rationale/screenshots — removed !verdict gate that hid rationale and screenshots after approve/reject
 - [x] Manual setup path without `gh` CLI — added manual instructions for commit/push, baseline generation, and branch protection when `gh` is unavailable
 - [x] Qdrant collection isolation per tenant — episodes now tagged with repo and filtered on retrieval. No repo = no episodes (defense in depth). Existing untagged episodes excluded by filter, will age out. Repo payload index created at startup
-- [ ] **Monorepo support in `triaige init`** — detect monorepo markers (`pnpm-workspace.yaml`, `nx.json`, `turbo.json`), ask which app directory, adjust Playwright config detection, workflow `working-directory`, and `test-results/` paths. Currently only single-repo setup works. A partner saying "we use Nx" and init failing would be a bad first impression. Changes: `init.ts` (detection + prompt), `playwright.ts` (search in app dir), `templates.ts` (inject working directory), `visual-regression.yml` (working-directory placeholder), `post-failures.sh` (already parameterized). Test by creating a temporary monorepo structure locally
+- [ ] **Refactor `triaige init` to GitHub Action + webhook architecture** — replaces full workflow generation with industry-standard integration model (like Codecov, Percy, Snyk). Three components:
+  - **GitHub Action** (`triaige/action` public repo): packages `post-failures.sh` logic as a reusable action. User adds `uses: triaige/action@v1` to their existing workflow. Eliminates `post-failures.sh` and `visual-regression.yml` from user's repo
+  - **Webhook endpoint** (`POST /webhook` on runner): receives GitHub push events for post-merge cleanup. Eliminates `close-pr-runs.yml` from user's repo. Needs HMAC-SHA256 signature verification, webhook secret env var, push event subscription on GitHub App
+  - **Refactored `triaige init`**: detects existing Playwright workflow (regex scan, no YAML parsing), prints snippet with correct file/line/indent instead of generating full workflow. Falls back to full workflow generation if no existing CI found. Scans whole repo tree for `playwright.config.ts` (handles monorepos). See plan file: `.claude/plans/crispy-bubbling-moore.md`
+  - **Result**: zero generated files in user's repo. User pastes 5-line snippet, commits, done. Works with any repo structure (single, monorepo, custom CI)
+  - **GitHub App config needed**: set webhook URL to `https://triaige-runner.onrender.com/webhook`, generate webhook secret, enable Push event subscription. Currently webhook is Active but URL and Secret are empty
 - [ ] Invite code or waitlist gate on API key generation — CLI publish prerequisite. Prevents open access to the platform via npm
 - [ ] **Publish CLI to npm** — polished `npx triaige init` experience for partners. Prerequisites: Qdrant collection isolation (done) and invite/waitlist gate (above)
 - [ ] **E2E verification** — classification accuracy (visual + functional), rationale quality, mixed visual + functional flow (card rendering, submit, merge gate, issue materialization). See `docs/e2e-test-plan.md` for full test plan
@@ -89,6 +94,7 @@ Last updated: 2026-03-23
 - [ ] `triaige update` command — build when demanded
 - [ ] Workflow template auto-update — version and detect staleness
 - [ ] Cypress support — build when demanded
+- [ ] Rich health endpoint — `/health` reports component status (db, Qdrant). Useful when design partners need to debug connectivity issues
 
 **Future — post-validation:**
 - [ ] Logprob-based confidence scores
@@ -229,7 +235,31 @@ Tenant = GitHub App installation. An org that installs the Triaige GitHub App is
 **E2E test plan updated:**
 - Added verification steps for: known failure state sync, merge strategy support, Qdrant tenant isolation, error message sanitization
 
-**Next:** Manual setup path without `gh` CLI, then functional failure follow-ups, then Nice-to-have items, then full E2E verification pass.
+**Manual setup path:**
+- Added manual instructions for commit/push, baseline generation, and branch protection when `gh` is unavailable
+
+**Render deploy fix:**
+- `ensure_collection()` in lifespan hook wrapped in try/except — app starts even if Qdrant is temporarily unreachable
+- Render CLI installed and authenticated for log inspection
+
+**Architecture decision: GitHub Action + webhook model:**
+- Researched competitor integration models (Percy, Codecov, Chromatic, Snyk) — all use post-step actions, not full workflow generation
+- Researched YAML manipulation safety — Renovate and Dependabot both use regex, not YAML parsing, for workflow modifications
+- Decision: refactor `triaige init` from generating full workflows to printing a snippet (`uses: triaige/action@v1`) that user pastes into their existing CI
+- GitHub Action (`triaige/action` public repo) packages `post-failures.sh` logic as a reusable composite action
+- Webhook endpoint (`POST /webhook`) replaces `close-pr-runs.yml` for post-merge cleanup
+- Result: zero generated files in user's repo, works with any repo structure (single, monorepo, custom CI)
+- Plan file: `.claude/plans/crispy-bubbling-moore.md`
+- GitHub App webhook config needed: URL (`https://triaige-runner.onrender.com/webhook`), secret, Push event subscription. Currently Active but URL/Secret are empty
+
+**Strategy updates:**
+- Enterprise data trust framing added to strategy.md (screenshot privacy, Azure OpenAI, deployment tiers)
+- SaMD data trust analysis (two objections: data residency + regulatory evidence)
+- Community-first outreach playbook (OpenRegulatory Slack + local LinkedIn)
+- Auto-masking elevated to high priority in vision.md (learned masking from human feedback, above TestFlow)
+- Joined OpenRegulatory Slack
+
+**Next:** Build the GitHub Action + webhook + init refactor (plan ready in `.claude/plans/crispy-bubbling-moore.md`), then remaining Essential items, UX polish tiers, pre-presentation checklist.
 
 ### Session 2026-03-22 (evening) — Security hardening + P0 features + E2E test
 

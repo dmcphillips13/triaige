@@ -150,10 +150,11 @@ apps/runner/
 - Built in Step 2.
 
 ### Supported user repo structures
-- **Single repo** — one app, Playwright config at root. Fully supported by `triaige init` today.
-- **Monorepo** (Nx, Turborepo, pnpm workspaces) — multiple apps in one repo. `triaige init` needs to detect monorepo markers, ask which app directory, and adjust workflow `working-directory` + `test-results/` paths. In progress.
+- **Single repo** — one app, Playwright config at root. Supported today (full workflow generation). Will also work with new GitHub Action model.
+- **Monorepo** (Nx, Turborepo, pnpm workspaces) — multiple apps in one repo. Supported by the new GitHub Action model: user adds `uses: triaige/action@v1` to their existing workflow with the correct `results-path`. `triaige init` scans for `playwright.config.ts` across the whole repo tree and prints the snippet with the detected path.
 - **Separate test repo** — UI code in one repo, Playwright tests in another. Not yet supported. Breaks the git diff → classification link because the PR is in the UI repo but tests run from the test repo. Backlog item.
 - **Multi-repo with shared dependencies** — UI repo consumes tokens/components from other repos via npm packages. Version bump PRs show only `package.json` changes, not the upstream visual diff. Backlog item (multi-repo upstream diff resolution).
+- **Integration model (in progress):** Moving from "generate full CI workflow" to "GitHub Action + webhook." User adds a 5-line snippet to their existing workflow. Post-merge cleanup via GitHub App webhook. Zero generated files in user's repo. See `.claude/plans/crispy-bubbling-moore.md` for implementation plan.
 
 ---
 
