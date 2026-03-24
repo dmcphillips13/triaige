@@ -149,6 +149,12 @@ apps/runner/
 - Contains GitHub Actions workflow that triggers on PRs (opened/synchronize) and push-to-main: runs Playwright → POSTs failures to Triaige runner for pre-merge triage; on push-to-main calls `/report-clean` for run cleanup.
 - Built in Step 2.
 
+### Supported user repo structures
+- **Single repo** — one app, Playwright config at root. Fully supported by `triaige init` today.
+- **Monorepo** (Nx, Turborepo, pnpm workspaces) — multiple apps in one repo. `triaige init` needs to detect monorepo markers, ask which app directory, and adjust workflow `working-directory` + `test-results/` paths. In progress.
+- **Separate test repo** — UI code in one repo, Playwright tests in another. Not yet supported. Breaks the git diff → classification link because the PR is in the UI repo but tests run from the test repo. Backlog item.
+- **Multi-repo with shared dependencies** — UI repo consumes tokens/components from other repos via npm packages. Version bump PRs show only `package.json` changes, not the upstream visual diff. Backlog item (multi-repo upstream diff resolution).
+
 ---
 
 ## 4) Environment variables

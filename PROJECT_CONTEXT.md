@@ -41,6 +41,7 @@ Last updated: 2026-03-23
 - [x] Qdrant collection isolation per tenant — episodes now tagged with repo and filtered on retrieval. No repo = no episodes (defense in depth). Existing untagged episodes excluded by filter, will age out. Repo payload index created at startup
 - [ ] Invite code or waitlist gate on API key generation — CLI publish prerequisite. Prevents open access to the platform via npm
 - [ ] **Publish CLI to npm** — polished `npx triaige init` experience for partners. Prerequisites: Qdrant collection isolation (done) and invite/waitlist gate (above)
+- [ ] **Monorepo support in `triaige init`** — detect monorepo markers (`pnpm-workspace.yaml`, `nx.json`, `turbo.json`), ask which app directory, adjust Playwright config detection, workflow `working-directory`, and `test-results/` paths. Currently only single-repo setup works. A partner saying "we use Nx" and init failing would be a bad first impression. Changes: `init.ts` (detection + prompt), `playwright.ts` (search in app dir), `templates.ts` (inject working directory), `visual-regression.yml` (working-directory placeholder), `post-failures.sh` (already parameterized). Test by creating a temporary monorepo structure locally
 - [ ] **E2E verification** — classification accuracy (visual + functional), rationale quality, mixed visual + functional flow (card rendering, submit, merge gate, issue materialization). See `docs/e2e-test-plan.md` for full test plan
 
 **Build before presenting — UX polish:**
