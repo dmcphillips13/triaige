@@ -67,6 +67,7 @@ Last updated: 2026-03-23
 - [ ] De-emphasize merge gate toggle — move to "Advanced" section or behind disclosure, add "Recommended: on" note
 - [ ] Classification regression library — collect sample app PRs with known outcomes
 - [ ] Multi-PR interaction test matrix — observe with design partners, don't build formal harness
+- [ ] Re-run tests button on PR run page — triggers `workflow_dispatch` via GitHub API, closes current run (superseded), fresh triage run created automatically. Most useful for flaky retries and manual retriggers without leaving dashboard. Needs intermediate "Tests running..." state with link to Actions run since workflow takes 3-5 min. Note: baseline commits already auto-trigger CI, so the most common re-run case is handled — this is for the remaining cases
 
 **Backlog — build when demanded or post-validation:**
 - [ ] CORS method/header wildcards — tighten to explicit lists (no security risk: origins already restricted)
@@ -98,6 +99,7 @@ Last updated: 2026-03-23
 - [ ] Mobile optimization
 
 **Pre-presentation checklist (do after all tiers, before first outreach):**
+- [ ] **Decision: build auto-masking before outreach?** — learned masking from human feedback patterns (2-3 days). Could expand addressable market from "existing visual testing users" to "teams that gave up because of noise." Investigating appetite via Claude Chat research and OpenRegulatory Slack. See `docs/vision.md` for full design, `docs/sequencing.md` for decision framework
 - [ ] **Classification accuracy on a non-sample repo** — test on at least one repo that isn't purpose-built for Triaige. Messy PR descriptions, real component changes, third-party dependencies. Cold-start accuracy needs to be good enough that a partner doesn't give up in week one
 - [ ] **Design pass** — focused visual polish session. Spacing, empty states, loading transitions, overall feel. First impressions are visual — a quality manager or engineering lead will judge credibility from polish. The calm aesthetic and DM Sans are good foundations but the UI still reads as developer-built
 - [ ] **"What happens when it's wrong" demo story** — rehearse: misclassification → human corrects → episodic memory learns → next time it gets it right. This is the strongest argument for the product and the first thing skeptics will ask about
