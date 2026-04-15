@@ -1,8 +1,5 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  // Transpile shared workspace packages
-  transpilePackages: ["@triaige/shared"],
-};
+const nextConfig: NextConfig = {};
 
 export default nextConfig;
