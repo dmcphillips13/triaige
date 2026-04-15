@@ -61,7 +61,8 @@ pnpm-debug.log*
 .cache/
 tmp/
 
-# Strategy & planning (confidential — not for public repo)
+# Strategy & planning (confidential)
+PROJECT_CONTEXT.md
 docs/strategy.md
 docs/vision.md
 docs/sequencing.md
