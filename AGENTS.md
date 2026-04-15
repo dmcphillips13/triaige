@@ -21,7 +21,7 @@ All agents (Claude Code, Codex, Cursor, etc.) should follow this document to avo
 
 ## 1) Primary build objective
 
-Build a **production-ready agentic AI app** that automates visual regression testing end-to-end. The target is a polished, reliable product for design partner validation — quality over breadth.
+Build a **production-ready agentic AI app** that automates visual regression testing end-to-end. Quality over breadth.
 
 ### Product flow
 PR opened/updated (sample app repo) → Playwright tests run → failed screenshots + results → Triaige agent classifies failures → developer reviews in dashboard → approved baselines committed to PR branch, unexpected changes filed as issues → merge gate passes once all failures addressed → PR merges. Known failures (tests already failing on main) are tracked on a health dashboard with linked GitHub issues.
