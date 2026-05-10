@@ -585,16 +585,18 @@ async def list_known_failures(repo: str) -> list[dict]:
     return [dict(row) for row in rows]
 
 
-async def close_known_failure(failure_id: int) -> dict | None:
-    """Close a known failure. Returns the row if found."""
+async def close_known_failure(repo: str, failure_id: int) -> dict | None:
+    """Close a known failure for a repo. Returns the row if found."""
     pool = get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             """UPDATE known_failures
                SET closed_at = NOW()
-               WHERE id = $1 AND closed_at IS NULL
+               WHERE id = $1
+                 AND repo = $2
+                 AND closed_at IS NULL
                RETURNING id, repo, test_name, issue_url, issue_number""",
-            failure_id,
+            failure_id, repo,
         )
     return dict(row) if row else None
 

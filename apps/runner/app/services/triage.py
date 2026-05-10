@@ -335,7 +335,7 @@ async def sync_known_failure_states(
                 resp = client.get(f"/repos/{repo}/issues/{info['issue_number']}")
                 if resp.status_code != 200 or resp.json().get("state") != "open":
                     stale_tests.append(test_name)
-                    await store.close_known_failure(info["id"])
+                    await store.close_known_failure(repo, info["id"])
                     logger.info(
                         "Auto-closed stale known failure: %s (issue #%s %s)",
                         test_name, info["issue_number"],

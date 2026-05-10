@@ -94,7 +94,7 @@ async def list_repo_closed_known_failures(repo: str, request: Request):
 async def close_repo_known_failure(repo: str, failure_id: int, request: Request):
     """Close a known failure and its GitHub issue."""
     check_repo_access(request, repo)
-    row = await store.close_known_failure(failure_id)
+    row = await store.close_known_failure(repo, failure_id)
     if not row:
         raise HTTPException(status_code=404, detail="Known failure not found or already closed")
 
