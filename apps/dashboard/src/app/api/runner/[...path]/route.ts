@@ -59,6 +59,9 @@ function buildRunnerUrl(segments: string[], request: NextRequest): string {
 
 async function proxyRequest(request: NextRequest, segments: string[]) {
   const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
+  }
 
   // Read body once for methods that have one (reused for repo extraction + forwarding)
   let bodyText: string | undefined;
@@ -67,36 +70,34 @@ async function proxyRequest(request: NextRequest, segments: string[]) {
   }
 
   // --- Repo access validation ---
-  if (session) {
-    const accessible = await getUserAccessibleRepos(
-      session.github_token,
-      session.user_login
-    );
+  const accessible = await getUserAccessibleRepos(
+    session.github_token,
+    session.user_login
+  );
 
-    // 1. Repo from URL path (repos/{owner}/{repo}/...)
-    const pathRepo = extractRepoFromPath(segments);
-    if (pathRepo && !accessible.has(pathRepo)) {
+  // 1. Repo from URL path (repos/{owner}/{repo}/...)
+  const pathRepo = extractRepoFromPath(segments);
+  if (pathRepo && !accessible.has(pathRepo)) {
+    return NextResponse.json({ detail: 'Not found' }, { status: 404 });
+  }
+
+  // 2. Repo from query param (runs/{runId}/...?repo=owner/repo)
+  const queryRepo = extractRepoFromQuery(request);
+  if (queryRepo && !accessible.has(queryRepo)) {
+    return NextResponse.json({ detail: 'Not found' }, { status: 404 });
+  }
+
+  // 3. Repo from POST body (update-baselines, create-issues, feedback)
+  if (
+    bodyText &&
+    !pathRepo &&
+    (segments[0] === 'update-baselines' ||
+      segments[0] === 'create-issues' ||
+      segments[0] === 'feedback')
+  ) {
+    const bodyRepo = extractRepoFromBody(bodyText);
+    if (bodyRepo && !accessible.has(bodyRepo)) {
       return NextResponse.json({ detail: 'Not found' }, { status: 404 });
-    }
-
-    // 2. Repo from query param (runs/{runId}/...?repo=owner/repo)
-    const queryRepo = extractRepoFromQuery(request);
-    if (queryRepo && !accessible.has(queryRepo)) {
-      return NextResponse.json({ detail: 'Not found' }, { status: 404 });
-    }
-
-    // 3. Repo from POST body (update-baselines, create-issues, feedback)
-    if (
-      bodyText &&
-      !pathRepo &&
-      (segments[0] === 'update-baselines' ||
-        segments[0] === 'create-issues' ||
-        segments[0] === 'feedback')
-    ) {
-      const bodyRepo = extractRepoFromBody(bodyText);
-      if (bodyRepo && !accessible.has(bodyRepo)) {
-        return NextResponse.json({ detail: 'Not found' }, { status: 404 });
-      }
     }
   }
 
@@ -108,12 +109,8 @@ async function proxyRequest(request: NextRequest, segments: string[]) {
   if (RUNNER_API_KEY) {
     headers.set('Authorization', `Bearer ${RUNNER_API_KEY}`);
   }
-  if (session?.github_token) {
-    headers.set('X-GitHub-Token', session.github_token);
-  }
-  if (session?.user_login) {
-    headers.set('X-Dashboard-User', session.user_login);
-  }
+  headers.set('X-GitHub-Token', session.github_token);
+  headers.set('X-Dashboard-User', session.user_login);
 
   const init: RequestInit = {
     method: request.method,
