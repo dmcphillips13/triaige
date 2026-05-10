@@ -5,8 +5,8 @@
 
 import type { SubmissionResult } from "./types";
 
-/** Fetch all triage runs (client-side, for live updates). */
-export async function fetchRuns(): Promise<
+/** Fetch triage runs, optionally scoped to one repo. */
+export async function fetchRuns(repo?: string): Promise<
   {
     run_id: string;
     repo: string;
@@ -19,7 +19,8 @@ export async function fetchRuns(): Promise<
     gate_status: string | null;
   }[]
 > {
-  const res = await fetch("/api/runner/runs");
+  const params = repo ? `?repo=${encodeURIComponent(repo)}` : "";
+  const res = await fetch(`/api/runner/runs${params}`);
   if (!res.ok) return [];
   return res.json();
 }

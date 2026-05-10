@@ -46,13 +46,17 @@ function extractRepoFromBody(bodyText: string): string | null {
 }
 
 /**
- * Build the runner URL, stripping the ?repo= query param (runner doesn't expect it).
+ * Build the runner URL.
+ *
+ * Most run-scoped endpoints use ?repo= only for proxy access control, but
+ * GET /runs accepts repo as a server-side filter and must receive it.
  */
 function buildRunnerUrl(segments: string[], request: NextRequest): string {
   const base = `${RUNNER_BASE_URL}/${segments.map(encodeURIComponent).join('/')}`;
-  // Forward all query params except 'repo' (used for proxy-side access control only)
   const params = new URLSearchParams(request.nextUrl.searchParams);
-  params.delete('repo');
+  if (!(request.method === 'GET' && segments.length === 1 && segments[0] === 'runs')) {
+    params.delete('repo');
+  }
   const qs = params.toString();
   return qs ? `${base}?${qs}` : base;
 }

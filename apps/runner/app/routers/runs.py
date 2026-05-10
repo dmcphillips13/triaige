@@ -6,7 +6,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Request
 
 from app import events, store
-from app.routers._auth import check_run_access
+from app.routers._auth import check_repo_access, check_run_access
 from app.schemas import SubmissionRequest, TriageRunResponse, TriageRunSummary, VerdictRequest
 from app.tools.github_checks import update_check_run
 
@@ -16,9 +16,12 @@ router = APIRouter(prefix="/runs")
 
 
 @router.get("", response_model=list[TriageRunSummary])
-async def list_runs(request: Request):
-    """List triage runs. Per-repo keys only see their repo's runs."""
+async def list_runs(request: Request, repo: str | None = None):
+    """List triage runs, optionally scoped to one repo."""
     auth_repo = getattr(request.state, "authenticated_repo", None)
+    if repo:
+        check_repo_access(request, repo)
+        return await store.list_runs(repo_filter=repo)
     return await store.list_runs(repo_filter=auth_repo)
 
 

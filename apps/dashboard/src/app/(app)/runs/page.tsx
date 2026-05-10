@@ -28,7 +28,7 @@ export default async function RunsPage({
   }
 
   const [runsResult, settingsResult] = await Promise.allSettled([
-    fetchRuns(),
+    fetchRuns(repo),
     fetchRepoSettings(repo),
   ]);
 

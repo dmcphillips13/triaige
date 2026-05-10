@@ -27,9 +27,10 @@ async function authHeaders(): Promise<HeadersInit> {
   return headers;
 }
 
-/** Fetch all triage runs (summary only, no individual results). */
-export async function fetchRuns(): Promise<TriageRunSummary[]> {
-  const res = await fetch(`${RUNNER_BASE}/runs`, {
+/** Fetch triage runs, optionally scoped to one repo. */
+export async function fetchRuns(repo?: string): Promise<TriageRunSummary[]> {
+  const params = repo ? `?repo=${encodeURIComponent(repo)}` : "";
+  const res = await fetch(`${RUNNER_BASE}/runs${params}`, {
     cache: "no-store",
     headers: await authHeaders(),
   });

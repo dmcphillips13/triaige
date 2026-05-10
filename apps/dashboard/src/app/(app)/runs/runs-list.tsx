@@ -84,10 +84,10 @@ export function RunsList({
 
   // Refetch runs from API on SSE events
   const refetchRuns = useCallback(() => {
-    fetchRuns().then((fresh) => {
-      if (fresh.length > 0) setLiveRuns(fresh);
+    fetchRuns(repo).then((fresh) => {
+      setLiveRuns(fresh);
     });
-  }, []);
+  }, [repo]);
 
   useTriaigeEvents(
     useCallback(
